@@ -114,10 +114,10 @@ const MONTHLY_DATA = {
   may26: { label: "พฤษภาคม 2026", spend: liveMonthTotal(MONTH_ISO.may26, 1430197), deposit: 3300981, online: 12605700, sales: 13185700 },
   // spend: เท่ากับ GRAND_TOTAL.spend เสมอ (คำนวณจาก adSpend.json เดือน 2026-06 ถ้ามี)
   jun26: { label: "มิถุนายน 2026", spend: GRAND_TOTAL.spend, deposit: 2678980, online: 11608200, sales: 10448010 },
-  // อัปเดตสเปนด์ ก.ค. 2026 สดจาก Facebook Ads MCP ณ 11 ก.ค. 2026 (รวม Nose Open 01-03 + Semi Open + เสริมหน้าอก/ดูดไขมัน + ยกคิ้ว-ดึงหน้า)
-  // หมายเหตุ: ยังไม่รวมสเปนด์กลุ่ม Inter (ต้องกรองตามชื่อแคมเปญในบัญชีรวมเป็นรายตัว ยังไม่ได้อัปเดตรอบนี้)
+  // อัปเดตสเปนด์ ก.ค. 2026 สดจาก Facebook Ads MCP ณ 12 ก.ค. 2026 (รวม Nose Open 01-03 + Semi Open + เสริมหน้าอก/ดูดไขมัน + ยกคิ้ว-ดึงหน้า + Inter)
+  // ยอดรวมใช้ค่า total ใน adSpend.json = ผลรวม 6 บัญชี (ไม่นับ Inter ซ้ำ เพราะ Inter เป็นแคมเปญย่อยในบัญชี Nose Open 02 อยู่แล้ว)
   // deposit/online/sales ยังคงอ้างอิงไฟล์ธุรกรรมเดิม (ไฟล์ SharePoint ล่าสุดที่ตรวจสอบยังไม่มีข้อมูลธุรกรรมเกินปลายเดือนมิ.ย.)
-  jul26: { label: "กรกฎาคม 2026 (1–11, สเปนด์สดถึงวันนี้)", spend: liveMonthTotal(MONTH_ISO.jul26, 568807), deposit: 91000, online: 880800, sales: 287300 },
+  jul26: { label: "กรกฎาคม 2026 (1–12, สเปนด์สดถึงวันนี้)", spend: liveMonthTotal(MONTH_ISO.jul26, 568807), deposit: 91000, online: 880800, sales: 287300 },
 };
 const MONTH_OPTIONS = Object.entries(MONTHLY_DATA).map(([k, v]) => [k, v.label]);
 

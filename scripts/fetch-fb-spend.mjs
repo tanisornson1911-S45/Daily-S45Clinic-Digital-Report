@@ -108,15 +108,24 @@ async function main() {
     console.log(`Fetching ${key} (${since} → ${until})...`);
     result[key] = {};
 
+    let accountsTotal = 0;
     for (const [name, { id, category }] of Object.entries(ACCOUNTS)) {
       const spend = await fetchAccountSpend(id, since, until);
       result[key][category] = (result[key][category] || 0) + spend;
+      accountsTotal += spend;
       console.log(`  ${name} (${category}): ฿${spend.toLocaleString()}`);
     }
 
     const interSpend = await fetchInterCampaignSpend(INTER_ACCOUNT_ID, since, until);
     result[key].inter = interSpend;
     console.log(`  inter (campaigns matching "Inter" in Nose Open 02): ฿${interSpend.toLocaleString()}`);
+
+    // 'inter' campaigns live inside Nose Open 02, whose full spend is already in
+    // the nose_open category — so summing the category fields would double-count
+    // them. Store an explicit month 'total' = sum of the 6 ad accounts instead,
+    // which the dashboard's liveMonthTotal() prefers over summing the breakdown.
+    result[key].total = accountsTotal;
+    console.log(`  total (6 accounts, no inter double-count): ฿${accountsTotal.toLocaleString()}`);
   }
 
   const outDir = path.resolve("src/data");
