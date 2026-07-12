@@ -1,0 +1,46 @@
+name: Update dashboard ad-spend data
+
+# ดึงยอด ad spend จริงจาก Facebook Marketing API แล้ว commit ทับ
+# src/data/adSpend.json อัตโนมัติ ถ้าข้อมูลเปลี่ยน — Vercel จะ redeploy เอง
+# เมื่อมี commit ใหม่บน branch main
+#
+# ต้องตั้ง repo secret ชื่อ FB_ACCESS_TOKEN (System User token, สิทธิ์ ads_read)
+# ที่ Settings → Secrets and variables → Actions → New repository secret
+
+on:
+  schedule:
+    # 01:00 เวลาไทย (ICT = UTC+7) = 18:00 UTC ของวันก่อนหน้า
+    - cron: "0 18 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Fetch latest ad spend
+        env:
+          FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
+        run: node scripts/fetch-fb-spend.mjs
+
+      - name: Commit & push if data changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- src/data/adSpend.json; then
+            echo "No change in adSpend.json — nothing to commit."
+          else
+            git add src/data/adSpend.json
+            git commit -m "chore: update ad-spend data (automated)"
+            git push origin HEAD:main
+          fi

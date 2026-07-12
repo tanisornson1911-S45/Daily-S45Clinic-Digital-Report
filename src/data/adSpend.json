@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-07-12T00:00:00.000Z",
+  "source": "Seed values: 2026-06 has a full category breakdown pulled live via Facebook Ads MCP on 2026-07-12. 'inter' = sum of campaigns with \"Inter\" in the name inside the Nose Open 02 ad account (confirmed with the team on 2026-07-12), not a whole ad account. Months with only a 'total' field are carried over from the dashboard's previous manual pulls (see App.jsx comments) until the scheduled workflow backfills them.",
+  "months": {
+    "2025-10": { "total": 849372 },
+    "2025-11": { "total": 843033 },
+    "2025-12": { "total": 1002106 },
+    "2026-01": { "total": 1081752 },
+    "2026-02": { "total": 1418462 },
+    "2026-03": { "total": 1191297 },
+    "2026-04": { "total": 1048204 },
+    "2026-05": { "total": 1430197 },
+    "2026-06": {
+      "nose_open": 824506,
+      "nose_semi": 85083,
+      "breast_lipo": 59065,
+      "brow_hairline": 391096,
+      "inter": 18679
+    },
+    "2026-07": { "total": 568807 }
+  }
+}
