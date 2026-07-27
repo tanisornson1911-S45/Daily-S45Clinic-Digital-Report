@@ -31,6 +31,15 @@ import {
   UserCircle2,
   CheckCircle2,
   Clock,
+  Sun,
+  Moon,
+  Menu,
+  X,
+  LayoutGrid,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import {
   BarChart,
@@ -438,7 +447,7 @@ function Select({ icon: Icon, value, onChange, options }) {
   );
 }
 
-function MetricCard({ icon: Icon, label, value, sub, tone = "slate" }) {
+function MetricCard({ icon: Icon, label, value, sub, tone = "slate", delta, goodDirection = "up" }) {
   const tones = {
     slate: "bg-slate-50 text-slate-600",
     green: "bg-emerald-50 text-emerald-600",
@@ -446,16 +455,448 @@ function MetricCard({ icon: Icon, label, value, sub, tone = "slate" }) {
     red: "bg-rose-50 text-rose-600",
     indigo: "bg-indigo-50 text-indigo-600",
   };
+  const hasDelta = typeof delta === "number" && Number.isFinite(delta);
+  const isUp = hasDelta && delta > 0;
+  const isFlat = hasDelta && Math.abs(delta) < 0.05;
+  const isGood = isFlat ? null : isUp === (goodDirection === "up");
   return (
     <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
-      <div className="flex items-center gap-2 mb-3">
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${tones[tone]}`}>
-          <Icon size={16} />
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2">
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${tones[tone]}`}>
+            <Icon size={16} />
+          </div>
+          <span className="text-sm text-slate-500 font-medium">{label}</span>
         </div>
-        <span className="text-sm text-slate-500 font-medium">{label}</span>
+        {hasDelta && (
+          <span
+            className={`flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-md ${
+              isFlat ? "bg-slate-50 text-slate-400" : isGood ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+            }`}
+          >
+            {!isFlat && (isUp ? <ArrowUp size={11} /> : <ArrowDown size={11} />)}
+            {Math.abs(delta).toFixed(1)}%
+          </span>
+        )}
       </div>
       <div className="text-2xl font-bold text-slate-800 tracking-tight">{value}</div>
       {sub && <div className={`text-xs mt-1 font-medium ${tone === "red" ? "text-rose-500" : "text-slate-400"}`}>{sub}</div>}
+    </div>
+  );
+}
+
+// ============================================================
+// เปรียบเทียบช่วงเวลา (Compare) — คำนวณ exec metrics (ยอดขายรวม/ยอดขาย FB/
+// ค่าโฆษณา FB/Ads ต่อยอดขาย/ROAS) สำหรับช่วงวันที่ใดก็ได้ ใช้ตรรกะเดียวกับ
+// rangeTotals/rangeSpend/activeFbSurgery ในตัว component หลัก แต่แยกเป็นฟังก์ชัน
+// บริสุทธิ์ (pure function) รับ range เข้ามาแทนการอิง dateRange ตรงๆ เพื่อให้เรียกซ้ำ
+// ได้ทั้งช่วงหลักและช่วงเทียบ (compare) โดยไม่ต้องแตะโค้ดเดิม
+// ============================================================
+const MONTH_BOUNDS = {
+  oct25: ["2025-10-01", "2025-10-31"],
+  nov25: ["2025-11-01", "2025-11-30"],
+  dec25: ["2025-12-01", "2025-12-31"],
+  jan26: ["2026-01-01", "2026-01-31"],
+  feb26: ["2026-02-01", "2026-02-28"],
+  mar26: ["2026-03-01", "2026-03-31"],
+  apr26: ["2026-04-01", "2026-04-30"],
+  may26: ["2026-05-01", "2026-05-31"],
+  jun26: ["2026-06-01", "2026-06-30"],
+  jul26: ["2026-07-01", "2026-07-11"],
+};
+
+function computeExecMetricsForRange(range, proc) {
+  const isFullJun = range.start === "2026-06-01" && range.end === "2026-06-30";
+  const txInRange = RAW_TX.filter((t) => t.d >= range.start && t.d <= range.end);
+  const txByProc = proc === "all" ? txInRange : txInRange.filter((t) => t.p === proc);
+
+  const sales = isFullJun
+    ? proc === "all"
+      ? GRAND_TOTAL.sales
+      : CATEGORIES[proc].sales
+    : txByProc.reduce((s, t) => s + t.tot, 0);
+
+  const fbSales = isFullJun
+    ? proc === "all"
+      ? FB_TOTAL.total
+      : FB_BY_KEY[proc]?.total ?? 0
+    : txInRange.filter((t) => t.ch === "Facebook" && (proc === "all" || t.p === proc)).reduce((s, t) => s + t.tot, 0);
+
+  const fbSpend = (() => {
+    if (isFullJun) return proc === "all" ? GRAND_TOTAL.spend : CATEGORIES[proc].spend;
+    let total = 0;
+    Object.entries(MONTHLY_DATA).forEach(([mk, mv]) => {
+      const [monthStart, monthEnd] = MONTH_BOUNDS[mk];
+      const overlapStart = range.start > monthStart ? range.start : monthStart;
+      const overlapEnd = range.end < monthEnd ? range.end : monthEnd;
+      if (overlapStart <= overlapEnd) {
+        const overlapDays = Math.round((new Date(overlapEnd) - new Date(overlapStart)) / 86400000) + 1;
+        const totalDaysInMonth = Math.round((new Date(monthEnd) - new Date(monthStart)) / 86400000) + 1;
+        total += mv.spend * (overlapDays / totalDaysInMonth);
+      }
+    });
+    const allProcSpend = Math.round(total);
+    if (proc === "all") return allProcSpend;
+    const procRatio = CATEGORIES[proc].spend / GRAND_TOTAL.spend;
+    return Math.round(allProcSpend * procRatio);
+  })();
+
+  const ratio = fbSales > 0 ? fbSpend / fbSales : 0;
+  const roas = fbSpend > 0 ? fbSales / fbSpend : 0;
+  return { sales, fbSales, fbSpend, ratio, roas };
+}
+
+// เปอร์เซ็นต์เปลี่ยนแปลงจากช่วงเทียบ (compare) ไปช่วงปัจจุบัน — null ถ้าฐานเป็น 0 (เทียบไม่ได้)
+function pctDelta(current, previous) {
+  if (!previous) return null;
+  return ((current - previous) / previous) * 100;
+}
+
+// ช่วงก่อนหน้าที่มีจำนวนวันเท่ากัน ต่อจากปลายช่วงหลักย้อนกลับไปทันที (ค่าเริ่มต้นของ Compare)
+function previousPeriodRange(range) {
+  const start = new Date(`${range.start}T00:00:00`);
+  const end = new Date(`${range.end}T00:00:00`);
+  const days = Math.round((end - start) / 86400000) + 1;
+  const prevEnd = new Date(start);
+  prevEnd.setDate(prevEnd.getDate() - 1);
+  const prevStart = new Date(prevEnd);
+  prevStart.setDate(prevStart.getDate() - (days - 1));
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return { start: iso(prevStart), end: iso(prevEnd) };
+}
+
+// ช่วงเดียวกันของเดือนก่อนหน้า (เลื่อนทั้ง start/end ถอยไป 1 เดือน)
+function previousMonthRange(range) {
+  const shift = (iso) => {
+    const d = new Date(`${iso}T00:00:00`);
+    d.setMonth(d.getMonth() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  return { start: shift(range.start), end: shift(range.end) };
+}
+
+const COMPARE_PRESETS = [
+  ["prev_period", "ช่วงก่อนหน้า"],
+  ["prev_month", "เดือนก่อนหน้า (วันเดียวกัน)"],
+  ["custom", "กำหนดเอง"],
+];
+
+function ThemeToggle({ dark, onToggle }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={dark}
+      onClick={onToggle}
+      title={dark ? "สลับเป็นโหมดสว่าง" : "สลับเป็นโหมดมืด"}
+      className={`relative inline-flex items-center h-8 w-14 rounded-full shrink-0 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+        dark ? "bg-indigo-600 focus:ring-indigo-400" : "bg-slate-200 focus:ring-slate-300"
+      }`}
+    >
+      <span className="sr-only">สลับโหมดมืด/สว่าง</span>
+      <Sun size={12} className={`absolute left-1.5 text-amber-400 transition-opacity duration-200 ${dark ? "opacity-0" : "opacity-100"}`} />
+      <Moon size={12} className={`absolute right-1.5 text-indigo-200 transition-opacity duration-200 ${dark ? "opacity-100" : "opacity-0"}`} />
+      <span
+        className={`absolute top-1 left-1 h-6 w-6 rounded-full bg-white shadow-md flex items-center justify-center transition-transform duration-300 ease-out ${
+          dark ? "translate-x-6" : "translate-x-0"
+        }`}
+      >
+        {dark ? <Moon size={13} className="text-indigo-600" /> : <Sun size={13} className="text-amber-500" />}
+      </span>
+    </button>
+  );
+}
+
+const NAV_ITEMS = [
+  { key: "overview", label: "ภาพรวม", icon: LayoutGrid },
+  { key: "sales", label: "ยอดขาย", icon: TrendingUp },
+  { key: "doctors", label: "หมอ", icon: Stethoscope },
+  { key: "ads", label: "Ads / โฆษณา", icon: Megaphone },
+  { key: "inbox", label: "Inbox & Bad Lead", icon: MessageCircle },
+];
+
+function Sidebar({ activePage, setActivePage, mobileOpen, setMobileOpen }) {
+  return (
+    <>
+      {mobileOpen && <div className="fixed inset-0 bg-slate-900/40 z-30 sm:hidden" onClick={() => setMobileOpen(false)} />}
+      <aside
+        className={`fixed sm:sticky top-0 z-40 h-screen w-64 shrink-0 bg-white border-r border-slate-100 flex flex-col transition-transform duration-200 sm:translate-x-0 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between px-5 py-5 border-b border-slate-100">
+          <div className="flex items-center gap-2 min-w-0">
+            <img src={S45_LOGO} alt="" className="w-7 h-7 rounded-md object-contain shrink-0" />
+            <span className="text-sm font-bold text-slate-800 truncate">S45 Clinic</span>
+          </div>
+          <button className="sm:hidden text-slate-400" onClick={() => setMobileOpen(false)}>
+            <X size={18} />
+          </button>
+        </div>
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+          {NAV_ITEMS.map(({ key, label, icon: Icon }) => {
+            const active = activePage === key;
+            return (
+              <button
+                key={key}
+                onClick={() => {
+                  setActivePage(key);
+                  setMobileOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                  active ? "bg-indigo-50 text-indigo-700" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                }`}
+              >
+                <Icon size={17} className={active ? "text-indigo-600" : "text-slate-400"} />
+                {label}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="px-5 py-4 border-t border-slate-100 text-[11px] text-slate-400">Ads Performance Dashboard</div>
+      </aside>
+    </>
+  );
+}
+
+// ============================================================
+// DateRangePicker — dual-month calendar + presets + Compare
+// (GA-style) แทนที่ dropdown แบบเดิมที่ใช้ input[type=date] ล้วนๆ
+// ============================================================
+const CAL_WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+const CAL_MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function MonthCalendar({ y, m, draft, onDayClick, minDate, maxDate, onJump, yearOptions }) {
+  const isoOf = (d) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const firstDow = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  return (
+    <div className="min-w-0">
+      <div className="flex items-center justify-center gap-1 mb-2">
+        <select
+          value={m}
+          onChange={(e) => onJump(y, Number(e.target.value))}
+          className="bg-transparent text-sm font-semibold text-slate-700 cursor-pointer focus:outline-none"
+        >
+          {CAL_MONTHS_EN.map((lbl, i) => (
+            <option key={i} value={i}>{lbl}</option>
+          ))}
+        </select>
+        <select
+          value={y}
+          onChange={(e) => onJump(Number(e.target.value), m)}
+          className="bg-transparent text-sm font-semibold text-slate-700 cursor-pointer focus:outline-none"
+        >
+          {yearOptions.map((yy) => (
+            <option key={yy} value={yy}>{yy}</option>
+          ))}
+        </select>
+      </div>
+      <div className="grid grid-cols-7 gap-y-1">
+        {CAL_WEEKDAYS.map((d) => (
+          <div key={d} className="text-[10px] text-slate-400 font-medium text-center">{d}</div>
+        ))}
+        {cells.map((d, i) => {
+          if (d === null) return <div key={i} />;
+          const iso = isoOf(d);
+          const disabled = iso < minDate || iso > maxDate;
+          const inRange = draft.start && draft.end && iso >= draft.start && iso <= draft.end;
+          const isEdge = iso === draft.start || iso === draft.end;
+          return (
+            <div key={i} className="flex items-center justify-center py-0.5">
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => onDayClick(iso)}
+                className={`h-7 w-7 text-xs rounded-full flex items-center justify-center transition-colors ${
+                  disabled
+                    ? "text-slate-300 cursor-not-allowed"
+                    : isEdge
+                    ? "bg-indigo-600 text-white font-semibold"
+                    : inRange
+                    ? "bg-indigo-100 text-indigo-700"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                {d}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function DateRangePicker({ value, compareEnabled, compareValue, onApply, presets, minDate, maxDate, fmtDate }) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const [selectingEnd, setSelectingEnd] = useState(false);
+  const [draftCompareOn, setDraftCompareOn] = useState(compareEnabled);
+  const [draftCompare, setDraftCompare] = useState(compareValue);
+  const [comparePreset, setComparePreset] = useState("prev_period");
+  const [viewMonth, setViewMonth] = useState({ y: 2026, m: 5 });
+
+  const yearOptions = [2025, 2026, 2027];
+
+  const openPicker = () => {
+    setDraft(value);
+    setSelectingEnd(false);
+    setDraftCompareOn(compareEnabled);
+    setDraftCompare(compareValue);
+    const d = new Date(`${value.end}T00:00:00`);
+    d.setMonth(d.getMonth() - 1);
+    setViewMonth({ y: d.getFullYear(), m: d.getMonth() });
+    setOpen(true);
+  };
+
+  const rightMonth = viewMonth.m === 11 ? { y: viewMonth.y + 1, m: 0 } : { y: viewMonth.y, m: viewMonth.m + 1 };
+
+  const handleDayClick = (iso) => {
+    if (iso < minDate || iso > maxDate) return;
+    if (!selectingEnd) {
+      setDraft({ start: iso, end: iso });
+      setSelectingEnd(true);
+    } else {
+      setDraft((d) => (iso < d.start ? { start: iso, end: d.start } : { start: d.start, end: iso }));
+      setSelectingEnd(false);
+    }
+  };
+
+  const jumpTo = (side) => (y, m) => {
+    if (side === "left") setViewMonth({ y, m });
+    else setViewMonth(m === 0 ? { y: y - 1, m: 11 } : { y, m: m - 1 });
+  };
+
+  const applyComparePreset = (key) => {
+    setComparePreset(key);
+    if (key === "prev_period") setDraftCompare(previousPeriodRange(draft));
+    else if (key === "prev_month") setDraftCompare(previousMonthRange(draft));
+  };
+
+  const commit = () => {
+    onApply({ range: draft, compareEnabled: draftCompareOn, compareRange: draftCompareOn ? draftCompare : compareValue });
+    setOpen(false);
+  };
+
+  const rangeLabel = value.start === value.end ? fmtDate(value.start) : `${fmtDate(value.start)} – ${fmtDate(value.end)}`;
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => (open ? setOpen(false) : openPicker())}
+        className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-300"
+      >
+        <Calendar size={16} className="text-slate-400" />
+        <span>
+          {rangeLabel}
+          {compareEnabled && (
+            <span className="text-slate-400 font-normal"> vs {fmtDate(compareValue.start)}–{fmtDate(compareValue.end)}</span>
+          )}
+        </span>
+        <ChevronDown size={16} className="text-slate-400" />
+      </button>
+      {open && (
+        <div className="absolute z-30 mt-2 right-0 bg-white border border-slate-200 rounded-xl shadow-lg flex flex-col sm:flex-row overflow-hidden w-[92vw] max-w-[640px] sm:w-[640px]">
+          <div className="w-full sm:w-40 border-b sm:border-b-0 sm:border-r border-slate-100 p-3 shrink-0">
+            <p className="text-xs font-semibold text-slate-400 mb-2 px-1">ใช้ล่าสุด</p>
+            <div className="flex sm:block gap-1 sm:gap-0 space-y-0 sm:space-y-0.5 overflow-x-auto sm:overflow-visible max-h-none sm:max-h-72">
+              {presets.map((p) => {
+                const r = p.range();
+                const isSelected = draft.start === r.start && draft.end === r.end;
+                return (
+                  <button
+                    key={p.key}
+                    onClick={() => {
+                      setDraft(r);
+                      setSelectingEnd(false);
+                      const d = new Date(`${r.end}T00:00:00`);
+                      d.setMonth(d.getMonth() - 1);
+                      setViewMonth({ y: d.getFullYear(), m: d.getMonth() });
+                    }}
+                    className={`shrink-0 sm:block sm:w-full text-left text-xs sm:text-sm px-2 py-1.5 rounded-lg whitespace-nowrap ${
+                      isSelected ? "bg-indigo-50 text-indigo-700 font-semibold" : "hover:bg-slate-50 text-slate-600"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="flex-1 p-4 min-w-0">
+            <div className="flex items-center gap-2">
+              <button onClick={() => setViewMonth((v) => (v.m === 0 ? { y: v.y - 1, m: 11 } : { y: v.y, m: v.m - 1 }))} className="text-slate-400 hover:text-slate-600 p-1 shrink-0">
+                <ChevronLeft size={18} />
+              </button>
+              <div className="flex-1 grid grid-cols-2 gap-4 min-w-0">
+                <MonthCalendar y={viewMonth.y} m={viewMonth.m} draft={draft} onDayClick={handleDayClick} minDate={minDate} maxDate={maxDate} onJump={jumpTo("left")} yearOptions={yearOptions} />
+                <MonthCalendar y={rightMonth.y} m={rightMonth.m} draft={draft} onDayClick={handleDayClick} minDate={minDate} maxDate={maxDate} onJump={jumpTo("right")} yearOptions={yearOptions} />
+              </div>
+              <button onClick={() => setViewMonth((v) => (v.m === 11 ? { y: v.y + 1, m: 0 } : { y: v.y, m: v.m + 1 }))} className="text-slate-400 hover:text-slate-600 p-1 shrink-0">
+                <ChevronRight size={18} />
+              </button>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm text-slate-600 mt-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={draftCompareOn}
+                onChange={(e) => {
+                  setDraftCompareOn(e.target.checked);
+                  if (e.target.checked && !draftCompare) setDraftCompare(previousPeriodRange(draft));
+                }}
+                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              Compare — เปรียบเทียบช่วงเวลา
+            </label>
+
+            {draftCompareOn && (
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <Select icon={ArrowUpDown} value={comparePreset} onChange={applyComparePreset} options={COMPARE_PRESETS} />
+                <input
+                  type="date"
+                  value={draftCompare.start}
+                  onChange={(e) => {
+                    setComparePreset("custom");
+                    setDraftCompare((d) => ({ ...d, start: e.target.value }));
+                  }}
+                  className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                />
+                <span className="text-slate-300">–</span>
+                <input
+                  type="date"
+                  value={draftCompare.end}
+                  onChange={(e) => {
+                    setComparePreset("custom");
+                    setDraftCompare((d) => ({ ...d, end: e.target.value }));
+                  }}
+                  className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                />
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 mt-3">
+              <input readOnly value={fmtDate(draft.start)} className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs flex-1 bg-slate-50 text-slate-600" />
+              <span className="text-slate-300">–</span>
+              <input readOnly value={fmtDate(draft.end)} className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs flex-1 bg-slate-50 text-slate-600" />
+            </div>
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setOpen(false)} className="text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50">
+                ยกเลิก
+              </button>
+              <button onClick={commit} className="text-xs font-medium px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">
+                อัปเดต
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -473,9 +914,22 @@ export default function AdsDashboard() {
   const [heroCaseFilter, setHeroCaseFilter] = useState("doctor_tee");
   const [interDoctorFilter, setInterDoctorFilter] = useState("all");
   const [dateRange, setDateRange] = useState({ start: "2026-06-01", end: "2026-06-30" });
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const [draftRange, setDraftRange] = useState({ start: "2026-06-01", end: "2026-06-30" });
+  const [compareEnabled, setCompareEnabled] = useState(false);
+  const [compareRange, setCompareRange] = useState(previousPeriodRange({ start: "2026-06-01", end: "2026-06-30" }));
   const monthFilter = "jun26"; // คงไว้เพื่อความเข้ากันได้กับส่วนที่ล็อกไว้ที่มิถุนายน (Sales Funnel/Inbox/LOA/Bad Lead/Inter)
+
+  // ---- Sidebar navigation + dark mode ----
+  const [activePage, setActivePage] = useState("overview");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [dark, setDark] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const saved = window.localStorage.getItem("s45-dark-mode");
+    if (saved !== null) return saved === "1";
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+  });
+  React.useEffect(() => {
+    window.localStorage.setItem("s45-dark-mode", dark ? "1" : "0");
+  }, [dark]);
 
   // ---- ข้อมูลตามช่วงวันที่ที่เลือกจริง (คำนวณสดจากไฟล์ธุรกรรม RAW_TX ทุกแถว วันต่อวัน) ----
   const PROC_LABELS_SHORT = { nose_open: "Nose Open", nose_semi: "Semi Open", brow_hairline: "Brow Lift", breast_lipo: "Breast" };
@@ -663,6 +1117,18 @@ export default function AdsDashboard() {
   const execRatio = execFbSales > 0 ? execFbSpend / execFbSales : 0;
   const execRoas = execFbSpend > 0 ? execFbSales / execFbSpend : 0;
   const execOverThreshold = execRatio > AD_COST_THRESHOLD;
+
+  // ---- Compare (เปรียบเทียบช่วงเวลา) — ใช้ computeExecMetricsForRange (pure function)
+  // คำนวณ metric ชุดเดียวกันสำหรับ compareRange แล้วหาค่า % เปลี่ยนแปลงเทียบกับช่วงหลัก
+  // แสดงเป็น badge บน Metric Cards เมื่อผู้ใช้เปิด Compare จาก DateRangePicker ----
+  const compareMetrics = compareEnabled ? computeExecMetricsForRange(compareRange, procFilter) : null;
+  const salesDelta = compareMetrics ? pctDelta(execSales, compareMetrics.sales) : null;
+  const fbSalesDelta = compareMetrics ? pctDelta(execFbSales, compareMetrics.fbSales) : null;
+  const fbSpendDelta = compareMetrics ? pctDelta(execFbSpend, compareMetrics.fbSpend) : null;
+  const ratioDelta = compareMetrics ? pctDelta(execRatio, compareMetrics.ratio) : null;
+  const roasDeltaCompare = compareMetrics ? pctDelta(execRoas, compareMetrics.roas) : null;
+  const compareRangeLabel =
+    compareRange.start === compareRange.end ? fmtDateTh(compareRange.start) : `${fmtDateTh(compareRange.start)} – ${fmtDateTh(compareRange.end)}`;
 
   const chartData = Object.entries(CATEGORIES).map(([key, c]) => ({ key, label: c.label, spend: c.spend, sales: c.sales }));
 
@@ -962,108 +1428,63 @@ export default function AdsDashboard() {
   }, [procFilter, totals, targetRanking, fbSales, fbSpend, ratio, roas]);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-8 relative overflow-hidden">
-      <img
-        src={S45_LOGO}
-        alt=""
-        aria-hidden="true"
-        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[900px] opacity-50 pointer-events-none select-none z-0"
-      />
+    <div className={dark ? "dark" : ""}>
+      <div className="min-h-screen bg-slate-50 flex relative">
+        <img
+          src={S45_LOGO}
+          alt=""
+          aria-hidden="true"
+          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[900px] opacity-50 pointer-events-none select-none z-0"
+        />
+        <Sidebar activePage={activePage} setActivePage={setActivePage} mobileOpen={mobileNavOpen} setMobileOpen={setMobileNavOpen} />
+        <div className="flex-1 min-w-0 p-4 sm:p-8 relative overflow-hidden">
       <div className="max-w-5xl mx-auto relative z-10">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
-          <div>
-            <p className="text-xs font-semibold text-slate-400 tracking-wide uppercase mb-1">S45 Clinic</p>
-            <h1 className="text-2xl font-bold text-slate-800">Ads Performance Dashboard</h1>
-            <p className="text-sm text-slate-400 mt-0.5">ข้อมูลจริง — เลือกช่วงวันที่ได้อิสระ</p>
-          </div>
-          <div className="relative">
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                setDraftRange(dateRange);
-                setDatePickerOpen(!datePickerOpen);
-              }}
-              className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-300"
+              onClick={() => setMobileNavOpen(true)}
+              className="sm:hidden shrink-0 text-slate-500 border border-slate-200 rounded-lg p-2 bg-white"
             >
-              <Calendar size={16} className="text-slate-400" />
-              {rangeLabel}
-              <ChevronDown size={16} className="text-slate-400" />
+              <Menu size={18} />
             </button>
-            {datePickerOpen && (
-              <div className="absolute z-20 mt-2 right-0 bg-white border border-slate-200 rounded-xl shadow-lg p-4 w-80">
-                <p className="text-xs font-semibold text-slate-500 mb-2">ใช้ล่าสุด</p>
-                <div className="space-y-0.5 mb-3">
-                  {DATE_PRESETS.map((p) => {
-                    const r = p.range();
-                    const isSelected = dateRange.start === r.start && dateRange.end === r.end;
-                    return (
-                      <button
-                        key={p.key}
-                        onClick={() => {
-                          setDateRange(r);
-                          setDraftRange(r);
-                          setDatePickerOpen(false);
-                        }}
-                        className={`block w-full text-left text-sm px-2 py-1.5 rounded-lg ${
-                          isSelected ? "bg-indigo-50 text-indigo-700 font-semibold" : "hover:bg-slate-50 text-slate-600"
-                        }`}
-                      >
-                        {p.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="border-t border-slate-100 pt-3 space-y-2">
-                  <label className="text-xs text-slate-500">{`กำหนดเอง (1 ม.ค. – ${fmtDateTh(todayAnchor)})`}</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="date"
-                      value={draftRange.start}
-                      min="2026-01-01"
-                      max={todayAnchor}
-                      onChange={(e) => {
-                        const next = { ...draftRange, start: e.target.value };
-                        setDraftRange(next);
-                        if (next.start <= next.end) setDateRange(next);
-                      }}
-                      className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs flex-1"
-                    />
-                    <span className="text-slate-300">–</span>
-                    <input
-                      type="date"
-                      value={draftRange.end}
-                      min="2026-01-01"
-                      max={todayAnchor}
-                      onChange={(e) => {
-                        const next = { ...draftRange, end: e.target.value };
-                        setDraftRange(next);
-                        if (next.start <= next.end) setDateRange(next);
-                      }}
-                      className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs flex-1"
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2 mt-4">
-                  <button onClick={() => setDatePickerOpen(false)} className="text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500">
-                    ปิด
-                  </button>
-                </div>
-              </div>
-            )}
+            <div>
+              <p className="text-xs font-semibold text-slate-400 tracking-wide uppercase mb-1">S45 Clinic</p>
+              <h1 className="text-2xl font-bold text-slate-800">Ads Performance Dashboard</h1>
+              <p className="text-sm text-slate-400 mt-0.5">ข้อมูลจริง — เลือกช่วงวันที่ได้อิสระ</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <ThemeToggle dark={dark} onToggle={() => setDark((d) => !d)} />
+            <DateRangePicker
+              value={dateRange}
+              compareEnabled={compareEnabled}
+              compareValue={compareRange}
+              presets={DATE_PRESETS}
+              minDate="2026-01-01"
+              maxDate={todayAnchor}
+              fmtDate={fmtDateTh}
+              onApply={({ range, compareEnabled: ce, compareRange: cr }) => {
+                setDateRange(range);
+                setCompareEnabled(ce);
+                setCompareRange(cr);
+              }}
+            />
           </div>
         </div>
 
-        {/* ---- Live Data Banner ---- */}
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 px-4 py-3 mb-6 flex items-start gap-2">
-          <CheckCircle2 size={16} className="text-emerald-600 mt-0.5 shrink-0" />
-          <p className="text-xs text-emerald-800 leading-relaxed">
-            <span className="font-semibold">เลือกช่วงวันที่ได้อิสระที่ปุ่มด้านบน</span> — ส่วนที่เปลี่ยนตามช่วงวันที่จริง (คำนวณสดจากไฟล์ธุรกรรม
-            รายแถว วันต่อวัน ไม่ใช่แค่รายเดือน): ยอดขายรวม, Facebook breakdown แยกหัตถการ, ช่องทางอื่น (Line/Sale-BA), สรุปเคสมัดจำแยกตามหมอ,
-            ระยะเวลาปิด OR (ค่าโฆษณาประมาณการจากยอดรายเดือนจริงของ Facebook Ads Connector เฉลี่ยตามสัดส่วนวันที่เลือก) ·{" "}
-            <span className="font-semibold">ส่วนที่ยังคงล็อกไว้ที่มิถุนายนเท่านั้น</span> เพราะไม่มีข้อมูลรายวันของเดือนอื่น: Sales Funnel รายวัน,
-            Inbox เป้าหมายรายวัน, LINE OA Broadcast, Bad Lead, ข้อมูล Inter, เคสเด่นคุณหมอ, แผนงาน Digital ต่างๆ
-          </p>
-        </div>
+        {activePage === "overview" && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 px-4 py-3 mb-6 flex items-start gap-2">
+            <CheckCircle2 size={16} className="text-emerald-600 mt-0.5 shrink-0" />
+            <p className="text-xs text-emerald-800 leading-relaxed">
+              <span className="font-semibold">เลือกช่วงวันที่ได้อิสระที่ปุ่มด้านบน</span> — ส่วนที่เปลี่ยนตามช่วงวันที่จริง (คำนวณสดจากไฟล์ธุรกรรม
+              รายแถว วันต่อวัน ไม่ใช่แค่รายเดือน): ยอดขายรวม, Facebook breakdown แยกหัตถการ, ช่องทางอื่น (Line/Sale-BA), สรุปเคสมัดจำแยกตามหมอ,
+              ระยะเวลาปิด OR (ค่าโฆษณาประมาณการจากยอดรายเดือนจริงของ Facebook Ads Connector เฉลี่ยตามสัดส่วนวันที่เลือก) ·{" "}
+              <span className="font-semibold">ส่วนที่ยังคงล็อกไว้ที่มิถุนายนเท่านั้น</span> เพราะไม่มีข้อมูลรายวันของเดือนอื่น: Sales Funnel รายวัน,
+              Inbox เป้าหมายรายวัน, LINE OA Broadcast, Bad Lead, ข้อมูล Inter, เคสเด่นคุณหมอ, แผนงาน Digital ต่างๆ
+            </p>
+          </div>
+        )}
         {isDataStale && (
           <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 mb-6 flex items-start gap-2">
             <AlertTriangle size={16} className="text-amber-600 mt-0.5 shrink-0" />
@@ -1076,6 +1497,7 @@ export default function AdsDashboard() {
         )}
 
         {/* ---- All-channel totals + ROAS breakdown (แถว "รวม" สีน้ำตาลในชีตต้นฉบับ) ---- */}
+{activePage === "sales" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mb-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
             <div className="flex items-center gap-2">
@@ -1151,8 +1573,10 @@ export default function AdsDashboard() {
             </div>
           )}
         </div>
+)}
 
         {/* ---- Facebook-only sales breakdown ---- */}
+{activePage === "sales" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mb-6">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -1250,8 +1674,10 @@ export default function AdsDashboard() {
           </div>
           )}
         </div>
+)}
 
         {/* ---- NEW: ยอดขายจากช่องทางอื่น แยกตามหัตถการ (LINE / WhatsApp / Sale หรือ BA) ---- */}
+{activePage === "sales" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mb-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
             <div className="flex items-center gap-2">
@@ -1319,9 +1745,17 @@ export default function AdsDashboard() {
             inter") จากไฟล์ Inter Sale เดือนมิถุนายน 2026
           </div>
         </div>
+)}
 
         {/* Metric cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+{activePage === "overview" && (
+        <div className="mb-6">
+          {compareEnabled && (
+            <p className="text-xs text-slate-400 mb-2 flex items-center gap-1.5">
+              <ArrowUpDown size={12} /> เทียบกับ {compareRangeLabel}
+            </p>
+          )}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           <MetricCard
             icon={TrendingUp}
             label="ยอดขายรวม (ทุกช่องทาง)"
@@ -1334,6 +1768,7 @@ export default function AdsDashboard() {
                 : rangeLabel
             }
             tone="indigo"
+            delta={salesDelta}
           />
           <MetricCard
             icon={Megaphone}
@@ -1341,6 +1776,7 @@ export default function AdsDashboard() {
             value={`฿${fmtTHB(execFbSales)}`}
             sub="รวมจาก Total Price เท่านั้น"
             tone="green"
+            delta={fbSalesDelta}
           />
           <MetricCard
             icon={Wallet}
@@ -1348,6 +1784,8 @@ export default function AdsDashboard() {
             value={`฿${fmtTHB(execFbSpend)}`}
             sub={isJunFull ? "จากคอลัมน์ Spend ในชีต Budget Allocate" : "ประมาณการตามสัดส่วนวันที่เลือก"}
             tone="blue"
+            delta={fbSpendDelta}
+            goodDirection="down"
           />
           <MetricCard
             icon={Percent}
@@ -1355,11 +1793,16 @@ export default function AdsDashboard() {
             value={`${(execRatio * 100).toFixed(1)}%`}
             sub={execOverThreshold ? "สูงกว่าเกณฑ์ 10%" : "อยู่ในเกณฑ์ปกติ"}
             tone={execOverThreshold ? "red" : "slate"}
+            delta={ratioDelta}
+            goodDirection="down"
           />
-          <MetricCard icon={Target} label="ROAS (Facebook)" value={`${execRoas.toFixed(1)}x`} tone="slate" />
+          <MetricCard icon={Target} label="ROAS (Facebook)" value={`${execRoas.toFixed(1)}x`} tone="slate" delta={roasDeltaCompare} />
+          </div>
         </div>
+)}
 
         {/* Chart */}
+{activePage === "overview" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mb-6">
           <h2 className="text-sm font-semibold text-slate-700 mb-4">ยอดขาย เทียบ ค่าโฆษณา ต่อหัตถการ — มิถุนายน 2026 (ทุกช่องทาง)</h2>
           <ResponsiveContainer width="100%" height={300}>
@@ -1378,7 +1821,9 @@ export default function AdsDashboard() {
             </BarChart>
           </ResponsiveContainer>
         </div>
+)}
 
+{activePage === "overview" && (
         <div className="grid sm:grid-cols-2 gap-6">
           {/* Target achievement ranking */}
           <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
@@ -1411,8 +1856,10 @@ export default function AdsDashboard() {
             <p className="text-sm text-slate-600 leading-relaxed">{insight}</p>
           </div>
         </div>
+)}
 
         {/* ---- Doctor deposit-case summary (real, all channels, June) ---- */}
+{activePage === "doctors" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
             <div className="flex items-center gap-2">
@@ -1490,8 +1937,10 @@ export default function AdsDashboard() {
             </p>
           </div>
         </div>
+)}
 
         {/* ---- NEW: Inter แยกตามหมอ + หัตถการ (เคสจริง มิ.ย. 2026) ---- */}
+{activePage === "doctors" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
             <div className="flex items-center gap-2">
@@ -1562,8 +2011,10 @@ export default function AdsDashboard() {
             </p>
           </div>
         </div>
+)}
 
         {/* ---- NEW: Sales Funnel Performance (Ads → Inbox → Sales → OR), รายวัน มิ.ย. 2026 ---- */}
+{activePage === "ads" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
             <div className="flex items-center gap-2">
@@ -1661,8 +2112,10 @@ export default function AdsDashboard() {
             </p>
           </div>
         </div>
+)}
 
         {/* ---- NEW: LINE OA Broadcast cost (LOA-มิถุนายน) ---- */}
+{activePage === "ads" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -1792,8 +2245,10 @@ export default function AdsDashboard() {
             </p>
           </div>
         </div>
+)}
 
         {/* ---- NEW: จำนวนครั้งการ Broadcast แยกตามหัตถการ (ทำได้ทั้งหมด vs ใช้จริง) ---- */}
+{activePage === "ads" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
@@ -1892,8 +2347,10 @@ export default function AdsDashboard() {
             </p>
           </div>
         </div>
+)}
 
         {/* ---- Recommendations (ย้ายมาไว้ล่างสุดของ Dashboard) ---- */}
+{activePage === "overview" && (
         <div className="mt-6 rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
           <div className="flex items-center gap-2 mb-2">
             <Lightbulb size={16} className="text-blue-500" />
@@ -1928,8 +2385,10 @@ export default function AdsDashboard() {
             </li>
           </ul>
         </div>
+)}
 
         {/* ---- FINAL: Executive Summary ทั้ง Dashboard + สัดส่วนงบตามช่องทางโฆษณา ---- */}
+{activePage === "overview" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center">
@@ -2031,8 +2490,10 @@ export default function AdsDashboard() {
             </p>
           </div>
         </div>
+)}
 
         {/* ---- NEW: เป้าหมาย Inbox vs Inbox ที่ทำได้จริง รายวัน — มิถุนายน 2569 ---- */}
+{activePage === "inbox" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
             <div className="flex items-center gap-2">
@@ -2582,8 +3043,10 @@ export default function AdsDashboard() {
             </p>
           </div>
         </div>
+)}
 
         {/* ---- NEW: Bad Lead รวมทุกหัตถการ — มิถุนายน 2569 ---- */}
+{activePage === "inbox" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
@@ -2647,8 +3110,10 @@ export default function AdsDashboard() {
             </p>
           </div>
         </div>
+)}
 
         {/* ---- NEW: แผนการดำเนินงานลด Bad Lead ---- */}
+{activePage === "inbox" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
@@ -2706,8 +3171,10 @@ export default function AdsDashboard() {
             <p>แผนงานนี้เป็นแนวทางที่ทีม Digital ตกลงร่วมกัน ยังไม่ใช่ผลการดำเนินงานจริง — ใช้เป็นแนวทางติดตามผลเทียบกับจำนวน Bad Lead ในรอบถัดไป</p>
           </div>
         </div>
+)}
 
         {/* ---- NEW: Solution กระตุ้นยอด Inbox Nose Open ด้วยกลยุทธ์กองทัพมด ---- */}
+{activePage === "inbox" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
@@ -2750,8 +3217,10 @@ export default function AdsDashboard() {
             </p>
           </div>
         </div>
+)}
 
         {/* ---- NEW: เคสเด่นคุณหมอ เพื่อกระตุ้น Inbox Nose Open ---- */}
+{activePage === "doctors" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
             <div className="flex items-center gap-2">
@@ -2800,8 +3269,10 @@ export default function AdsDashboard() {
             </p>
           </div>
         </div>
+)}
 
         {/* ---- NEW: Digital Plan Ads Hero July 26 แยกตามหมอ ---- */}
+{activePage === "ads" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
@@ -2844,8 +3315,10 @@ export default function AdsDashboard() {
             <p>แผนงานนี้เป็นแนวทางที่ทีม Digital วางไว้สำหรับเดือนกรกฎาคม 2026 ยังไม่ใช่ผลการดำเนินงานจริง — ใช้ติดตามผล Inbox Nose Open เทียบกับก่อนเริ่ม Re-run</p>
           </div>
         </div>
+)}
 
         {/* ---- NEW: Ads Plan Jul 2026 ---- */}
+{activePage === "ads" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center">
@@ -2971,8 +3444,10 @@ export default function AdsDashboard() {
             <p>แผนงานนี้เป็นแผนการดำเนินงานที่ทีมวางไว้สำหรับเดือนกรกฎาคม 2026 ยังไม่ใช่ผลจริง — ใช้เป็นแนวทางติดตามเทียบกับผลลัพธ์เมื่อถึงรอบรายงานเดือนถัดไป</p>
           </div>
         </div>
+)}
 
         {/* ---- NEW: แผนการแยกเพจของหัตถการ ---- */}
+{activePage === "ads" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
@@ -3044,6 +3519,9 @@ export default function AdsDashboard() {
             <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <p>สถานะนี้เป็นความคืบหน้าที่ทีม Digital รายงาน ณ ปัจจุบัน ควรอัปเดตทุกครั้งที่มีความคืบหน้าเพิ่มเติม</p>
           </div>
+        </div>
+)}
+      </div>
         </div>
       </div>
     </div>
