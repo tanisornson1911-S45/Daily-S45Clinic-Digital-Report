@@ -502,7 +502,7 @@ const MONTH_BOUNDS = {
   apr26: ["2026-04-01", "2026-04-30"],
   may26: ["2026-05-01", "2026-05-31"],
   jun26: ["2026-06-01", "2026-06-30"],
-  jul26: ["2026-07-01", "2026-07-11"],
+  jul26: ["2026-07-01", "2026-07-27"],
 };
 
 function computeExecMetricsForRange(range, proc) {
@@ -1013,8 +1013,7 @@ export default function AdsDashboard() {
     // จึงประมาณโดยเทียบสัดส่วนสเปนด์ต่อหัตถการจากชีต Budget Allocate กับสเปนด์รวมทั้งคลินิก)
     let total = 0;
     Object.entries(MONTHLY_DATA).forEach(([mk, mv]) => {
-      const monthStart = { oct25: "2025-10-01", nov25: "2025-11-01", dec25: "2025-12-01", jan26: "2026-01-01", feb26: "2026-02-01", mar26: "2026-03-01", apr26: "2026-04-01", may26: "2026-05-01", jun26: "2026-06-01", jul26: "2026-07-01" }[mk];
-      const monthEnd = { oct25: "2025-10-31", nov25: "2025-11-30", dec25: "2025-12-31", jan26: "2026-01-31", feb26: "2026-02-28", mar26: "2026-03-31", apr26: "2026-04-30", may26: "2026-05-31", jun26: "2026-06-30", jul26: "2026-07-11" }[mk];
+      const [monthStart, monthEnd] = MONTH_BOUNDS[mk];
       const overlapStart = dateRange.start > monthStart ? dateRange.start : monthStart;
       const overlapEnd = dateRange.end < monthEnd ? dateRange.end : monthEnd;
       if (overlapStart <= overlapEnd) {
@@ -1039,7 +1038,7 @@ export default function AdsDashboard() {
   // ---- วันนี้แบบเรียลไทม์: อ่านจากนาฬิกาเครื่องจริง (new Date()) ทุกครั้งที่ render แทนการล็อกวันที่ไว้ตายตัว ----
   // MAX_DATA_DATE = วันสุดท้ายที่มีข้อมูลจริงอยู่ในไฟล์ (MONTHLY_DATA เดือน ก.ค. 2026 ถึงวันที่นี้เท่านั้น)
   // ถ้าวันนี้จริงยังไม่เลยวันที่มีข้อมูล ใช้วันนี้จริงได้เลย ถ้าเลยไปแล้ว (ยังไม่ได้อัปเดตข้อมูลใหม่) จะ cap ไว้ที่ข้อมูลล่าสุดที่มี กันหน้าจอว่างเปล่า
-  const MAX_DATA_DATE = "2026-07-11";
+  const MAX_DATA_DATE = "2026-07-27";
   const toIsoDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const REAL_TODAY = toIsoDate(new Date());
   const todayAnchor = REAL_TODAY < MAX_DATA_DATE ? REAL_TODAY : MAX_DATA_DATE;
@@ -1461,7 +1460,7 @@ export default function AdsDashboard() {
               compareEnabled={compareEnabled}
               compareValue={compareRange}
               presets={DATE_PRESETS}
-              minDate="2026-01-01"
+              minDate="2025-10-01"
               maxDate={todayAnchor}
               fmtDate={fmtDateTh}
               onApply={({ range, compareEnabled: ce, compareRange: cr }) => {
