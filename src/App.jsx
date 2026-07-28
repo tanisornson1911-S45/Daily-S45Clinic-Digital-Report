@@ -1433,7 +1433,7 @@ export default function AdsDashboard() {
           src={S45_LOGO}
           alt=""
           aria-hidden="true"
-          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[900px] opacity-50 pointer-events-none select-none z-0"
+          className="fixed top-1/2 left-1/2 sm:left-[calc(50%+8rem)] -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[900px] opacity-[0.05] pointer-events-none select-none z-0"
         />
         <Sidebar activePage={activePage} setActivePage={setActivePage} mobileOpen={mobileNavOpen} setMobileOpen={setMobileNavOpen} />
         <div className="flex-1 min-w-0 p-4 sm:p-8 relative overflow-hidden">
@@ -1806,16 +1806,16 @@ export default function AdsDashboard() {
           <h2 className="text-sm font-semibold text-slate-700 mb-4">ยอดขาย เทียบ ค่าโฆษณา ต่อหัตถการ — มิถุนายน 2026 (ทุกช่องทาง)</h2>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d9f2ee" />
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} interval={0} angle={-15} textAnchor="end" height={60} />
               <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} />
               <Tooltip formatter={(v) => `฿${fmtTHB(v)}`} contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 13 }} />
               <Legend formatter={(v) => (v === "sales" ? "ยอดขาย" : "ค่าโฆษณา")} wrapperStyle={{ fontSize: 12 }} />
               <Bar dataKey="sales" radius={[6, 6, 0, 0]} maxBarSize={44}>
-                {chartData.map((d) => <Cell key={d.key} fill="#10b981" opacity={procFilter === "all" || procFilter === d.key ? 1 : 0.25} />)}
+                {chartData.map((d) => <Cell key={d.key} fill="#0d9488" opacity={procFilter === "all" || procFilter === d.key ? 1 : 0.25} />)}
               </Bar>
               <Bar dataKey="spend" radius={[6, 6, 0, 0]} maxBarSize={44}>
-                {chartData.map((d) => <Cell key={d.key} fill="#64748b" opacity={procFilter === "all" || procFilter === d.key ? 1 : 0.25} />)}
+                {chartData.map((d) => <Cell key={d.key} fill="#99f6e4" opacity={procFilter === "all" || procFilter === d.key ? 1 : 0.25} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -2083,7 +2083,7 @@ export default function AdsDashboard() {
           {/* Daily Ads vs Inbox chart */}
           <ResponsiveContainer width="100%" height={260}>
             <ComposedChart data={funnelChartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d9f2ee" />
               <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
               <YAxis
                 yAxisId="ads"
@@ -2099,8 +2099,8 @@ export default function AdsDashboard() {
                 contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 13 }}
               />
               <Legend formatter={(v) => (v === "ads" ? "ยอดยิง Ads" : "Inbox")} wrapperStyle={{ fontSize: 12 }} />
-              <Bar yAxisId="ads" dataKey="ads" fill="#94a3b8" radius={[4, 4, 0, 0]} maxBarSize={16} />
-              <Line yAxisId="inbox" dataKey="inbox" stroke="#0ea5e9" strokeWidth={2} dot={false} />
+              <Bar yAxisId="ads" dataKey="ads" fill="#99f6e4" radius={[4, 4, 0, 0]} maxBarSize={16} />
+              <Line yAxisId="inbox" dataKey="inbox" stroke="#0891b2" strokeWidth={2} dot={false} />
             </ComposedChart>
           </ResponsiveContainer>
 
@@ -2584,7 +2584,7 @@ export default function AdsDashboard() {
 
           <ResponsiveContainer width="100%" height={320}>
             <ComposedChart data={inboxDailyData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d9f2ee" />
               <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
               <Tooltip
@@ -2614,12 +2614,12 @@ export default function AdsDashboard() {
                 wrapperStyle={{ fontSize: 12 }}
               />
               {inboxDailyTargetPerDay != null && (
-                <Line type="monotone" dataKey="target" stroke="#94a3b8" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="target" stroke="#5eead4" strokeDasharray="5 4" strokeWidth={2} dot={{ r: 3 }} />
               )}
-              <Line type="monotone" dataKey="actual" stroke="#0ea5e9" strokeWidth={2.5} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="consult" stroke="#f59e0b" strokeWidth={2} dot={{ r: 2 }} />
-              <Line type="monotone" dataKey="deposit" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 2 }} />
-              <Line type="monotone" dataKey="or" stroke="#10b981" strokeWidth={2} dot={{ r: 2 }} />
+              <Line type="monotone" dataKey="actual" stroke="#0d9488" strokeWidth={2.5} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="consult" stroke="#0891b2" strokeWidth={2} dot={{ r: 2 }} />
+              <Line type="monotone" dataKey="deposit" stroke="#0e7490" strokeWidth={2} dot={{ r: 2 }} />
+              <Line type="monotone" dataKey="or" stroke="#115e59" strokeWidth={2} dot={{ r: 2 }} />
             </ComposedChart>
           </ResponsiveContainer>
           <p className="text-[11px] text-slate-400 mt-2 mb-5">
