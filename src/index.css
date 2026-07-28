@@ -114,6 +114,7 @@
 .dark .bg-sky-50, .dark .bg-sky-50\/50, .dark .bg-sky-50\/60 { background-color: rgba(12, 74, 110, 0.28) !important; }
 .dark .bg-sky-100 { background-color: rgba(12, 74, 110, 0.4) !important; }
 .dark .bg-violet-50, .dark .bg-violet-50\/40, .dark .bg-violet-50\/60 { background-color: rgba(76, 29, 149, 0.3) !important; }
+.dark .bg-teal-100 { background-color: rgba(19, 78, 74, 0.45) !important; }
 
 /* ---- tinted accent borders ---- */
 .dark .border-amber-100 { border-color: rgba(217, 119, 6, 0.35); }
@@ -141,6 +142,7 @@
 .dark .text-pink-300, .dark .text-pink-500, .dark .text-pink-600 { color: #f472b6; }
 .dark .text-rose-500, .dark .text-rose-600, .dark .text-rose-700 { color: #fb7185; }
 .dark .text-sky-500, .dark .text-sky-600, .dark .text-sky-700 { color: #38bdf8; }
+.dark .text-teal-600 { color: #2dd4bf; }
 .dark .text-violet-400, .dark .text-violet-500, .dark .text-violet-600, .dark .text-violet-700 { color: #c4b5fd; }
 
 /* ---- shadows read as too heavy on dark surfaces ---- */

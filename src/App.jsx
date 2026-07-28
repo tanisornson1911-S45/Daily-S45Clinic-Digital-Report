@@ -1912,10 +1912,10 @@ export default function AdsDashboard() {
                         <p className="text-sm font-semibold text-slate-700 truncate">{d.name}</p>
                       </div>
                       <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full bg-indigo-400" style={{ width: barWidth }} />
+                        <div className="h-full rounded-full bg-teal-500" style={{ width: barWidth }} />
                       </div>
                       <div className="w-16 text-right shrink-0">
-                        <p className="text-sm font-bold text-indigo-600">{d.cases} เคส</p>
+                        <p className="text-sm font-bold text-teal-600">{d.cases} เคส</p>
                       </div>
                       <div className="w-44 text-right shrink-0 hidden sm:block">
                         <p className="text-xs text-slate-500">
@@ -2282,23 +2282,23 @@ export default function AdsDashboard() {
                 <div className="flex items-baseline justify-between mb-1">
                   <p className="text-sm font-semibold text-slate-700">{r.label}</p>
                   <p className="text-xs text-slate-500">
-                    ใช้จริง <span className="font-semibold text-indigo-600">{r.used}</span> / ทำได้ทั้งหมด{" "}
+                    ใช้จริง <span className="font-semibold text-teal-600">{r.used}</span> / ทำได้ทั้งหมด{" "}
                     <span className="font-semibold text-slate-700">{r.total}</span> ครั้ง
                   </p>
                 </div>
                 <div className="h-4 bg-slate-100 rounded-full overflow-hidden flex" style={{ width: `${Math.max((r.total / maxLoaCountTotal) * 100, 8)}%` }}>
                   <div
-                    className="h-full bg-indigo-500 flex items-center justify-end pr-1"
+                    className="h-full bg-teal-500 flex items-center justify-end pr-1"
                     style={{ width: `${(r.used / r.total) * 100}%` }}
                   />
-                  <div className="h-full bg-indigo-100" style={{ width: `${(r.left / r.total) * 100}%` }} />
+                  <div className="h-full bg-teal-100" style={{ width: `${(r.left / r.total) * 100}%` }} />
                 </div>
               </div>
             ))}
           </div>
           <div className="flex items-center gap-4 mb-5 text-[11px] text-slate-400">
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-indigo-500 inline-block" /> ใช้จริงไปแล้ว</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-indigo-100 inline-block" /> เหลือ (ทำได้อีก)</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-teal-500 inline-block" /> ใช้จริงไปแล้ว</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-teal-100 inline-block" /> เหลือ (ทำได้อีก)</span>
           </div>
 
           {/* Table */}
@@ -2775,7 +2775,7 @@ export default function AdsDashboard() {
                 <button
                   onClick={() => setGrowthTab("budget")}
                   className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${
-                    growthTab === "budget" ? "bg-violet-500 text-white border-violet-500" : "bg-white text-slate-500 border-slate-200"
+                    growthTab === "budget" ? "bg-teal-600 text-white border-teal-600" : "bg-white text-slate-500 border-slate-200"
                   }`}
                 >
                   เพิ่มงบโฆษณา
@@ -2783,7 +2783,7 @@ export default function AdsDashboard() {
                 <button
                   onClick={() => setGrowthTab("staff")}
                   className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${
-                    growthTab === "staff" ? "bg-violet-500 text-white border-violet-500" : "bg-white text-slate-500 border-slate-200"
+                    growthTab === "staff" ? "bg-teal-600 text-white border-teal-600" : "bg-white text-slate-500 border-slate-200"
                   }`}
                 >
                   เพิ่มคนตอบ
