@@ -476,9 +476,11 @@ export default function AdsDashboard() {
   const [growthTab, setGrowthTab] = useState("budget"); // "budget" | "staff"
   const [heroCaseFilter, setHeroCaseFilter] = useState("doctor_tee");
   const [interDoctorFilter, setInterDoctorFilter] = useState("all");
-  const [dateRange, setDateRange] = useState({ start: "2026-06-01", end: "2026-06-30" });
+  // ค่าเริ่มต้นของหน้าคือเดือน ก.ค. 2026 (เดือนล่าสุดที่มีข้อมูลครบทั้งเดือน) — คำนวณสดจาก RAW_TX/adSpend.json จริง
+  // ส่วนที่ยังล็อกไว้ที่มิถุนายน (Sales Funnel/Inbox/LOA/Bad Lead/Inter/เป้าหมายรายหัตถการ) ไม่เปลี่ยนตาม เพราะยังไม่มีไฟล์ต้นทางที่เป็นทางการของเดือน ก.ค. สำหรับส่วนเหล่านี้
+  const [dateRange, setDateRange] = useState({ start: "2026-07-01", end: "2026-07-31" });
   const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const [draftRange, setDraftRange] = useState({ start: "2026-06-01", end: "2026-06-30" });
+  const [draftRange, setDraftRange] = useState({ start: "2026-07-01", end: "2026-07-31" });
   const monthFilter = "jun26"; // คงไว้เพื่อความเข้ากันได้กับส่วนที่ล็อกไว้ที่มิถุนายน (Sales Funnel/Inbox/LOA/Bad Lead/Inter)
 
   // ---- ข้อมูลตามช่วงวันที่ที่เลือกจริง (คำนวณสดจากไฟล์ธุรกรรม RAW_TX ทุกแถว วันต่อวัน) ----
