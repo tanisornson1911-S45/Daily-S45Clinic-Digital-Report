@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-12T13:00:00.000Z",
-  "source": "2026-06 and 2026-07 have full category breakdowns pulled live via Facebook Ads MCP on 2026-07-12 (2026-07 = month-to-date 1-12 Jul). 'inter' = sum of campaigns with \"Inter\" in the name inside the Nose Open 02 ad account (confirmed with the team on 2026-07-12), not a whole ad account; because those campaigns are also inside nose_open, the month 'total' is the sum of the 6 ad accounts (no inter double-count) rather than the sum of the category fields. Months with only a 'total' field are carried over from previous manual pulls until the scheduled workflow backfills them.",
+  "generatedAt": "2026-08-06T00:00:00.000Z",
+  "source": "2026-06 breakdown pulled live via Facebook Ads MCP on 2026-07-12. 2026-07 (full month) taken from the clinic's own Online tracking sheet (S45 Ads Dashboard project upload, 'ยอดยิง Ads' row per category, summed 1-31 Jul) — more authoritative than an API pull since it is the clinic's official daily ad-spend log. 2026-08 is month-to-date (1-3 Aug) pulled live via Facebook Ads MCP on 2026-08-06. IMPORTANT: ad account 1711014813661620 was 'Nose Open 03' as of 2026-07-12 but had been renamed 'S45 - Inter' by 2026-08-06 (repurposed into a dedicated Inter account) — from 2026-08 onward its spend counts as 'inter', not 'nose_open' (see scripts/fetch-fb-spend.mjs). 'inter' = that dedicated account's spend plus any leftover campaigns named \"Inter\" inside Nose Open 02. Because those campaigns/accounts sit outside the other 4 categories now, the month 'total' is the sum of all 5 categories including inter (no double-count from 2026-08 onward; 2026-07's total comes directly from the tracker's own 'รวมหัตถการ' grand-total row instead). Months with only a 'total' field are carried over from previous manual pulls until the scheduled workflow backfills them.",
   "months": {
     "2025-10": { "total": 849372 },
     "2025-11": { "total": 843033 },
@@ -18,12 +18,20 @@
       "inter": 18679
     },
     "2026-07": {
-      "nose_open": 376438,
-      "nose_semi": 37945,
-      "breast_lipo": 17615,
-      "brow_hairline": 185078,
-      "inter": 12174,
-      "total": 617076
+      "nose_open": 892768,
+      "nose_semi": 101825,
+      "breast_lipo": 46232,
+      "brow_hairline": 503632,
+      "inter": 34375,
+      "total": 1549124
+    },
+    "2026-08": {
+      "nose_open": 46313,
+      "nose_semi": 8173,
+      "breast_lipo": 4496,
+      "brow_hairline": 41259,
+      "inter": 5484,
+      "total": 105726
     }
   }
 }
