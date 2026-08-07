@@ -70,29 +70,34 @@ function liveMonthTotal(monthKey, fallback) {
 const MONTH_ISO = { oct25: "2025-10", nov25: "2025-11", dec25: "2025-12", jan26: "2026-01", feb26: "2026-02", mar26: "2026-03", apr26: "2026-04", may26: "2026-05", jun26: "2026-06", jul26: "2026-07", aug26: "2026-08" };
 
 // เดือนที่ใช้เป็น "ค่าเริ่มต้น/ปัจจุบัน" ของหน้าแรก — แก้ตรงนี้เดือนเดียวเวลาเลื่อนเดือน
-const CURRENT_SPEND_MONTH = "2026-06";
+const CURRENT_SPEND_MONTH = "2026-07";
 
 // ============================================================
-// SOURCE 1 — Budget Allocate sheet (macro, ทุกช่องทางรวม, มิ.ย. 2026)
-// spend: ใช้ค่าสดจาก src/data/adSpend.json (เดือน CURRENT_SPEND_MONTH) ถ้ามี
-// ไม่งั้น fallback เป็นตัวเลขที่ดึงมาล่าสุดตอนสร้างแดชบอร์ด
+// SOURCE 1 — เดือน ก.ค. 2026 (อัปเดต 2026-08-07)
+// target: ชีต Budget Allocate July26 คอลัมน์ Target (เปลี่ยนจาก มิ.ย. จริง — breast_lipo/brow_hairline/nose_semi ปรับเป้าขึ้น)
+// spend: ใช้ค่าสดจาก src/data/adSpend.json (เดือน CURRENT_SPEND_MONTH) ถ้ามี ไม่งั้น fallback เป็นตัวเลขที่ดึงมาล่าสุด
+// deposit/online/sales: nose_open/nose_semi/breast_lipo/brow_hairline คำนวณจากไฟล์ธุรกรรมจริง Data_S45_Clinic กรองเดือน ก.ค. 2026
+// ทั้งเดือน (คนละแหล่ง/นิยามกับชีต Budget Allocate มาโครที่ใช้ตอนมิ.ย. เพราะไม่มีชีตมาโครเทียบเท่าสำหรับ ก.ค. — ไม่รวมหมวด "other")
+// inter: จากไฟล์ Inter_S45_2026_Sale_partJuly_07 (online=ยอด Online price รวม, sales=ยอด Total รวม, deposit=0 ตามธรรมเนียมเดิมที่ไม่มีมัดจำแยกให้ Inter)
+// targetPct = sales / target
 // ============================================================
 const CATEGORIES = {
-  nose_open: { label: "เสริมจมูกโอเพ่น", spend: liveSpend(CURRENT_SPEND_MONTH, "nose_open", 824506), deposit: 920000, online: 7084000, sales: 9093400, target: 20000000, targetPct: 0.4547 },
-  breast_lipo: { label: "เสริมหน้าอก/ดูดไขมัน/ตัดหนังหน้าท้อง", spend: liveSpend(CURRENT_SPEND_MONTH, "breast_lipo", 59065), deposit: 669390, online: 99800, sales: 1090510, target: 2500000, targetPct: 0.4362 },
-  brow_hairline: { label: "ยกคิ้ว/เลื่อนไรผม/ยกมุมปาก", spend: liveSpend(CURRENT_SPEND_MONTH, "brow_hairline", 391096), deposit: 958690, online: 3899900, sales: 4148510, target: 4500000, targetPct: 0.9219 },
-  nose_semi: { label: "เสริมจมูก Semi Open", spend: liveSpend(CURRENT_SPEND_MONTH, "nose_semi", 85083), deposit: 130900, online: 524500, sales: 264100, target: 2200000, targetPct: 0.12 },
-  inter: { label: "Inter", spend: liveSpend(CURRENT_SPEND_MONTH, "inter", 28636), deposit: 0, online: 2484770, sales: 2660340, target: 2000000, targetPct: 1.3302 },
+  nose_open: { label: "เสริมจมูกโอเพ่น", spend: liveSpend(CURRENT_SPEND_MONTH, "nose_open", 892768), deposit: 2366142, online: 7505380, sales: 10662440, target: 20000000, targetPct: 0.5331 },
+  breast_lipo: { label: "เสริมหน้าอก/ดูดไขมัน/ตัดหนังหน้าท้อง", spend: liveSpend(CURRENT_SPEND_MONTH, "breast_lipo", 46232), deposit: 407380, online: 223100, sales: 661900, target: 3000000, targetPct: 0.2206 },
+  brow_hairline: { label: "ยกคิ้ว/เลื่อนไรผม/ยกมุมปาก", spend: liveSpend(CURRENT_SPEND_MONTH, "brow_hairline", 503632), deposit: 532390, online: 2653608, sales: 3210100, target: 6000000, targetPct: 0.535 },
+  nose_semi: { label: "เสริมจมูก Semi Open", spend: liveSpend(CURRENT_SPEND_MONTH, "nose_semi", 101825), deposit: 187000, online: 773600, sales: 620500, target: 3000000, targetPct: 0.2068 },
+  inter: { label: "Inter", spend: liveSpend(CURRENT_SPEND_MONTH, "inter", 34375), deposit: 0, online: 3493380, sales: 4236880, target: 2000000, targetPct: 2.1184 },
 };
 
 // แถว "รวม" สีน้ำตาลท้ายชีตต้นฉบับ — ค่าโฆษณาคอลัมน์นี้คือ Facebook เท่านั้น
 // (ยอดมัดจำ/Online/Total Price เป็นยอดขายรวมของคลินิก ไม่แยกช่องทาง)
 // spend: รวมจาก CATEGORIES ด้านบน (ซึ่งอ่านค่าสดจาก adSpend.json แล้ว) แทนตัวเลขคงที่เดิม
+// deposit/online/sales: รวมจาก CATEGORIES ด้านบนเช่นกัน (ก.ค. 2026)
 const GRAND_TOTAL = {
   spend: Object.values(CATEGORIES).reduce((sum, c) => sum + (c.spend || 0), 0),
-  deposit: 2678980,
-  online: 11608200,
-  sales: 10448010,
+  deposit: Object.values(CATEGORIES).reduce((sum, c) => sum + (c.deposit || 0), 0),
+  online: Object.values(CATEGORIES).reduce((sum, c) => sum + (c.online || 0), 0),
+  sales: Object.values(CATEGORIES).reduce((sum, c) => sum + (c.sales || 0), 0),
 };
 
 // ============================================================
@@ -112,8 +117,8 @@ const MONTHLY_DATA = {
   mar26: { label: "มีนาคม 2026", spend: liveMonthTotal(MONTH_ISO.mar26, 1191297), deposit: 3156361, online: 19491780, sales: 14642820 },
   apr26: { label: "เมษายน 2026", spend: liveMonthTotal(MONTH_ISO.apr26, 1048204), deposit: 2028990, online: 10430890, sales: 11281413 },
   may26: { label: "พฤษภาคม 2026", spend: liveMonthTotal(MONTH_ISO.may26, 1430197), deposit: 3300981, online: 12824700, sales: 13744210 },
-  // spend: เท่ากับ GRAND_TOTAL.spend เสมอ (คำนวณจาก adSpend.json เดือน 2026-06 ถ้ามี)
-  jun26: { label: "มิถุนายน 2026", spend: GRAND_TOTAL.spend, deposit: 2678980, online: 11608200, sales: 10448010 },
+  // spend: ค่าคงที่ (เดิมอ้าง GRAND_TOTAL.spend แต่ตอนนี้ GRAND_TOTAL ย้ายไปเป็น ก.ค. แล้ว จึงต้องคงค่ามิ.ย.ไว้ตรงนี้แทน) = liveSpend มิ.ย. รวม 5 หมวด
+  jun26: { label: "มิถุนายน 2026", spend: liveMonthTotal(MONTH_ISO.jun26, 1378429), deposit: 2678980, online: 11608200, sales: 10448010 },
   // เดือนเต็มแล้ว — สเปนด์มาจากชีต Online tracker ของคลินิกเอง (แถว "ยอดยิง Ads" รวม 1-31 ก.ค., แม่นกว่าการดึงผ่าน API บางส่วนเดือน)
   // deposit/online/sales คำนวณจากไฟล์ธุรกรรม Data_S45_Clinic ฉบับ 2026-08-06 (ครบทั้งเดือน)
   jul26: { label: "กรกฎาคม 2026", spend: liveMonthTotal(MONTH_ISO.jul26, 1549124), deposit: 3614892, online: 11340488, sales: 15483980 },
@@ -134,17 +139,15 @@ const RAW_TX = [{"d":"2026-01-02","or":"2026-01-21","ch":"คนไข้เก�
 
 // ============================================================
 // SOURCE 2 — raw transaction log CSV, filtered Channel = Facebook,
-// Date 1-30 Jun 2026, grouped by Surgery
+// Date 1-31 Jul 2026, grouped by Surgery (คำนวณจากไฟล์ธุรกรรมจริง Data_S45_Clinic กรอง Channel = Facebook เท่านั้น)
 // spend: ใช้ค่าสดจาก adSpend.json เดือน CURRENT_SPEND_MONTH เช่นเดียวกับ CATEGORIES
-// (ตัวเลข fallback เดิมของตารางนี้มาจากรอบตัดยอดที่ต่างจาก CATEGORIES เล็กน้อย
-// ถ้า adSpend.json ยังไม่มีข้อมูล จะกลับไปใช้ตัวเลข fallback เดิมของตารางนี้เอง)
 // ============================================================
 const FB_SURGERY = [
-  { key: "nose_open", label: "Nose Open", cases: 14, deposit: 380000, online: 3417000, total: 3359020, spend: liveSpend(CURRENT_SPEND_MONTH, "nose_open", 887873) },
-  { key: "brow_hairline", label: "Brow Lift", cases: 12, deposit: 449790, online: 1781100, total: 1881800, spend: liveSpend(CURRENT_SPEND_MONTH, "brow_hairline", 388635) },
-  { key: "breast_lipo", label: "Breast", cases: 3, deposit: 295000, online: 49900, total: 553910, spend: liveSpend(CURRENT_SPEND_MONTH, "breast_lipo", 59064) },
-  { key: "nose_semi", label: "Semi Open", cases: 19, deposit: 115900, online: 506100, total: 186500, spend: liveSpend(CURRENT_SPEND_MONTH, "nose_semi", 85027) },
-  { key: "other", label: "อื่นๆ (Eye/เสริมคาง/เติมไขมัน/เสริมหน้าผาก)", cases: 4, deposit: 25000, online: 25900, total: 243800, spend: null },
+  { key: "nose_open", label: "Nose Open", cases: 22, deposit: 688163, online: 4435500, total: 3894930, spend: liveSpend(CURRENT_SPEND_MONTH, "nose_open", 892768) },
+  { key: "brow_hairline", label: "Brow Lift", cases: 19, deposit: 342390, online: 2046331, total: 1957210, spend: liveSpend(CURRENT_SPEND_MONTH, "brow_hairline", 503632) },
+  { key: "breast_lipo", label: "Breast", cases: 4, deposit: 20000, online: 223100, total: 159800, spend: liveSpend(CURRENT_SPEND_MONTH, "breast_lipo", 46232) },
+  { key: "nose_semi", label: "Semi Open", cases: 17, deposit: 127000, online: 540400, total: 434200, spend: liveSpend(CURRENT_SPEND_MONTH, "nose_semi", 101825) },
+  { key: "other", label: "อื่นๆ (Eye/เสริมขมับ)", cases: 2, deposit: 50000, online: 120000, total: 148850, spend: null },
 ];
 const FB_BY_KEY = Object.fromEntries(FB_SURGERY.map((r) => [r.key, r]));
 const FB_TOTAL = FB_SURGERY.reduce(
@@ -159,7 +162,7 @@ const FB_TOTAL = FB_SURGERY.reduce(
 
 // ============================================================
 // SOURCE 2b — same raw transaction CSV, filtered Channel = Line / WhatsApp / (Sale หาเอง + ช่องทางส่วนตัว BA)
-// Date 1-30 Jun 2026, grouped by Surgery — mirrors FB_SURGERY structure
+// Date 1-31 Jul 2026, grouped by Surgery — mirrors FB_SURGERY structure
 // ============================================================
 const OTHER_CHANNEL_META = {
   line: { label: "LINE", color: "green" },
@@ -168,25 +171,25 @@ const OTHER_CHANNEL_META = {
 };
 const OTHER_CHANNEL_DATA = {
   line: [
-    { key: "nose_open", label: "Nose Open", cases: 14, deposit: 290000, online: 3637000, total: 3358380 },
-    { key: "brow_hairline", label: "Brow Lift", cases: 1, deposit: 10000, online: 149900, total: 0 },
-    { key: "breast_lipo", label: "Breast", cases: 2, deposit: 35000, online: 49900, total: 160370 },
-    { key: "nose_semi", label: "Semi Open", cases: 2, deposit: 5000, online: 37800, total: 0 },
-    { key: "other", label: "อื่นๆ (Eye ฯลฯ)", cases: 1, deposit: 10000, online: 39900, total: 0 },
+    { key: "nose_open", label: "Nose Open", cases: 16, deposit: 814990, online: 2653280, total: 3063400 },
+    { key: "brow_hairline", label: "Brow Lift", cases: 7, deposit: 100000, online: 607277, total: 614600 },
+    { key: "breast_lipo", label: "Breast", cases: 0, deposit: 0, online: 0, total: 0 },
+    { key: "nose_semi", label: "Semi Open", cases: 5, deposit: 28000, online: 162500, total: 93800 },
+    { key: "other", label: "อื่นๆ (Eye ฯลฯ)", cases: 1, deposit: 3000, online: 39900, total: 64490 },
   ],
   whatsapp: [
-    { key: "nose_open", label: "Nose Open", cases: 2, deposit: 1220000, online: 1214010, total: 1220000 },
+    { key: "nose_open", label: "Nose Open", cases: 3, deposit: 75000, online: 306700, total: 935700 },
     { key: "brow_hairline", label: "Brow Lift", cases: 0, deposit: 0, online: 0, total: 0 },
-    { key: "breast_lipo", label: "Breast", cases: 1, deposit: 149980, online: 139490, total: 175000 },
+    { key: "breast_lipo", label: "Breast", cases: 0, deposit: 0, online: 0, total: 0 },
     { key: "nose_semi", label: "Semi Open", cases: 0, deposit: 0, online: 0, total: 0 },
-    { key: "other", label: "อื่นๆ (Eye/ETC. ฯลฯ)", cases: 2, deposit: 438950, online: 410370, total: 438950 },
+    { key: "other", label: "อื่นๆ (Eye/ETC. ฯลฯ)", cases: 0, deposit: 0, online: 0, total: 0 },
   ],
   sale_ba: [
-    { key: "nose_open", label: "Nose Open", cases: 8, deposit: 260000, online: 0, total: 2546000 },
-    { key: "brow_hairline", label: "Brow Lift", cases: 7, deposit: 225000, online: 0, total: 1295700 },
-    { key: "breast_lipo", label: "Breast", cases: 3, deposit: 364390, online: 0, total: 446700 },
-    { key: "nose_semi", label: "Semi Open", cases: 0, deposit: 0, online: 0, total: 0 },
-    { key: "other", label: "อื่นๆ (Eye ฯลฯ)", cases: 1, deposit: 10000, online: 0, total: 49900 },
+    { key: "nose_open", label: "Nose Open", cases: 12, deposit: 577989, online: 0, total: 2459510 },
+    { key: "brow_hairline", label: "Brow Lift", cases: 5, deposit: 90000, online: 0, total: 638290 },
+    { key: "breast_lipo", label: "Breast", cases: 5, deposit: 387380, online: 0, total: 502100 },
+    { key: "nose_semi", label: "Semi Open", cases: 5, deposit: 23000, online: 0, total: 92500 },
+    { key: "other", label: "อื่นๆ (Eye ฯลฯ)", cases: 2, deposit: 20000, online: 0, total: 75800 },
   ],
 };
 const otherChannelTotalOf = (rows) =>
@@ -196,29 +199,35 @@ const otherChannelTotalOf = (rows) =>
   );
 
 // ============================================================
-// SOURCE 3 — same raw CSV, ALL channels, June 2026, rows with a deposit,
-// grouped by Doctor + Surgery (เคสที่มีการมัดจำเข้ามาในเดือนมิถุนายน)
+// SOURCE 3 — same raw CSV, ALL channels, July 2026, rows with a deposit,
+// grouped by Doctor + Surgery (เคสที่มีการมัดจำเข้ามาในเดือนกรกฎาคม)
 // key maps to the same หัตถการ categories used above; "other" = Eye/เสริมคาง/เสริมหน้าผาก ฯลฯ
+// ชื่อหมอคงไว้ตามที่พิมพ์ในไฟล์ต้นฉบับเป๊ะ (มีสะกดต่างกัน "จิจ๊ะ"/"จิ๊จ๊ะ" และแถวเคสร่วม 2 หมอ ไม่ได้รวมให้เอง)
 // ============================================================
 const DOCTOR_PROC = [
-  { doctor: "หมอจิจ๊ะ", key: "nose_semi", cases: 3, deposit: 7000, online: 29700, total: 0 },
-  { doctor: "หมอตี้", key: "nose_open", cases: 5, deposit: 235000, online: 1088000, total: 3737690 },
-  { doctor: "หมอตูน", key: "brow_hairline", cases: 5, deposit: 345290, online: 289800, total: 859000 },
-  { doctor: "หมอตูน", key: "nose_open", cases: 13, deposit: 175000, online: 1659000, total: 1151010 },
-  { doctor: "หมอตูน", key: "nose_semi", cases: 17, deposit: 108900, online: 488300, total: 186500 },
-  { doctor: "หมอบอย", key: "breast_lipo", cases: 6, deposit: 669390, online: 99800, total: 940510 },
-  { doctor: "หมอบอย", key: "other", cases: 1, deposit: 10000, online: 0, total: 49900 },
-  { doctor: "หมอบอย", key: "nose_semi", cases: 1, deposit: 5000, online: 25900, total: 0 },
-  { doctor: "หมอบิ๊ก", key: "nose_open", cases: 6, deposit: 310000, online: 2215000, total: 2616700 },
-  { doctor: "หมอหนอน", key: "brow_hairline", cases: 1, deposit: 10000, online: 129000, total: 129000 },
-  { doctor: "หมอเช", key: "brow_hairline", cases: 9, deposit: 145000, online: 1342400, total: 1418400 },
-  { doctor: "หมอเช", key: "nose_open", cases: 1, deposit: 20000, online: 0, total: 189000 },
-  { doctor: "หมอเช", key: "other", cases: 1, deposit: 10000, online: 0, total: 99000 },
-  { doctor: "หมอเติ้ง", key: "brow_hairline", cases: 2, deposit: 54500, online: 169800, total: 219900 },
-  { doctor: "หมอเติ้ง", key: "other", cases: 3, deposit: 25000, online: 65800, total: 49900 },
-  { doctor: "หมอเป็ด", key: "brow_hairline", cases: 2, deposit: 130000, online: 0, total: 431300 },
-  { doctor: "หมอเป๊ก", key: "breast_lipo", cases: 1, deposit: 25000, online: 0, total: 70470 },
-  { doctor: "หมอโรส", key: "nose_open", cases: 11, deposit: 190000, online: 2092000, total: 1569000 },
+  { doctor: "รอระบุ", key: "brow_hairline", cases: 2, deposit: 30000, online: 199800, total: 0 },
+  { doctor: "หมอจิจ๊ะ", key: "nose_open", cases: 6, deposit: 90000, online: 476600, total: 405200 },
+  { doctor: "หมอจิจ๊ะ", key: "nose_semi", cases: 4, deposit: 18000, online: 9900, total: 34700 },
+  { doctor: "หมอจิ๊จ๊ะ", key: "nose_open", cases: 1, deposit: 7563, online: 59100, total: 69100 },
+  { doctor: "หมอจิ๊จ๊ะ+หมอตี้", key: "nose_open", cases: 2, deposit: 30000, online: 0, total: 159500 },
+  { doctor: "หมอจิ๊จ๊ะ+หมอตี้", key: "nose_semi", cases: 1, deposit: 3000, online: 0, total: 9900 },
+  { doctor: "หมอตี้", key: "nose_open", cases: 7, deposit: 1160090, online: 2335000, total: 3272700 },
+  { doctor: "หมอตูน", key: "brow_hairline", cases: 11, deposit: 160000, online: 732831, total: 1388310 },
+  { doctor: "หมอตูน", key: "nose_open", cases: 21, deposit: 813489, online: 1731400, total: 3868920 },
+  { doctor: "หมอตูน", key: "nose_semi", cases: 20, deposit: 136000, online: 620100, total: 438200 },
+  { doctor: "หมอบอย", key: "breast_lipo", cases: 9, deposit: 407380, online: 223100, total: 661900 },
+  { doctor: "หมอบอย", key: "nose_open", cases: 2, deposit: 10000, online: 83380, total: 83380 },
+  { doctor: "หมอบอย", key: "nose_semi", cases: 5, deposit: 30000, online: 143600, total: 137700 },
+  { doctor: "หมอบอย", key: "other", cases: 3, deposit: 58980, online: 24900, total: 89800 },
+  { doctor: "หมอหนอน", key: "brow_hairline", cases: 1, deposit: 5000, online: 139000, total: 0 },
+  { doctor: "หมอเช", key: "brow_hairline", cases: 4, deposit: 55000, online: 228900, total: 378390 },
+  { doctor: "หมอเช", key: "nose_open", cases: 5, deposit: 75000, online: 816000, total: 498000 },
+  { doctor: "หมอเช", key: "other", cases: 1, deposit: 30000, online: 0, total: 54900 },
+  { doctor: "หมอเติ้ง", key: "brow_hairline", cases: 8, deposit: 212390, online: 754377, total: 834500 },
+  { doctor: "หมอเติ้ง", key: "other", cases: 3, deposit: 33000, online: 159900, total: 184340 },
+  { doctor: "หมอเป็ด", key: "brow_hairline", cases: 5, deposit: 70000, online: 598700, total: 608900 },
+  { doctor: "หมอโรส", key: "nose_open", cases: 9, deposit: 170000, online: 1884000, total: 2117520 },
+  { doctor: "หมอไบร์ท", key: "nose_open", cases: 1, deposit: 10000, online: 119900, total: 100000 },
 ];
 
 const DOCTOR_PROC_LABELS = {
@@ -313,14 +322,15 @@ const LOA_MONTHLY_QUOTA = 2000000; // จำนวนบลอดต่อเด
 const LOA_PEOPLE_PER_BROADCAST = 39000; // ตามชีตต้นฉบับ: * 39000 คนต่อการบลอด 1 ครั้ง
 
 // ============================================================
-// สัดส่วนงบโฆษณาแยกตามช่องทาง (ชีต June26, แถว Total) — ใช้สรุปว่าช่องทางไหนแทบไม่ได้ใช้งบ
+// สัดส่วนงบโฆษณาแยกตามช่องทาง (ชีต Budget Allocate July26, แถว Total บรรทัด 39) — ใช้สรุปว่าช่องทางไหนแทบไม่ได้ใช้งบ
+// ก.ค. ไม่มีงบ TikTok เลย (ต่างจาก มิ.ย. ที่มี 10,000) จึงไม่มีแถว TikTok ในเดือนนี้
 // ============================================================
 const CHANNEL_MIX = [
-  { key: "facebook", label: "Facebook", budget: 1340000 },
-  { key: "google", label: "Google", budget: 160000 },
+  { key: "facebook", label: "Facebook", budget: 1385000 },
+  { key: "google", label: "Google", budget: 180000 },
   { key: "line_broadcast", label: "Line Broadcast", budget: 121000 },
   { key: "line_ads", label: "Line Ads", budget: 53000 },
-  { key: "tiktok", label: "TikTok", budget: 10000 },
+  { key: "tiktok", label: "TikTok", budget: 0 },
 ];
 const CHANNEL_MIX_TOTAL = CHANNEL_MIX.reduce((s, c) => s + c.budget, 0);
 
@@ -394,14 +404,14 @@ const S45_LOGO = "data:image/webp;base64,UklGRm4VAABXRUJQVlA4TGIVAAAv88FSEJegoG0
 // ระยะเวลาจากวันที่ทักเข้ามา (Date) ถึงวันผ่าตัดจริง (OR Date) แยกตามหัตถการ
 // ใช้ "มัธยฐาน (Median)" แทนค่าเฉลี่ย เพราะข้อมูลจริงมีเคสที่ใช้เวลานานผิดปกติ (สูงสุดถึง 180 วัน) ปนอยู่
 // ซึ่งจะดึงค่าเฉลี่ยให้สูงเกินจริง มัธยฐานสะท้อน "ค่าปกติทั่วไป" ได้แม่นยำกว่า
-// คำนวณจากไฟล์ Data_S45_Clinic: กรอง "Date" ให้อยู่ในเดือนมิถุนายน 2026 แล้วดูเฉพาะเคสที่มี "OR Date" แล้วจริง
+// คำนวณจากไฟล์ Data_S45_Clinic: กรอง "Date" ให้อยู่ในเดือนกรกฎาคม 2026 แล้วดูเฉพาะเคสที่มี "OR Date" แล้วจริง
 // ============================================================
 const OR_LEAD_TIME_DAYS = {
-  nose_open: { label: "Nose Open", medianDays: 25, minDays: 1, maxDays: 180, n: 22 },
-  nose_semi: { label: "Semi Open", medianDays: 17, minDays: 0, maxDays: 118, n: 14 },
-  brow_hairline: { label: "ยกคิ้ว", medianDays: 23, minDays: 1, maxDays: 114, n: 18 },
-  breast_lipo: { label: "เสริมหน้าอก/ดูดไขมัน", medianDays: 2, minDays: 1, maxDays: 70, n: 8 },
-  all: { label: "รวมทุกหัตถการ", medianDays: 19, minDays: 0, maxDays: 180, n: 65 },
+  nose_open: { label: "Nose Open", medianDays: 11, minDays: 0, maxDays: 171, n: 48 },
+  nose_semi: { label: "Semi Open", medianDays: 17, minDays: 0, maxDays: 117, n: 26 },
+  brow_hairline: { label: "ยกคิ้ว", medianDays: 10, minDays: 1, maxDays: 161, n: 25 },
+  breast_lipo: { label: "เสริมหน้าอก/ดูดไขมัน", medianDays: 20, minDays: 1, maxDays: 93, n: 8 },
+  all: { label: "รวมทุกหัตถการ", medianDays: 11, minDays: 0, maxDays: 171, n: 113 },
 };
 
 const AD_COST_THRESHOLD = 0.1;
@@ -498,17 +508,20 @@ export default function AdsDashboard() {
   const [interDoctorFilter, setInterDoctorFilter] = useState("all");
   const [interMonth, setInterMonth] = useState("jul26");
   // ค่าเริ่มต้นของหน้าคือเดือน ก.ค. 2026 (เดือนล่าสุดที่มีข้อมูลครบทั้งเดือน) — คำนวณสดจาก RAW_TX/adSpend.json จริง
-  // ส่วนที่ยังล็อกไว้ที่มิถุนายน (Sales Funnel/Inbox/LOA/Bad Lead/Inter/เป้าหมายรายหัตถการ) ไม่เปลี่ยนตาม เพราะยังไม่มีไฟล์ต้นทางที่เป็นทางการของเดือน ก.ค. สำหรับส่วนเหล่านี้
+  // CATEGORIES/FB_SURGERY/DOCTOR_PROC/OTHER_CHANNEL_DATA/OR_LEAD_TIME_DAYS อัปเดตเป็น ก.ค. แล้ว (2026-08-07)
+  // ส่วนที่ยังล็อกไว้ที่มิถุนายน (Sales Funnel/Inbox/LOA/Bad Lead) ไม่เปลี่ยนตาม เพราะยังไม่มีไฟล์ต้นทางที่เป็นทางการของเดือน ก.ค. สำหรับส่วนเหล่านี้
   const [dateRange, setDateRange] = useState({ start: "2026-07-01", end: "2026-07-31" });
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [draftRange, setDraftRange] = useState({ start: "2026-07-01", end: "2026-07-31" });
-  const monthFilter = "jun26"; // คงไว้เพื่อความเข้ากันได้กับส่วนที่ล็อกไว้ที่มิถุนายน (Sales Funnel/Inbox/LOA/Bad Lead/Inter)
+  const monthFilter = "jun26"; // คงไว้เพื่อความเข้ากันได้กับส่วนที่ล็อกไว้ที่มิถุนายน (Sales Funnel/Inbox/LOA/Bad Lead)
 
   // ---- ข้อมูลตามช่วงวันที่ที่เลือกจริง (คำนวณสดจากไฟล์ธุรกรรม RAW_TX ทุกแถว วันต่อวัน) ----
   const PROC_LABELS_SHORT = { nose_open: "Nose Open", nose_semi: "Semi Open", brow_hairline: "Brow Lift", breast_lipo: "Breast" };
   const LEAD_TIME_LABELS = { nose_open: "Nose Open", nose_semi: "Semi Open", brow_hairline: "ยกคิ้ว", breast_lipo: "เสริมหน้าอก/ดูดไขมัน", all: "รวมทุกหัตถการ" };
   const OTHER_PROC_LABELS = { nose_open: "Nose Open", brow_hairline: "Brow Lift", breast_lipo: "Breast", nose_semi: "Semi Open", other: "อื่นๆ (Eye ฯลฯ)" };
-  const isJunFull = dateRange.start === "2026-06-01" && dateRange.end === "2026-06-30";
+  // ชื่อตัวแปรคงไว้ (isJunFull) แต่ตอนนี้เช็คช่วงเต็มเดือน ก.ค. แล้ว — CATEGORIES/FB_SURGERY/DOCTOR_PROC/
+  // OTHER_CHANNEL_DATA/OR_LEAD_TIME_DAYS ทั้งหมดอัปเดตเป็นข้อมูล ก.ค. 2026 แล้ว (เดือนที่ "ล็อก" ไว้ใช้ตอนเลือกเต็มเดือนพอดี)
+  const isJunFull = dateRange.start === "2026-07-01" && dateRange.end === "2026-07-31";
 
   const txInRange = RAW_TX.filter((t) => t.d >= dateRange.start && t.d <= dateRange.end);
 
@@ -738,10 +751,13 @@ export default function AdsDashboard() {
 
   const activeOtherChannelRows = isJunFull
     ? otherChannelRows
-    : otherChannelFilter === "whatsapp"
-    ? [] // WhatsApp มาจากไฟล์ Inter Sale (มิ.ย. เท่านั้น) ไม่มีข้อมูลช่วงอื่น
     : (() => {
-        const chMatch = otherChannelFilter === "line" ? (t) => t.ch === "Line" : (t) => t.ch === "Sale หาเอง" || t.ch === "ช่องทางส่วนตัว BA";
+        const chMatch =
+          otherChannelFilter === "line"
+            ? (t) => t.ch === "Line"
+            : otherChannelFilter === "whatsapp"
+            ? (t) => t.ch === "WhatsApp"
+            : (t) => t.ch === "Sale หาเอง" || t.ch === "ช่องทางส่วนตัว BA";
         const rows = txInRange.filter(chMatch);
         return ["nose_open", "brow_hairline", "breast_lipo", "nose_semi", "other"].map((k) => {
           const sub = rows.filter((t) => t.p === k);
@@ -982,10 +998,10 @@ export default function AdsDashboard() {
     if (procFilter === "all") {
       const best = targetRanking[0];
       const worst = targetRanking[targetRanking.length - 1];
-      return `เดือนมิถุนายน 2026 ยอดขายรวมทุกช่องทาง ฿${fmtTHB(totals.sales)} (อ้างอิงแถว "รวม" ในชีต) เทียบค่าโฆษณา Facebook ฿${fmtTHB(fbSpend)} โดย Facebook ทำยอดขายได้ ฿${fmtTHB(fbSales)} (Ads/ยอดขาย Facebook ${(ratio * 100).toFixed(1)}%, ROAS Facebook ${roas.toFixed(1)}x) หัตถการที่ทำเป้าหมายยอดขายได้ดีที่สุดคือ ${best.label} (${(best.targetPct * 100).toFixed(0)}% ของเป้า) ส่วน ${worst.label} ยังทำได้เพียง ${(worst.targetPct * 100).toFixed(0)}%`;
+      return `เดือนกรกฎาคม 2026 ยอดขายรวมทุกช่องทาง ฿${fmtTHB(totals.sales)} (อ้างอิงแถว "รวม" ในชีต) เทียบค่าโฆษณา Facebook ฿${fmtTHB(fbSpend)} โดย Facebook ทำยอดขายได้ ฿${fmtTHB(fbSales)} (Ads/ยอดขาย Facebook ${(ratio * 100).toFixed(1)}%, ROAS Facebook ${roas.toFixed(1)}x) หัตถการที่ทำเป้าหมายยอดขายได้ดีที่สุดคือ ${best.label} (${(best.targetPct * 100).toFixed(0)}% ของเป้า) ส่วน ${worst.label} ยังทำได้เพียง ${(worst.targetPct * 100).toFixed(0)}%`;
     }
     const c = CATEGORIES[procFilter];
-    return `${c.label} ในเดือนมิถุนายน ยอดขายรวมทุกช่องทาง ฿${fmtTHB(c.sales)} เทียบค่าโฆษณา Facebook ฿${fmtTHB(fbSpend)} โดย Facebook ทำยอดขายได้ ฿${fmtTHB(fbSales)} (ROAS Facebook ${roas.toFixed(1)}x) คิดเป็น ${(c.targetPct * 100).toFixed(0)}% ของเป้าหมายยอดขาย ฿${fmtTHB(c.target)}`;
+    return `${c.label} ในเดือนกรกฎาคม ยอดขายรวมทุกช่องทาง ฿${fmtTHB(c.sales)} เทียบค่าโฆษณา Facebook ฿${fmtTHB(fbSpend)} โดย Facebook ทำยอดขายได้ ฿${fmtTHB(fbSales)} (ROAS Facebook ${roas.toFixed(1)}x) คิดเป็น ${(c.targetPct * 100).toFixed(0)}% ของเป้าหมายยอดขาย ฿${fmtTHB(c.target)}`;
   }, [procFilter, totals, targetRanking, fbSales, fbSpend, ratio, roas]);
 
   return (
@@ -1088,7 +1104,8 @@ export default function AdsDashboard() {
             รายแถว วันต่อวัน ไม่ใช่แค่รายเดือน): ยอดขายรวม, Facebook breakdown แยกหัตถการ, ช่องทางอื่น (Line/Sale-BA), สรุปเคสมัดจำแยกตามหมอ,
             ระยะเวลาปิด OR (ค่าโฆษณาประมาณการจากยอดรายเดือนจริงของ Facebook Ads Connector เฉลี่ยตามสัดส่วนวันที่เลือก) ·{" "}
             <span className="font-semibold">ส่วนที่ยังคงล็อกไว้ที่มิถุนายนเท่านั้น</span> เพราะไม่มีข้อมูลรายวันของเดือนอื่น: Sales Funnel รายวัน,
-            Inbox เป้าหมายรายวัน, LINE OA Broadcast, Bad Lead, ข้อมูล Inter, เคสเด่นคุณหมอ, แผนงาน Digital ต่างๆ
+            Inbox เป้าหมายรายวัน, LINE OA Broadcast, Bad Lead, เคสเด่นคุณหมอ, แผนงาน Digital ต่างๆ (ข้อมูล Inter มีให้เลือกทั้ง มิ.ย. และ ก.ค.
+            แยกต่างหากในการ์ดของตัวเอง)
           </p>
         </div>
         {isDataStale && (
@@ -1171,9 +1188,9 @@ export default function AdsDashboard() {
               <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
               <p>
                 กล่องนี้และอีกหลายส่วนด้านล่าง (Facebook breakdown, ช่องทางอื่น, สรุปหมอ, ระยะเวลาปิด OR) คำนวณสดตามช่วงวันที่ที่เลือกแล้ว แต่บางส่วนของ
-                Dashboard (Sales Funnel รายวัน, Inbox เป้าหมายรายวัน, LINE OA Broadcast, Bad Lead, Inter ฯลฯ) ยังคงแสดงเฉพาะข้อมูลเดือนมิถุนายน
+                Dashboard (Sales Funnel รายวัน, Inbox เป้าหมายรายวัน, LINE OA Broadcast, Bad Lead) ยังคงแสดงเฉพาะข้อมูลเดือนมิถุนายน
                 2026 เท่านั้น เนื่องจากเป็นไฟล์ที่มีข้อมูลรายวันของเดือนนั้นเดือนเดียว
-                {txInRange.length === 0 && " (ไม่พบข้อมูลธุรกรรมในช่วงวันที่นี้ — ไฟล์ธุรกรรมครอบคลุม ม.ค.–ก.ค. 2026 เท่านั้น)"}
+                {txInRange.length === 0 && " (ไม่พบข้อมูลธุรกรรมในช่วงวันที่นี้ — ไฟล์ธุรกรรมครอบคลุม ม.ค.–ส.ค. 2026 ถึงวันที่ 3 ส.ค. เท่านั้น)"}
               </p>
             </div>
           )}
@@ -1333,17 +1350,14 @@ export default function AdsDashboard() {
             </table>
             {activeOtherChannelTotal.cases === 0 && (
               <p className="text-xs text-amber-600 mt-3">
-                {!isJunFull && otherChannelFilter === "whatsapp"
-                  ? "WhatsApp มาจากไฟล์ Inter Sale ที่อัปโหลดครั้งเดียว มีเฉพาะเดือนมิถุนายน 2026 เท่านั้น"
-                  : `ไม่พบเคสจากช่องทาง ${OTHER_CHANNEL_META[otherChannelFilter].label} ใน${rangeLabel} จากไฟล์ธุรกรรม`}
+                {`ไม่พบเคสจากช่องทาง ${OTHER_CHANNEL_META[otherChannelFilter].label} ใน${rangeLabel} จากไฟล์ธุรกรรม`}
               </p>
             )}
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500">
             "ช่องทางอื่น (Sale หรือ BA)" รวมข้อมูลจาก Channel = "Sale หาเอง" และ "ช่องทางส่วนตัว BA" เข้าด้วยกัน (คนไข้ที่มาจากทีมขายหรือ BA
-            หาเอง ไม่ได้มาจากโฆษณา) · ข้อมูล Line/Sale-BA จากไฟล์ธุรกรรมจริง (Data_S45_Clinic) ส่วน WhatsApp เป็นเคส Inter (Platform = "whatsapp
-            inter") จากไฟล์ Inter Sale เดือนมิถุนายน 2026
+            หาเอง ไม่ได้มาจากโฆษณา) · ข้อมูล Line/WhatsApp/Sale-BA ทั้งหมดมาจากไฟล์ธุรกรรมจริง (Data_S45_Clinic) กรองตามคอลัมน์ Channel
           </div>
         </div>
 
@@ -1388,7 +1402,7 @@ export default function AdsDashboard() {
 
         {/* Chart */}
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mb-6">
-          <h2 className="text-sm font-semibold text-slate-700 mb-4">ยอดขาย เทียบ ค่าโฆษณา ต่อหัตถการ — มิถุนายน 2026 (ทุกช่องทาง)</h2>
+          <h2 className="text-sm font-semibold text-slate-700 mb-4">ยอดขาย เทียบ ค่าโฆษณา ต่อหัตถการ — กรกฎาคม 2026 (ทุกช่องทาง)</h2>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -1513,7 +1527,7 @@ export default function AdsDashboard() {
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
             <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <p>
-              เมตริกด้านบน: ยอดขาย (มัดจำ/Online/Total Price) เป็นยอดรวมทุกช่องทาง ส่วนค่าโฆษณา (Spend) ในชีต Budget Allocate เป็นของ Facebook เท่านั้น · Facebook breakdown และสรุปเคสมัดจำแยกตามหมอ มาจากไฟล์ธุรกรรมจริง (Data_S45_Clinic) กรองช่วง 1–30 มิ.ย. 2026
+              เมตริกด้านบน: ยอดขาย (มัดจำ/Online/Total Price) เป็นยอดรวมทุกช่องทาง ส่วนค่าโฆษณา (Spend) ในชีต Budget Allocate เป็นของ Facebook เท่านั้น · Facebook breakdown และสรุปเคสมัดจำแยกตามหมอ มาจากไฟล์ธุรกรรมจริง (Data_S45_Clinic) กรองช่วง 1–31 ก.ค. 2026
             </p>
           </div>
         </div>
@@ -1977,7 +1991,7 @@ export default function AdsDashboard() {
             <div className="w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center">
               <Activity size={16} />
             </div>
-            <h2 className="text-sm font-semibold text-slate-700">สรุปภาพรวม Dashboard — มิถุนายน 2569</h2>
+            <h2 className="text-sm font-semibold text-slate-700">สรุปภาพรวม Dashboard — กรกฎาคม 2569</h2>
           </div>
           <p className="text-xs text-slate-400 mb-5 ml-10">รวบรวมตัวเลขสำคัญจากทุกส่วนด้านบนไว้ในที่เดียว</p>
 
@@ -2055,9 +2069,8 @@ export default function AdsDashboard() {
               <h3 className="text-sm font-semibold text-slate-700">ช่องทางโฆษณาที่แทบไม่ได้ใช้งบ</h3>
             </div>
             <p className="text-sm text-slate-600 leading-relaxed">
-              <span className="font-semibold text-rose-600">TikTok</span> มีงบตั้งไว้เพียง ฿{fmtTHB(tiktokChannel.budget)} หรือแค่{" "}
-              {((tiktokChannel.budget / CHANNEL_MIX_TOTAL) * 100).toFixed(1)}% ของงบโฆษณาทั้งหมดในเดือนนี้ และจัดสรรให้เฉพาะกลุ่ม Inter
-              เท่านั้น (หัตถการหลักอย่างเสริมจมูกโอเพ่น เสริมหน้าอก ยกคิ้ว และ Semi Open ไม่มีงบ TikTok เลย) เทียบกับ Facebook ที่กิน
+              <span className="font-semibold text-rose-600">TikTok</span> ไม่มีงบตั้งไว้เลยในเดือนนี้ (฿0 หรือ 0% ของงบโฆษณาทั้งหมด — เดือน
+              มิ.ย. เคยมี ฿10,000 จัดสรรให้กลุ่ม Inter) ทุกหัตถการรวมถึง Inter ไม่มีงบ TikTok เหลืออยู่เลย เทียบกับ Facebook ที่กิน
               งบไปถึง {((CHANNEL_MIX.find((c) => c.key === "facebook").budget / CHANNEL_MIX_TOTAL) * 100).toFixed(0)}% ของทั้งหมด —
               เนื่องจาก TikTok เป็นแพลตฟอร์มที่กลุ่มเป้าหมายวัยรุ่น/วัยทำงานตอนต้นซึ่งสนใจศัลยกรรมความงามใช้งานหนาแน่น
               อาจพิจารณาทดลองจัดสรรงบเพิ่มเติมสำหรับหัตถการหลัก (โดยเฉพาะ Semi Open และยกคิ้ว ที่ยังมีช่องว่างด้านงบ Broadcast อยู่แล้ว)
@@ -2068,7 +2081,7 @@ export default function AdsDashboard() {
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
             <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <p>
-              สัดส่วนงบตามช่องทางอ้างอิงจากชีต "June26" (แถว Total ของ Facebook/Line Broadcast/Line Ads/Tiktok/Google) ส่วนตัวเลขสรุปอื่นๆ
+              สัดส่วนงบตามช่องทางอ้างอิงจากชีต "July26" (แถว Total ของ Facebook/Line Broadcast/Line Ads/Google) ส่วนตัวเลขสรุปอื่นๆ
               รวบรวมจากทุกส่วนด้านบนของ Dashboard นี้
             </p>
           </div>
