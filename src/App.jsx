@@ -236,10 +236,13 @@ const DOCTOR_TOTAL = DOCTOR_PROC.reduce(
 );
 
 // ============================================================
-// Inter — เคสจริงเดือนมิถุนายน 2026 แยกตามหมอ + หัตถการ (จากไฟล์ Inter_S45_2026_Sale_part_June_06)
+// Inter — เคสจริงแยกตามหมอ + หัตถการ แยกเป็นรายเดือน
+// มิ.ย. 2026 จากไฟล์ Inter_S45_2026_Sale_part_June_06, ก.ค. 2026 จากไฟล์ Inter_S45_2026_Sale_partJuly_07 (อัปโหลด 2026-08-07)
 // deposit (ยอดมัดจำ) = Online Price + Medical check up Etc. (ไม่รวม Top up)
 // total (ยอด OR / Total) = คอลัมน์ Total ในไฟล์ต้นฉบับ
 // ============================================================
+const INTER_MONTH_LABELS = { jun26: "มิถุนายน 2026", jul26: "กรกฎาคม 2026" };
+const INTER_MONTH_OPTIONS = Object.entries(INTER_MONTH_LABELS);
 const INTER_DOCTOR_LABELS = {
   all: "ทุกคน (รวม)",
   norn: "หมอ NORN",
@@ -251,21 +254,38 @@ const INTER_DOCTOR_LABELS = {
   terng: "หมอ Terng",
 };
 const INTER_DOCTOR_OPTIONS = Object.entries(INTER_DOCTOR_LABELS);
-const INTER_BY_DOCTOR = {
-  all: [
-    { key: "nose_open", label: "Nose Open", cases: 4, deposit: 1721000, total: 1721000 },
-    { key: "breast", label: "Breast", cases: 2, deposit: 149980, total: 270000 },
-    { key: "endotine", label: "Endotine", cases: 1, deposit: 130390, total: 130390 },
-    { key: "etc", label: "ETC. (ดูดไขมันหน้า/ตัดกระพุ้งแก้ม)", cases: 2, deposit: 438950, total: 438950 },
-    { key: "brow_lift", label: "Brow Lift", cases: 1, deposit: 100000, total: 100000 },
-  ],
-  norn: [{ key: "endotine", label: "Endotine", cases: 1, deposit: 130390, total: 130390 }],
-  boy: [{ key: "breast", label: "Breast", cases: 2, deposit: 149980, total: 270000 }],
-  pek: [{ key: "etc", label: "ETC. (ดูดไขมันหน้า/ตัดกระพุ้งแก้ม)", cases: 1, deposit: 313990, total: 313990 }],
-  ty: [{ key: "nose_open", label: "Nose Open", cases: 3, deposit: 1101000, total: 1101000 }],
-  big: [{ key: "nose_open", label: "Nose Open", cases: 1, deposit: 620000, total: 620000 }],
-  ped: [{ key: "etc", label: "ETC. (ดูดไขมันหน้า/ตัดกระพุ้งแก้ม)", cases: 1, deposit: 124960, total: 124960 }],
-  terng: [{ key: "brow_lift", label: "Brow Lift", cases: 1, deposit: 100000, total: 100000 }],
+const INTER_BY_DOCTOR_MONTH = {
+  jun26: {
+    all: [
+      { key: "nose_open", label: "Nose Open", cases: 4, deposit: 1721000, total: 1721000 },
+      { key: "breast", label: "Breast", cases: 2, deposit: 149980, total: 270000 },
+      { key: "endotine", label: "Endotine", cases: 1, deposit: 130390, total: 130390 },
+      { key: "etc", label: "ETC. (ดูดไขมันหน้า/ตัดกระพุ้งแก้ม)", cases: 2, deposit: 438950, total: 438950 },
+      { key: "brow_lift", label: "Brow Lift", cases: 1, deposit: 100000, total: 100000 },
+    ],
+    norn: [{ key: "endotine", label: "Endotine", cases: 1, deposit: 130390, total: 130390 }],
+    boy: [{ key: "breast", label: "Breast", cases: 2, deposit: 149980, total: 270000 }],
+    pek: [{ key: "etc", label: "ETC. (ดูดไขมันหน้า/ตัดกระพุ้งแก้ม)", cases: 1, deposit: 313990, total: 313990 }],
+    ty: [{ key: "nose_open", label: "Nose Open", cases: 3, deposit: 1101000, total: 1101000 }],
+    big: [{ key: "nose_open", label: "Nose Open", cases: 1, deposit: 620000, total: 620000 }],
+    ped: [{ key: "etc", label: "ETC. (ดูดไขมันหน้า/ตัดกระพุ้งแก้ม)", cases: 1, deposit: 124960, total: 124960 }],
+    terng: [{ key: "brow_lift", label: "Brow Lift", cases: 1, deposit: 100000, total: 100000 }],
+  },
+  // ก.ค. 2026: 7 เคส (HN012410, 013091, 013166, 013033, 013031, 013304 + เคสเสริม Lipo Face ของหมอ Pek ที่ไม่มี HN แยกในไฟล์)
+  // ยอดรวมตรงกับแถว "รวม" ท้ายไฟล์เป๊ะ (Online 3,493,380 + Top up 701,450 + Medical check up 42,050 = Total 4,236,880)
+  jul26: {
+    all: [
+      { key: "nose_open", label: "Nose Open (OPEN RHINO)", cases: 6, deposit: 3530840, total: 4086820 },
+      { key: "lipo_face", label: "Lipo (Face)", cases: 1, deposit: 4590, total: 150060 },
+    ],
+    ty: [{ key: "nose_open", label: "Nose Open (OPEN RHINO)", cases: 5, deposit: 2983150, total: 3473150 }],
+    big: [{ key: "nose_open", label: "Nose Open (OPEN RHINO)", cases: 1, deposit: 547690, total: 613670 }],
+    pek: [{ key: "lipo_face", label: "Lipo (Face)", cases: 1, deposit: 4590, total: 150060 }],
+    norn: [],
+    boy: [],
+    ped: [],
+    terng: [],
+  },
 };
 
 
@@ -476,6 +496,7 @@ export default function AdsDashboard() {
   const [growthTab, setGrowthTab] = useState("budget"); // "budget" | "staff"
   const [heroCaseFilter, setHeroCaseFilter] = useState("doctor_tee");
   const [interDoctorFilter, setInterDoctorFilter] = useState("all");
+  const [interMonth, setInterMonth] = useState("jul26");
   // ค่าเริ่มต้นของหน้าคือเดือน ก.ค. 2026 (เดือนล่าสุดที่มีข้อมูลครบทั้งเดือน) — คำนวณสดจาก RAW_TX/adSpend.json จริง
   // ส่วนที่ยังล็อกไว้ที่มิถุนายน (Sales Funnel/Inbox/LOA/Bad Lead/Inter/เป้าหมายรายหัตถการ) ไม่เปลี่ยนตาม เพราะยังไม่มีไฟล์ต้นทางที่เป็นทางการของเดือน ก.ค. สำหรับส่วนเหล่านี้
   const [dateRange, setDateRange] = useState({ start: "2026-07-01", end: "2026-07-31" });
@@ -749,7 +770,7 @@ export default function AdsDashboard() {
   const INBOX_DAILY_TARGET_ALL = Object.values(INBOX_DAILY_TARGET).reduce((s, v) => s + v, 0); // รวมทุกหัตถการ รวม Inter แล้ว
   const inboxDailyOptions = Object.entries(FUNNEL_DATA).map(([k, v]) => [k, v.label]);
   const heroCaseOptions = Object.entries(DOCTOR_HERO_CASES).map(([k, v]) => [k, v.label]);
-  const interDoctorRows = INTER_BY_DOCTOR[interDoctorFilter];
+  const interDoctorRows = INTER_BY_DOCTOR_MONTH[interMonth][interDoctorFilter] ?? [];
   const interDoctorTotal = interDoctorRows.reduce(
     (acc, r) => ({ cases: acc.cases + r.cases, deposit: acc.deposit + r.deposit, total: acc.total + r.total }),
     { cases: 0, deposit: 0, total: 0 }
@@ -1497,7 +1518,7 @@ export default function AdsDashboard() {
           </div>
         </div>
 
-        {/* ---- NEW: Inter แยกตามหมอ + หัตถการ (เคสจริง มิ.ย. 2026) ---- */}
+        {/* ---- NEW: Inter แยกตามหมอ + หัตถการ (เคสจริง) ---- */}
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
             <div className="flex items-center gap-2">
@@ -1506,10 +1527,25 @@ export default function AdsDashboard() {
               </div>
               <h2 className="text-sm font-semibold text-slate-700">Inter แยกตามหมอ + หัตถการ (เคสจริง)</h2>
             </div>
-            <Select icon={UserCircle2} value={interDoctorFilter} onChange={setInterDoctorFilter} options={INTER_DOCTOR_OPTIONS} />
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1">
+                {INTER_MONTH_OPTIONS.map(([k, label]) => (
+                  <button
+                    key={k}
+                    onClick={() => setInterMonth(k)}
+                    className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${
+                      interMonth === k ? "bg-indigo-500 text-white border-indigo-500" : "bg-white text-slate-500 border-slate-200"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <Select icon={UserCircle2} value={interDoctorFilter} onChange={setInterDoctorFilter} options={INTER_DOCTOR_OPTIONS} />
+            </div>
           </div>
           <p className="text-xs text-slate-400 mb-4 ml-10">
-            จากไฟล์ Inter Sale เดือนมิถุนายน 2026 · {INTER_DOCTOR_LABELS[interDoctorFilter]} · รวม {interDoctorTotal.cases} เคส
+            จากไฟล์ Inter Sale เดือน{INTER_MONTH_LABELS[interMonth]} · {INTER_DOCTOR_LABELS[interDoctorFilter]} · รวม {interDoctorTotal.cases} เคส
           </p>
 
           <div className="grid grid-cols-3 gap-3 mb-5">
@@ -1528,7 +1564,7 @@ export default function AdsDashboard() {
           </div>
 
           {interDoctorRows.length === 0 ? (
-            <p className="text-sm text-slate-400 py-4 text-center">ไม่มีเคสของหมอคนนี้ในเดือนมิถุนายน</p>
+            <p className="text-sm text-slate-400 py-4 text-center">ไม่มีเคสของหมอคนนี้ในเดือน{INTER_MONTH_LABELS[interMonth]}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
