@@ -272,6 +272,26 @@ const INTER_BY_DOCTOR = {
   ped: [{ key: "etc", label: "ETC. (ดูดไขมันหน้า/ตัดกระพุ้งแก้ม)", cases: 1, deposit: 124960, total: 124960 }],
   terng: [{ key: "brow_lift", label: "Brow Lift", cases: 1, deposit: 100000, total: 100000 }],
 };
+// ก.ค. 2026 — จากไฟล์ Inter_S45_2026 (Sale part July) ที่อัปเดต ณ 10 ส.ค. 2026 (ถึงวันที่ 29/7)
+// deposit = Online price + Medical check up Etc. (ไม่รวม Top up) ตามสูตรเดียวกับมิ.ย. · total = คอลัมน์ Total ในไฟล์ต้นฉบับ
+// "OPEN RHINO" -> nose_open, "Lipo (Face)" -> etc (ดูดไขมันหน้า/ตัดกระพุ้งแก้ม) ตามหมวดเดียวกับมิ.ย.
+const INTER_BY_DOCTOR_JUL = {
+  all: [
+    { key: "nose_open", label: "Nose Open", cases: 6, deposit: 3530840, total: 4086820 },
+    { key: "etc", label: "ETC. (ดูดไขมันหน้า/ตัดกระพุ้งแก้ม)", cases: 1, deposit: 4590, total: 150060 },
+  ],
+  norn: [],
+  boy: [],
+  pek: [{ key: "etc", label: "ETC. (ดูดไขมันหน้า/ตัดกระพุ้งแก้ม)", cases: 1, deposit: 4590, total: 150060 }],
+  ty: [{ key: "nose_open", label: "Nose Open", cases: 5, deposit: 2983150, total: 3473150 }],
+  big: [{ key: "nose_open", label: "Nose Open", cases: 1, deposit: 547690, total: 613670 }],
+  ped: [],
+  terng: [],
+};
+const INTER_MONTH_OPTIONS = [
+  ["jul", "กรกฎาคม 2026"],
+  ["jun", "มิถุนายน 2026"],
+];
 
 
 // ============================================================
@@ -913,6 +933,7 @@ export default function AdsDashboard() {
   const [growthTab, setGrowthTab] = useState("budget"); // "budget" | "staff"
   const [heroCaseFilter, setHeroCaseFilter] = useState("doctor_tee");
   const [interDoctorFilter, setInterDoctorFilter] = useState("all");
+  const [interMonthFilter, setInterMonthFilter] = useState("jul");
   const [dateRange, setDateRange] = useState({ start: "2026-06-01", end: "2026-06-30" });
   const [compareEnabled, setCompareEnabled] = useState(false);
   const [compareRange, setCompareRange] = useState(previousPeriodRange({ start: "2026-06-01", end: "2026-06-30" }));
@@ -1208,7 +1229,7 @@ export default function AdsDashboard() {
   const INBOX_DAILY_TARGET_ALL = Object.values(INBOX_DAILY_TARGET).reduce((s, v) => s + v, 0); // รวมทุกหัตถการ รวม Inter แล้ว
   const inboxDailyOptions = Object.entries(FUNNEL_DATA).map(([k, v]) => [k, v.label]);
   const heroCaseOptions = Object.entries(DOCTOR_HERO_CASES).map(([k, v]) => [k, v.label]);
-  const interDoctorRows = INTER_BY_DOCTOR[interDoctorFilter];
+  const interDoctorRows = (interMonthFilter === "jul" ? INTER_BY_DOCTOR_JUL : INTER_BY_DOCTOR)[interDoctorFilter] || [];
   const interDoctorTotal = interDoctorRows.reduce(
     (acc, r) => ({ cases: acc.cases + r.cases, deposit: acc.deposit + r.deposit, total: acc.total + r.total }),
     { cases: 0, deposit: 0, total: 0 }
@@ -1948,10 +1969,13 @@ export default function AdsDashboard() {
               </div>
               <h2 className="text-sm font-semibold text-slate-700">Inter แยกตามหมอ + หัตถการ (เคสจริง)</h2>
             </div>
-            <Select icon={UserCircle2} value={interDoctorFilter} onChange={setInterDoctorFilter} options={INTER_DOCTOR_OPTIONS} />
+            <div className="flex items-center gap-2">
+              <Select icon={Calendar} value={interMonthFilter} onChange={setInterMonthFilter} options={INTER_MONTH_OPTIONS} />
+              <Select icon={UserCircle2} value={interDoctorFilter} onChange={setInterDoctorFilter} options={INTER_DOCTOR_OPTIONS} />
+            </div>
           </div>
           <p className="text-xs text-slate-400 mb-4 ml-10">
-            จากไฟล์ Inter Sale เดือนมิถุนายน 2026 · {INTER_DOCTOR_LABELS[interDoctorFilter]} · รวม {interDoctorTotal.cases} เคส
+            จากไฟล์ Inter Sale เดือน{interMonthFilter === "jul" ? "กรกฎาคม (ถึง 29/7) 2026" : "มิถุนายน 2026"} · {INTER_DOCTOR_LABELS[interDoctorFilter]} · รวม {interDoctorTotal.cases} เคส
           </p>
 
           <div className="grid grid-cols-3 gap-3 mb-5">
@@ -1970,7 +1994,7 @@ export default function AdsDashboard() {
           </div>
 
           {interDoctorRows.length === 0 ? (
-            <p className="text-sm text-slate-400 py-4 text-center">ไม่มีเคสของหมอคนนี้ในเดือนมิถุนายน</p>
+            <p className="text-sm text-slate-400 py-4 text-center">ไม่มีเคสของหมอคนนี้ในเดือน{interMonthFilter === "jul" ? "กรกฎาคม" : "มิถุนายน"}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
