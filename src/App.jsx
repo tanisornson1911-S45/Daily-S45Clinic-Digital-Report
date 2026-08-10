@@ -299,6 +299,9 @@ const INTER_MONTH_OPTIONS = [
 // (ยอดยิง Ads, Inbox, ยอดขายบิลปรึกษา+มัดจำ, ยอด OR รายวัน)
 // ============================================================
 const FUNNEL_DATA = {"nose_open": {"label": "เสริมจมูกโอเพ่น (Nose Open)", "ads": 866798, "inbox": 3104, "or": 2466440, "sales": 15982920, "basket": 319658, "closeRate": 0.0161, "adsCost": 0.0542, "adsCostOr": 0.3514, "dailyAds": [37351, 37125, 33514, 30154, 24158, 21513, 29961, 31318, 28778, 26120, 26166, 20350, 22931, 28165, 28181, 25724, 23664, 27867, 26273, 22405, 31614, 31112, 25645, 25512, 26320, 30865, 31078, 37299, 39633, 36002], "dailyInbox": [128, 143, 122, 105, 74, 87, 119, 107, 87, 109, 109, 89, 82, 122, 101, 60, 99, 108, 90, 85, 130, 112, 90, 69, 92, 106, 116, 144, 131, 88], "dailyOr": [175990, 0, 0, 0, 614480, 464990, 0, 0, 0, 230000, 555990, 0, 424990, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "dailyConsult": [0, 3, 1, 1, 1, 2, 1, 2, 1, 1, 2, 1, 2, 1, 2, 2, 2, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "dailyDeposit": [1, 1, 1, 4, 2, 1, 0, 1, 0, 2, 1, 0, 1, 1, 2, 2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "dailyOrCases": [1, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 2, 0, 3, 0, 0, 2, 3, 1, 2, 1, 0, 0, 1]}, "nose_semi": {"label": "เสริมจมูก Semi Open", "ads": 84916, "inbox": 809, "or": 623394, "sales": 1118500, "basket": 43019, "closeRate": 0.0321, "adsCost": 0.0759, "adsCostOr": 0.1362, "dailyAds": [2809, 2944, 2974, 2854, 2615, 2339, 3450, 3504, 3093, 2925, 2990, 2514, 2334, 2906, 2694, 2856, 2688, 2601, 2291, 1717, 2724, 3427, 3174, 2648, 2260, 2664, 2491, 3522, 3796, 3112], "dailyInbox": [24, 30, 39, 27, 23, 18, 23, 35, 31, 22, 15, 16, 22, 25, 19, 22, 28, 14, 21, 22, 24, 47, 49, 28, 23, 25, 37, 32, 34, 34], "dailyOr": [12900, 33949, 0, 0, 0, 52900, 0, 0, 47989, 0, 161489, 102489, 0, 0, 55889, 97889, 57900, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "dailyConsult": [0, 1, 0, 0, 1, 0, 1, 3, 0, 0, 1, 0, 1, 1, 0, 2, 0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "dailyDeposit": [0, 0, 0, 2, 0, 0, 2, 1, 3, 0, 0, 0, 0, 1, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "dailyOrCases": [1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 2, 1, 0, 0, 2, 2, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 2, 1]}, "breast_lipo": {"label": "เสริมหน้าอก/ดูดไขมัน", "ads": 58989, "inbox": 314, "or": 1182720, "sales": 914280, "basket": 76190, "closeRate": 0.0382, "adsCost": 0.0645, "adsCostOr": 0.0499, "dailyAds": [2908, 2889, 2619, 2524, 2141, 1721, 2667, 3013, 3240, 2673, 2180, 1378, 1054, 2018, 1937, 1563, 1561, 1653, 1524, 1219, 2034, 1752, 1737, 1649, 1666, 1290, 1032, 1923, 1871, 1555], "dailyInbox": [12, 8, 11, 11, 7, 6, 4, 13, 15, 12, 9, 5, 5, 4, 13, 9, 7, 11, 15, 11, 16, 10, 13, 7, 14, 7, 17, 19, 13, 10], "dailyOr": [0, 0, 0, 0, 0, 0, 0, 0, 76760, 288460, 0, 0, 313990, 0, 0, 256880, 246630, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "dailyConsult": [0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0], "dailyDeposit": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "dailyOrCases": [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 3, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 1]}, "brow_hairline": {"label": "ยกคิ้ว/เลื่อนไรผม/ยกมุมปาก", "ads": 389661, "inbox": 2973, "or": 1875107, "sales": 3390900, "basket": 154132, "closeRate": 0.0074, "adsCost": 0.1149, "adsCostOr": 0.2078, "dailyAds": [14773, 15594, 13907, 13119, 13462, 11171, 13632, 14500, 15124, 13359, 10399, 10952, 8095, 11689, 11457, 10591, 12754, 11551, 12214, 10186, 13850, 14375, 14529, 14961, 14232, 13831, 12656, 14994, 15161, 12543], "dailyInbox": [93, 110, 104, 109, 123, 94, 87, 87, 97, 101, 81, 88, 79, 97, 100, 84, 106, 87, 110, 96, 115, 99, 104, 104, 85, 113, 98, 106, 112, 104], "dailyOr": [266380, 0, 0, 337780, 246280, 366997, 0, 0, 0, 0, 215890, 0, 235890, 0, 0, 205890, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "dailyConsult": [0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "dailyDeposit": [1, 1, 0, 1, 1, 0, 2, 0, 1, 0, 2, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "dailyOrCases": [1, 0, 0, 2, 2, 2, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1]}, "inter": {"label": "Inter", "ads": 32371, "inbox": 143, "or": 2660340, "sales": 2660340, "basket": 266034, "closeRate": 0.0, "adsCost": 0.012168, "adsCostOr": 0.012168, "dailyAds": [582, 521, 503, 516, 696, 724, 912, 1020, 1008, 809, 810, 842, 796, 1092, 1009, 1838, 1750, 1180, 1527, 1089, 1867, 1895, 1194, 1013, 1045, 1029, 965, 1341, 1396, 1402], "dailyInbox": [0, 5, 0, 5, 0, 2, 4, 0, 1, 3, 3, 1, 0, 3, 0, 6, 20, 13, 10, 9, 12, 11, 9, 3, 2, 3, 5, 3, 7, 3], "dailyOr": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "dailyConsult": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "dailyDeposit": [0, 0, 0, 0, 1, 0, 0, 0, 0, 2, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0], "dailyOrCases": [0, 0, 0, 0, 1, 0, 0, 0, 0, 2, 1, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0]}, "all": {"label": "รวมทุกหัตถการ", "ads": 1400365, "inbox": 7343, "or": 6147661, "sales": 21406600, "basket": 194605, "closeRate": 0.015, "adsCost": 0.0654, "adsCostOr": 0.2278, "dailyAds": [58423, 59073, 53517, 49167, 43072, 37468, 50623, 53354, 51243, 45077, 41735, 35194, 34414, 44778, 44270, 40734, 40667, 43672, 42302, 35526, 50223, 50666, 45085, 44770, 44478, 48651, 47256, 57738, 60461, 53212], "dailyInbox": [257, 296, 276, 257, 227, 207, 237, 242, 231, 247, 217, 199, 188, 251, 233, 181, 260, 233, 246, 223, 297, 279, 265, 211, 216, 254, 273, 304, 297, 239], "dailyOr": [455270, 33949, 0, 337780, 860760, 884887, 0, 0, 124749, 518460, 933369, 102489, 974870, 0, 55889, 560659, 304530, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "dailyConsult": [0, 4, 2, 2, 2, 2, 3, 5, 3, 1, 4, 2, 4, 4, 2, 5, 2, 7, 2, 2, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0], "dailyDeposit": [2, 2, 1, 7, 4, 1, 4, 2, 4, 4, 4, 1, 3, 2, 6, 5, 1, 0, 0, 4, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0], "dailyOrCases": [3, 1, 0, 2, 5, 3, 0, 0, 3, 3, 4, 1, 4, 0, 2, 4, 6, 3, 0, 6, 0, 1, 3, 8, 3, 3, 1, 2, 2, 4]}};
+// FUNNEL_DATA_JUL — ก.ค. 2026: Ads+Inbox รายวันจริงจากไฟล์ "ยอดขาย Online S45 Clinic" (validated, sum ตรงกับยอดรวมในไฟล์)
+// ไม่มีข้อมูล sales/OR/consult/deposit ราชวันสำหรับ ก.ค. ในไฟล์นี้ (เป็น null) — ส่วน UI ที่ต้องใช้ค่านี้จะโชว์ "—" แทน
+const FUNNEL_DATA_JUL = {"nose_open":{"label":"เสริมจมูกโอเพ่น (Nose Open)","ads":892767,"inbox":3062,"or":null,"sales":null,"basket":null,"closeRate":null,"adsCost":null,"adsCostOr":null,"dailyAds":[38976,38675,30634,24129,32514,41376,38901,35513,29774,29358,27026,36429,35839,34642,31636,32543,27069,23359,32162,32172,30347,28415,24412,20961,17493,22561,23996,21752,16222,16422,17460],"dailyInbox":[107,112,95,94,119,119,105,106,97,109,95,120,117,112,114,105,101,124,127,117,122,87,83,56,61,86,101,60,60,65,86],"dailyOr":null,"dailyConsult":null,"dailyDeposit":null,"dailyOrCases":null},"nose_semi":{"label":"เสริมจมูก Semi Open","ads":101825,"inbox":913,"or":null,"sales":null,"basket":null,"closeRate":null,"adsCost":null,"adsCostOr":null,"dailyAds":[2051,3039,3044,2660,3466,3740,3442,3242,3195,3562,2996,4476,4573,4224,3516,3213,3142,2507,3552,3495,3257,3426,3221,3078,2654,3451,3620,3597,3071,2608,2708],"dailyInbox":[22,21,24,35,24,23,27,26,33,36,36,39,32,28,29,30,39,24,36,25,28,44,39,34,28,29,30,25,20,17,30],"dailyOr":null,"dailyConsult":null,"dailyDeposit":null,"dailyOrCases":null},"breast_lipo":{"label":"เสริมหน้าอก/ดูดไขมัน","ads":46229,"inbox":458,"or":null,"sales":null,"basket":null,"closeRate":null,"adsCost":null,"adsCostOr":null,"dailyAds":[1616,1448,1217,988,1777,1952,1659,1454,1578,1365,1062,1849,1958,1764,1770,1728,1503,836,1598,1781,1632,1469,1366,1151,852,1648,1820,1544,1344,1439,1065],"dailyInbox":[7,13,11,10,21,23,16,16,21,13,17,18,19,19,13,15,15,13,14,16,18,17,18,11,7,12,15,9,14,16,11],"dailyOr":null,"dailyConsult":null,"dailyDeposit":null,"dailyOrCases":null},"brow_hairline":{"label":"ยกคิ้ว/เลื่อนไรผม/ยกมุมปาก","ads":503634,"inbox":3708,"or":null,"sales":null,"basket":null,"closeRate":null,"adsCost":null,"adsCostOr":null,"dailyAds":[14587,12589,17104,14631,18854,19484,17754,15903,16109,17294,14095,19779,20362,16137,14525,13732,14414,10588,13291,20136,19293,18696,22121,20888,17084,22012,20535,15321,8854,8861,8600],"dailyInbox":[79,77,101,111,129,126,118,111,117,99,101,136,127,119,124,116,128,116,120,146,154,156,159,158,142,164,133,126,71,74,70],"dailyOr":null,"dailyConsult":null,"dailyDeposit":null,"dailyOrCases":null},"inter":{"label":"Inter","ads":34374,"inbox":348,"or":null,"sales":null,"basket":null,"closeRate":null,"adsCost":null,"adsCostOr":null,"dailyAds":[1534,1232,919,624,1272,1227,1143,1109,1070,853,668,1247,1091,926,797,814,952,792,1325,1030,1026,1060,995,933,777,1094,1145,928,2200,1761,1832],"dailyInbox":[6,8,8,6,6,8,13,9,11,14,6,12,14,10,8,7,8,11,10,5,12,12,8,7,10,10,8,6,33,35,27],"dailyOr":null,"dailyConsult":null,"dailyDeposit":null,"dailyOrCases":null},"all":{"label":"รวมทุกหัตถการ","ads":1578829,"inbox":8489,"or":null,"sales":null,"basket":null,"closeRate":null,"adsCost":null,"adsCostOr":null,"dailyAds":[58764,56983,52918,43032,57883,67779,62899,57221,51726,52432,45847,63780,63823,57693,52244,52030,47080,38082,51928,58614,55555,53066,52115,47011,38860,50766,51116,43142,31691,31091,31665],"dailyInbox":[221,231,239,256,299,299,279,268,279,271,255,325,309,288,288,273,291,288,307,309,334,316,307,266,248,301,287,226,198,207,224],"dailyOr":null,"dailyConsult":null,"dailyDeposit":null,"dailyOrCases":null}};
 // ============================================================
 // SOURCE 5 — ชีต "LOA- มิถุนายน" (LINE OA Broadcast) จากไฟล์สรุปค่าใช้จ่ายให้บัญชี
 // broadcastReach = จำนวนบรอดแคสต์ (คนที่ถูกส่งถึงสะสมทั้งเดือน)
@@ -926,6 +929,7 @@ export default function AdsDashboard() {
   const [doctorSort, setDoctorSort] = useState("cases"); // "cases" | "deposit"
   const [doctorProcFilter, setDoctorProcFilter] = useState("all");
   const [funnelFilter, setFunnelFilter] = useState("all");
+  const [funnelMonthFilter, setFunnelMonthFilter] = useState("jul");
   const [otherChannelFilter, setOtherChannelFilter] = useState("line");
   const [inboxDailyFilter, setInboxDailyFilter] = useState("all");
   const [budgetBoostPct, setBudgetBoostPct] = useState(20);
@@ -1185,7 +1189,12 @@ export default function AdsDashboard() {
   const maxDeposit = Math.max(...sortedDoctors.map((d) => d.deposit), 1);
 
   const funnelOptions = Object.entries(FUNNEL_DATA).map(([k, v]) => [k, v.label]);
-  const funnel = FUNNEL_DATA[funnelFilter];
+  const FUNNEL_MONTH_OPTIONS = [
+    ["jul", "กรกฎาคม 2026"],
+    ["jun", "มิถุนายน 2026"],
+  ];
+  const funnelSource = funnelMonthFilter === "jul" ? FUNNEL_DATA_JUL : FUNNEL_DATA;
+  const funnel = funnelSource[funnelFilter];
   const funnelChartData = funnel.dailyAds.map((v, i) => ({
     day: i + 1,
     ads: v,
@@ -1235,15 +1244,16 @@ export default function AdsDashboard() {
     { cases: 0, deposit: 0, total: 0 }
   );
   const selectedHeroDoctor = DOCTOR_HERO_CASES[heroCaseFilter];
-  const inboxDailyFunnel = FUNNEL_DATA[inboxDailyFilter];
+  const inboxDailyFunnel = funnelSource[inboxDailyFilter];
+  const inboxHasSalesData = inboxDailyFunnel.dailyConsult != null;
   const inboxDailyTargetPerDay = inboxDailyFilter === "all" ? INBOX_DAILY_TARGET_ALL : INBOX_DAILY_TARGET[inboxDailyFilter] ?? null;
   const inboxDailyData = inboxDailyFunnel.dailyInbox.map((actual, i) => ({
     day: i + 1,
     target: inboxDailyTargetPerDay,
     actual,
-    consult: inboxDailyFunnel.dailyConsult[i],
-    deposit: inboxDailyFunnel.dailyDeposit[i],
-    or: inboxDailyFunnel.dailyOrCases[i],
+    consult: inboxDailyFunnel.dailyConsult?.[i] ?? null,
+    deposit: inboxDailyFunnel.dailyDeposit?.[i] ?? null,
+    or: inboxDailyFunnel.dailyOrCases?.[i] ?? null,
   }));
   const inboxDailyTotals = inboxDailyData.reduce(
     (acc, r) => ({
@@ -2042,12 +2052,16 @@ export default function AdsDashboard() {
           <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
             <div className="flex items-center gap-2">
               <Activity size={16} className="text-slate-500" />
-              <h2 className="text-sm font-semibold text-slate-700">Sales Funnel Performance — มิถุนายน 2026</h2>
+              <h2 className="text-sm font-semibold text-slate-700">Sales Funnel Performance</h2>
             </div>
-            <Select icon={Stethoscope} value={funnelFilter} onChange={setFunnelFilter} options={funnelOptions} />
+            <div className="flex items-center gap-2">
+              <Select icon={Calendar} value={funnelMonthFilter} onChange={setFunnelMonthFilter} options={FUNNEL_MONTH_OPTIONS} />
+              <Select icon={Stethoscope} value={funnelFilter} onChange={setFunnelFilter} options={funnelOptions} />
+            </div>
           </div>
           <p className="text-xs text-slate-400 mb-4">
-            {funnel.label} · ยอดยิง Ads → Inbox → ปิดบิล (มัดจำ+ปรึกษา) → ยอด OR จริง · รายวันทั้งเดือน
+            {funnel.label} · ยอดยิง Ads → Inbox{funnel.sales != null ? " → ปิดบิล (มัดจำ+ปรึกษา) → ยอด OR จริง" : ""} · รายวันทั้งเดือน
+            {funnelMonthFilter === "jul" ? "กรกฎาคม 2026" : "มิถุนายน 2026"}
           </p>
 
           {/* Funnel metric cards */}
@@ -2071,18 +2085,19 @@ export default function AdsDashboard() {
                 <Wallet size={12} className="text-amber-500" />
                 <p className="text-[11px] text-amber-600 font-medium">ยอดขาย (มัดจำ+ปรึกษา)</p>
               </div>
-              <p className="text-base font-bold text-amber-700">฿{fmtTHB(funnel.sales)}</p>
+              <p className="text-base font-bold text-amber-700">{funnel.sales != null ? `฿${fmtTHB(funnel.sales)}` : "—"}</p>
             </div>
             <div className="bg-emerald-50 rounded-xl p-3">
               <div className="flex items-center gap-1.5 mb-1">
                 <TrendingUp size={12} className="text-emerald-500" />
                 <p className="text-[11px] text-emerald-600 font-medium">ยอด OR จริง</p>
               </div>
-              <p className="text-base font-bold text-emerald-700">฿{fmtTHB(funnel.or)}</p>
+              <p className="text-base font-bold text-emerald-700">{funnel.or != null ? `฿${fmtTHB(funnel.or)}` : "—"}</p>
             </div>
           </div>
 
           {/* Secondary ratios */}
+          {funnel.basket != null && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 text-center">
             <div>
               <p className="text-[11px] text-slate-400">Basket Size</p>
@@ -2103,6 +2118,7 @@ export default function AdsDashboard() {
               <p className="text-sm font-bold text-slate-700">{(funnel.adsCostOr * 100).toFixed(2)}%</p>
             </div>
           </div>
+          )}
 
           {/* Daily Ads vs Inbox chart */}
           <ResponsiveContainer width="100%" height={260}>
@@ -2131,7 +2147,7 @@ export default function AdsDashboard() {
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
             <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <p>
-              ข้อมูลชุดนี้มาจากไฟล์ "ยอดขาย Online S45 Clinic" ชีตเดือนมิถุนายน 2569 เท่านั้น · "ยอดขาย (มัดจำ+ปรึกษา)" คือมูลค่าบิลที่ปิดได้ (ไม่เท่ากับยอด OR ซึ่งเป็นรายรับจากการผ่าตัดจริง)
+              ข้อมูลชุดนี้มาจากไฟล์ "ยอดขาย Online S45 Clinic" ชีตเดือน{funnelMonthFilter === "jul" ? "กรกฎาคม 2026 (มีเฉพาะยอดยิง Ads กับ Inbox รายวัน ยังไม่มียอดขาย/OR แยกรายวันในไฟล์นี้)" : "มิถุนายน 2569 เท่านั้น · \"ยอดขาย (มัดจำ+ปรึกษา)\" คือมูลค่าบิลที่ปิดได้ (ไม่เท่ากับยอด OR ซึ่งเป็นรายรับจากการผ่าตัดจริง)"}
             </p>
           </div>
         </div>
@@ -2525,10 +2541,13 @@ export default function AdsDashboard() {
               </div>
               <h2 className="text-sm font-semibold text-slate-700">เป้าหมาย Inbox เทียบกับ Inbox ที่ทำได้จริง (รายวัน)</h2>
             </div>
-            <Select icon={Stethoscope} value={inboxDailyFilter} onChange={setInboxDailyFilter} options={inboxDailyOptions} />
+            <div className="flex items-center gap-2">
+              <Select icon={Calendar} value={funnelMonthFilter} onChange={setFunnelMonthFilter} options={FUNNEL_MONTH_OPTIONS} />
+              <Select icon={Stethoscope} value={inboxDailyFilter} onChange={setInboxDailyFilter} options={inboxDailyOptions} />
+            </div>
           </div>
           <p className="text-xs text-slate-400 mb-5 ml-10">
-            {inboxDailyFunnel.label} · รายวันทั้งเดือนมิถุนายน 2569 ·{" "}
+            {inboxDailyFunnel.label} · รายวันทั้งเดือน{funnelMonthFilter === "jul" ? "กรกฎาคม 2026" : "มิถุนายน 2569"} ·{" "}
             {inboxDailyTargetPerDay != null
               ? `เป้าหมาย ${fmtTHB(inboxDailyTargetPerDay)} แชท/วัน (ตัวเลขจริงที่ทีมกำหนด)`
               : "หัตถการนี้ยังไม่มีเป้าหมาย Inbox ต่อวันที่กำหนดไว้"}
@@ -2561,6 +2580,7 @@ export default function AdsDashboard() {
           </div>
 
           {/* ยอดปิดปรึกษา / ยอดปิดมัดจำ / จำนวนเคสที่ปิด OR รวมตามมุมมองที่เลือก */}
+          {inboxHasSalesData ? (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
             <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-3">
               <p className="text-[11px] text-amber-600 font-medium mb-0.5">ยอดปิดปรึกษา (รวมทั้งเดือน)</p>
@@ -2575,6 +2595,11 @@ export default function AdsDashboard() {
               <p className="text-xl font-bold text-emerald-700">{fmtTHB(inboxDailyTotals.or)} เคส</p>
             </div>
           </div>
+          ) : (
+          <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3 mb-5 text-xs text-slate-400">
+            ไฟล์ข้อมูลเดือนนี้มีเฉพาะยอด Ads/Inbox รายวัน — ยังไม่มีข้อมูลยอดปิดปรึกษา/มัดจำ/OR แยกรายวัน
+          </div>
+          )}
 
           {/* ระยะเวลาที่ใช้ปิด OR (Date → OR Date) แยกตามหัตถการ — ใช้มัธยฐานเพราะข้อมูลมี outlier สูงมาก */}
           <div className="rounded-xl border border-cyan-100 bg-cyan-50/50 p-4 mb-5">
@@ -2622,7 +2647,7 @@ export default function AdsDashboard() {
                   };
                   return [`${fmtTHB(v)} ${name === "or" ? "เคส" : "เคส/ครั้ง"}`, labels[name] || name];
                 }}
-                labelFormatter={(d) => `วันที่ ${d} มิ.ย.`}
+                labelFormatter={(d) => `วันที่ ${d} ${funnelMonthFilter === "jul" ? "ก.ค." : "มิ.ย."}`}
                 contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 13 }}
               />
               <Legend
@@ -2641,16 +2666,21 @@ export default function AdsDashboard() {
                 <Line type="monotone" dataKey="target" stroke="#5eead4" strokeDasharray="5 4" strokeWidth={2} dot={{ r: 3 }} />
               )}
               <Line type="monotone" dataKey="actual" stroke="#0d9488" strokeWidth={2.5} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="consult" stroke="#0891b2" strokeWidth={2} dot={{ r: 2 }} />
-              <Line type="monotone" dataKey="deposit" stroke="#0e7490" strokeWidth={2} dot={{ r: 2 }} />
-              <Line type="monotone" dataKey="or" stroke="#115e59" strokeWidth={2} dot={{ r: 2 }} />
+              {inboxHasSalesData && (
+                <>
+                  <Line type="monotone" dataKey="consult" stroke="#0891b2" strokeWidth={2} dot={{ r: 2 }} />
+                  <Line type="monotone" dataKey="deposit" stroke="#0e7490" strokeWidth={2} dot={{ r: 2 }} />
+                  <Line type="monotone" dataKey="or" stroke="#115e59" strokeWidth={2} dot={{ r: 2 }} />
+                </>
+              )}
             </ComposedChart>
           </ResponsiveContainer>
           <p className="text-[11px] text-slate-400 mt-2 mb-5">
             เป้าหมาย Inbox/วัน: Nose Open 120 แชท · Semi Open 35 แชท · ยกคิ้ว 130 แชท · เสริมหน้าอก 25 แชท · Inter 10 แชท (ตัวเลขจริงที่ทีมกำหนด) —
-            "รวมทุกหัตถการ" ใช้ผลรวมของทั้ง 5 หัตถการ ({fmtTHB(INBOX_DAILY_TARGET_ALL)} แชท/วัน) · ยอดปิดปรึกษา/ปิดมัดจำ มาจากไฟล์ Sales Funnel
-            เดียวกับ Inbox (ไม่ได้แยกช่องทาง จึงเป็นยอดรวมทุกช่องทาง ไม่ใช่ Facebook อย่างเดียว) ส่วน "จำนวนเคสที่ปิด OR"
-            นับจากวันที่ระบุในคอลัมน์ OR Date ของไฟล์ธุรกรรมจริง (Data_S45_Clinic) เดือนมิถุนายน 2026 — ก็ไม่ได้แยกช่องทางเช่นกัน
+            "รวมทุกหัตถการ" ใช้ผลรวมของทั้ง 5 หัตถการ ({fmtTHB(INBOX_DAILY_TARGET_ALL)} แชท/วัน)
+            {inboxHasSalesData
+              ? ` · ยอดปิดปรึกษา/ปิดมัดจำ มาจากไฟล์ Sales Funnel เดียวกับ Inbox (ไม่ได้แยกช่องทาง จึงเป็นยอดรวมทุกช่องทาง ไม่ใช่ Facebook อย่างเดียว) ส่วน "จำนวนเคสที่ปิด OR" นับจากวันที่ระบุในคอลัมน์ OR Date ของไฟล์ธุรกรรมจริง (Data_S45_Clinic) เดือนมิถุนายน 2026 — ก็ไม่ได้แยกช่องทางเช่นกัน`
+              : " · Inbox รายวันมาจากไฟล์ \"ยอดขาย Online S45 Clinic\" ชีตกรกฎาคม 2026 (ไม่ได้แยกช่องทาง จึงเป็นยอดรวมทุกช่องทาง ไม่ใช่ Facebook อย่างเดียว)"}
           </p>
 
           {/* ทีม Online: กำลังคนและภาระงานเฉลี่ยต่อคน */}
