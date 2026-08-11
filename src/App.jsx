@@ -320,6 +320,33 @@ const LOA_MONTHLY_BUDGET = 120000; // ยอดบลอดต่อเดือ
 const LOA_MONTHLY_QUOTA = 2000000; // จำนวนบลอดต่อเดือน
 const LOA_PEOPLE_PER_BROADCAST = 39000; // ตามชีตต้นฉบับ: * 39000 คนต่อการบลอด 1 ครั้ง
 
+// LOA_JUL_NORMAL — ชีต "LOA- กรกฎาคม" ช่องทางปกติ จากไฟล์เดียวกับ LOA_JUNE (validated: งบใช้ไป = จำนวนบรอดแคสต์ x 0.06)
+const LOA_JUL_NORMAL = [
+  { key: "open", label: "Open (เสริมจมูกโอเพ่น)", broadcastReach: 604215, budgetUsed: 36252.9, budgetLeft: 12887.1, quotaLeft: 214785, timesLeft: 5.51 },
+  { key: "semi", label: "Semi (เสริมจมูก Semi Open)", broadcastReach: 241140, budgetUsed: 14468.4, budgetLeft: 231.6, quotaLeft: -7140, timesLeft: -0.18 },
+  { key: "breast", label: "หน้าอก/ดูดไขมัน", broadcastReach: 200328, budgetUsed: 12019.68, budgetLeft: 30.32, quotaLeft: 505, timesLeft: 0.01 },
+  { key: "brow", label: "ยกคิ้ว/เลื่อนไรผม", broadcastReach: 763501, budgetUsed: 45810.06, budgetLeft: -700.06, quotaLeft: -12835, timesLeft: -0.33 },
+  { key: "branding", label: "แบรนด์ดิ้ง", broadcastReach: 0, budgetUsed: 0, budgetLeft: 0, quotaLeft: 0, timesLeft: 0 },
+];
+// LOA_AFTERCARE_JUL — ไฟล์ "S45 - LINE OA After Care (LOA)" แยกคนละงบ/โควตาจากช่องทางปกติ (งบ ฿30,000/เดือน, โควตา 500,000 คน/เดือน, 26,000 คน/บลอด)
+const LOA_AFTERCARE_JUL = [
+  { key: "breast_ac", label: "หน้าอก (Aftercare)", broadcastReach: 127095, budgetUsed: 7626, budgetLeft: 2374.3, quotaLeft: 39571, timesLeft: 1.52 },
+  { key: "brow_ac", label: "ยกคิ้ว (Aftercare)", broadcastReach: 127053, budgetUsed: 7623, budgetLeft: 2376.82, quotaLeft: 39613, timesLeft: 1.52 },
+  { key: "skin_ac", label: "สกิน (Aftercare)", broadcastReach: 76243, budgetUsed: 4575, budgetLeft: 5425, quotaLeft: 90423, timesLeft: 3.48 },
+];
+const LOA_CHANNEL_META = {
+  normal: { label: "ปกติ", monthlyBudget: 120000, monthlyQuota: 2000000, peoplePerBroadcast: 39000 },
+  aftercare: { label: "Line OA Aftercare", monthlyBudget: 30000, monthlyQuota: 500000, peoplePerBroadcast: 26000 },
+};
+const LOA_CHANNEL_OPTIONS = [
+  ["normal", "ปกติ"],
+  ["aftercare", "Line OA Aftercare"],
+];
+const LOA_MONTH_OPTIONS = [
+  ["jul", "กรกฎาคม 2026"],
+  ["jun", "มิถุนายน 2026"],
+];
+
 // ============================================================
 // สัดส่วนงบโฆษณาแยกตามช่องทาง (ชีต June26, แถว Total) — ใช้สรุปว่าช่องทางไหนแทบไม่ได้ใช้งบ
 // ============================================================
@@ -930,6 +957,8 @@ export default function AdsDashboard() {
   const [doctorProcFilter, setDoctorProcFilter] = useState("all");
   const [funnelFilter, setFunnelFilter] = useState("all");
   const [funnelMonthFilter, setFunnelMonthFilter] = useState("jul");
+  const [loaChannel, setLoaChannel] = useState("normal");
+  const [loaMonthFilter, setLoaMonthFilter] = useState("jul");
   const [otherChannelFilter, setOtherChannelFilter] = useState("line");
   const [inboxDailyFilter, setInboxDailyFilter] = useState("all");
   const [budgetBoostPct, setBudgetBoostPct] = useState(20);
@@ -1429,6 +1458,38 @@ export default function AdsDashboard() {
     { used: 0, left: 0, total: 0 }
   );
   const maxLoaCountTotal = Math.max(...loaCountCompare.map((r) => r.total));
+
+  // ---- เลือกช่องทาง/เดือน LOA สำหรับการ์ด Broadcast บนหน้า Ads (แยกจาก loaTotal/LOA_JUNE ด้านบนซึ่งใช้เฉพาะสรุปมิถุนายนบนหน้าภาพรวม) ----
+  const loaChannelMeta = LOA_CHANNEL_META[loaChannel];
+  const loaSelSource = loaChannel === "aftercare" ? LOA_AFTERCARE_JUL : loaMonthFilter === "jul" ? LOA_JUL_NORMAL : LOA_JUNE;
+  const loaSelTotal = loaSelSource.reduce(
+    (acc, r) => ({ budgetUsed: acc.budgetUsed + r.budgetUsed, budgetLeft: acc.budgetLeft + r.budgetLeft, quotaLeft: acc.quotaLeft + r.quotaLeft }),
+    { budgetUsed: 0, budgetLeft: 0, quotaLeft: 0 }
+  );
+  const loaSelWithTimesUsed = loaSelSource.map((r) => ({ ...r, timesUsed: r.broadcastReach / loaChannelMeta.peoplePerBroadcast }));
+  const loaSelByUsedDesc = [...loaSelWithTimesUsed].sort((a, b) => b.budgetUsed - a.budgetUsed);
+  const loaSelMostUsed = loaSelByUsedDesc[0];
+  const loaSelMostLeft = [...loaSelSource].sort((a, b) => b.budgetLeft - a.budgetLeft)[0];
+  const loaSelMostUrgent = [...loaSelSource].sort((a, b) => a.timesLeft - b.timesLeft)[0];
+  const maxLoaSelBudget = Math.max(...loaSelSource.map((r) => r.budgetUsed + r.budgetLeft));
+  const loaSelCountCompare = loaSelSource
+    .map((r) => {
+      const used = Math.round(r.broadcastReach / loaChannelMeta.peoplePerBroadcast);
+      const left = Math.round(r.timesLeft);
+      return { key: r.key, label: r.label, used, left, total: used + left };
+    })
+    .sort((a, b) => b.total - a.total);
+  const loaSelCountTotals = loaSelCountCompare.reduce(
+    (acc, r) => ({ used: acc.used + r.used, left: acc.left + r.left, total: acc.total + r.total }),
+    { used: 0, left: 0, total: 0 }
+  );
+  const maxLoaSelCountTotal = Math.max(...loaSelCountCompare.map((r) => r.total));
+  const loaSelMostUsedPctRow = [...loaSelCountCompare].filter((r) => r.total > 0).sort((a, b) => b.used / b.total - a.used / a.total)[0];
+  const loaSelMonthLabel = loaChannel === "aftercare" ? "กรกฎาคม 2026" : loaMonthFilter === "jul" ? "กรกฎาคม 2026" : "มิถุนายน 2569";
+  const loaSelSheetNote =
+    loaChannel === "aftercare"
+      ? 'ไฟล์ "S45 - LINE OA After Care (LOA)" กรกฎาคม 2026 '
+      : `ไฟล์ "S45 - สรุปค่าใช้จ่ายให้บัญชี" ชีต "LOA- ${loaMonthFilter === "jul" ? "กรกฎาคม" : "มิถุนายน"}" `;
 
   const channelMixSorted = [...CHANNEL_MIX].sort((a, b) => b.budget - a.budget);
   const maxChannelBudget = Math.max(...CHANNEL_MIX.map((c) => c.budget));
@@ -2156,30 +2217,38 @@ export default function AdsDashboard() {
         {/* ---- NEW: LINE OA Broadcast cost (LOA-มิถุนายน) ---- */}
 {activePage === "ads" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <Megaphone size={16} />
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <Megaphone size={16} />
+              </div>
+              <h2 className="text-sm font-semibold text-slate-700">ค่าใช้จ่าย LINE OA Broadcast — {loaChannelMeta.label} {loaSelMonthLabel}</h2>
             </div>
-            <h2 className="text-sm font-semibold text-slate-700">ค่าใช้จ่าย LINE OA Broadcast — LOA มิถุนายน 2569</h2>
+            <div className="flex items-center gap-2">
+              <Select icon={Megaphone} value={loaChannel} onChange={setLoaChannel} options={LOA_CHANNEL_OPTIONS} />
+              {loaChannel === "normal" && (
+                <Select icon={Calendar} value={loaMonthFilter} onChange={setLoaMonthFilter} options={LOA_MONTH_OPTIONS} />
+              )}
+            </div>
           </div>
           <p className="text-xs text-slate-400 mb-4 ml-10">
-            งบ Broadcast ทั้งเดือน ฿{fmtTHB(LOA_MONTHLY_BUDGET)} · โควตาส่ง {fmtTHB(LOA_MONTHLY_QUOTA)} ครั้ง/คน แยกตามหัตถการ
+            งบ Broadcast ทั้งเดือน ฿{fmtTHB(loaChannelMeta.monthlyBudget)} · โควตาส่ง {fmtTHB(loaChannelMeta.monthlyQuota)} ครั้ง/คน แยกตามหัตถการ
           </p>
 
           {/* Overview cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
             <div className="bg-amber-50 rounded-xl p-3">
               <p className="text-[11px] text-amber-600 font-medium mb-0.5">งบที่ใช้ไปแล้ว</p>
-              <p className="text-lg font-bold text-amber-700">฿{fmtTHB(loaTotal.budgetUsed)}</p>
-              <p className="text-[11px] text-amber-500 mt-0.5">{((loaTotal.budgetUsed / LOA_MONTHLY_BUDGET) * 100).toFixed(1)}% ของงบเดือน</p>
+              <p className="text-lg font-bold text-amber-700">฿{fmtTHB(loaSelTotal.budgetUsed)}</p>
+              <p className="text-[11px] text-amber-500 mt-0.5">{((loaSelTotal.budgetUsed / loaChannelMeta.monthlyBudget) * 100).toFixed(1)}% ของงบเดือน</p>
             </div>
             <div className="bg-sky-50 rounded-xl p-3">
               <p className="text-[11px] text-sky-600 font-medium mb-0.5">งบคงเหลือ</p>
-              <p className="text-lg font-bold text-sky-700">฿{fmtTHB(loaTotal.budgetLeft)}</p>
+              <p className="text-lg font-bold text-sky-700">฿{fmtTHB(loaSelTotal.budgetLeft)}</p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3">
               <p className="text-[11px] text-slate-500 font-medium mb-0.5">โควตาบลอดคงเหลือ</p>
-              <p className="text-lg font-bold text-slate-700">{fmtTHB(loaTotal.quotaLeft)} คน</p>
+              <p className="text-lg font-bold text-slate-700">{fmtTHB(loaSelTotal.quotaLeft)} คน</p>
             </div>
           </div>
 
@@ -2187,23 +2256,23 @@ export default function AdsDashboard() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
             <div className="rounded-xl border border-rose-100 bg-rose-50/60 p-3">
               <p className="text-[11px] text-rose-500 font-medium mb-0.5">ใช้ Broadcast มากที่สุด</p>
-              <p className="text-sm font-bold text-rose-700">{loaMostUsed.label}</p>
+              <p className="text-sm font-bold text-rose-700">{loaSelMostUsed.label}</p>
               <p className="text-xs text-rose-500 mt-0.5">
-                ฿{fmtTHB(loaMostUsed.budgetUsed)} · {((loaMostUsed.budgetUsed / loaTotal.budgetUsed) * 100).toFixed(0)}% ของงบที่ใช้ไปทั้งหมด
+                ฿{fmtTHB(loaSelMostUsed.budgetUsed)} · {((loaSelMostUsed.budgetUsed / loaSelTotal.budgetUsed) * 100).toFixed(0)}% ของงบที่ใช้ไปทั้งหมด
               </p>
             </div>
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
               <p className="text-[11px] text-emerald-600 font-medium mb-0.5">เหลืองบมากที่สุด</p>
-              <p className="text-sm font-bold text-emerald-700">{loaMostLeft.label}</p>
+              <p className="text-sm font-bold text-emerald-700">{loaSelMostLeft.label}</p>
               <p className="text-xs text-emerald-600 mt-0.5">
-                ฿{fmtTHB(loaMostLeft.budgetLeft)} · ยังบลอดได้อีก {Math.round(loaMostLeft.timesLeft)}x
+                ฿{fmtTHB(loaSelMostLeft.budgetLeft)} · ยังบลอดได้อีก {Math.round(loaSelMostLeft.timesLeft)}x
               </p>
             </div>
             <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3">
               <p className="text-[11px] text-amber-600 font-medium mb-0.5">⚠ ควรเติมงบเร่งด่วน</p>
-              <p className="text-sm font-bold text-amber-700">{loaMostUrgent.label}</p>
+              <p className="text-sm font-bold text-amber-700">{loaSelMostUrgent.label}</p>
               <p className="text-xs text-amber-600 mt-0.5">
-                เหลือ ฿{fmtTHB(loaMostUrgent.budgetLeft)} · บลอดได้อีกแค่ {Math.round(loaMostUrgent.timesLeft)}x
+                เหลือ ฿{fmtTHB(loaSelMostUrgent.budgetLeft)} · บลอดได้อีกแค่ {Math.round(loaSelMostUrgent.timesLeft)}x
               </p>
             </div>
           </div>
@@ -2211,7 +2280,7 @@ export default function AdsDashboard() {
           {/* Ranked used-vs-left comparison bars */}
           <p className="text-xs font-medium text-slate-500 mb-2">เปรียบเทียบงบที่ใช้ไป vs คงเหลือ (เรียงจากใช้มาก → น้อย)</p>
           <div className="space-y-3 mb-5">
-            {loaByUsedDesc.map((r) => {
+            {loaSelByUsedDesc.map((r) => {
               const budgetTotal = r.budgetUsed + r.budgetLeft;
               const usedPct = (r.budgetUsed / budgetTotal) * 100;
               return (
@@ -2220,8 +2289,8 @@ export default function AdsDashboard() {
                     <p className="text-sm font-semibold text-slate-700 truncate">{r.label}</p>
                   </div>
                   <div className="flex-1">
-                    <div className="h-3 bg-sky-100 rounded-full overflow-hidden flex" style={{ width: `${Math.max((budgetTotal / maxLoaBudget) * 100, 6)}%` }}>
-                      <div className={`h-full ${usedPct > 90 ? "bg-rose-400" : "bg-amber-400"}`} style={{ width: `${usedPct}%` }} />
+                    <div className="h-3 bg-sky-100 rounded-full overflow-hidden flex" style={{ width: `${Math.max((budgetTotal / maxLoaSelBudget) * 100, 6)}%` }}>
+                      <div className={`h-full ${usedPct > 90 ? "bg-rose-400" : "bg-amber-400"}`} style={{ width: `${Math.min(Math.max(usedPct, 0), 100)}%` }} />
                     </div>
                   </div>
                   <div className="w-40 text-right shrink-0 hidden sm:block">
@@ -2248,7 +2317,7 @@ export default function AdsDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {loaWithTimesUsed.map((r) => {
+                {loaSelWithTimesUsed.map((r) => {
                   const pctUsed = r.budgetUsed / (r.budgetUsed + r.budgetLeft || 1);
                   return (
                     <tr key={r.key} className="border-b border-slate-50 last:border-0">
@@ -2259,7 +2328,7 @@ export default function AdsDashboard() {
                           <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden hidden sm:block">
                             <div
                               className={`h-full rounded-full ${pctUsed > 0.9 ? "bg-rose-400" : "bg-emerald-400"}`}
-                              style={{ width: `${Math.min(pctUsed * 100, 100)}%` }}
+                              style={{ width: `${Math.min(Math.max(pctUsed * 100, 0), 100)}%` }}
                             />
                           </div>
                           <span className="font-semibold text-slate-700">฿{fmtTHB(r.budgetUsed)}</span>
@@ -2280,7 +2349,8 @@ export default function AdsDashboard() {
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
             <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <p>
-              "บลอดได้อีก (ครั้ง)" คือจำนวนครั้งที่ยังส่งได้อีกด้วยงบที่เหลือ · ข้อมูลจากไฟล์ "S45 - สรุปค่าใช้จ่ายให้บัญชี" ชีต "LOA- มิถุนายน" เท่านั้น (งบใช้ไป+คงเหลือรวม ฿{fmtTHB(loaTotal.budgetUsed + loaTotal.budgetLeft)} ต่างจากงบตั้งไว้ ฿{fmtTHB(LOA_MONTHLY_BUDGET)} เล็กน้อยตามชีตต้นฉบับ)
+              "บลอดได้อีก (ครั้ง)" คือจำนวนครั้งที่ยังส่งได้อีกด้วยงบที่เหลือ · ข้อมูลจาก{loaSelSheetNote}เท่านั้น (งบใช้ไป+คงเหลือรวม ฿
+              {fmtTHB(loaSelTotal.budgetUsed + loaSelTotal.budgetLeft)} ต่างจากงบตั้งไว้ ฿{fmtTHB(loaChannelMeta.monthlyBudget)} เล็กน้อยตามชีตต้นฉบับ)
             </p>
           </div>
         </div>
@@ -2289,11 +2359,19 @@ export default function AdsDashboard() {
         {/* ---- NEW: จำนวนครั้งการ Broadcast แยกตามหัตถการ (ทำได้ทั้งหมด vs ใช้จริง) ---- */}
 {activePage === "ads" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-              <Megaphone size={16} />
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <Megaphone size={16} />
+              </div>
+              <h2 className="text-sm font-semibold text-slate-700">จำนวนครั้งการ Broadcast แยกตามหัตถการ — {loaChannelMeta.label} {loaSelMonthLabel}</h2>
             </div>
-            <h2 className="text-sm font-semibold text-slate-700">จำนวนครั้งการ Broadcast แยกตามหัตถการ — มิถุนายน 2569</h2>
+            <div className="flex items-center gap-2">
+              <Select icon={Megaphone} value={loaChannel} onChange={setLoaChannel} options={LOA_CHANNEL_OPTIONS} />
+              {loaChannel === "normal" && (
+                <Select icon={Calendar} value={loaMonthFilter} onChange={setLoaMonthFilter} options={LOA_MONTH_OPTIONS} />
+              )}
+            </div>
           </div>
           <p className="text-xs text-slate-400 mb-5 ml-10">
             เทียบจำนวนครั้งที่ "ใช้จริงไปแล้ว" กับ "ทำได้ทั้งหมด" (ใช้จริง + เหลือ) ต่อหัตถการ · หน่วย: ครั้ง
@@ -2303,35 +2381,35 @@ export default function AdsDashboard() {
           <div className="grid grid-cols-3 gap-3 mb-5">
             <div className="bg-indigo-50 rounded-xl p-3 text-center">
               <p className="text-[11px] text-indigo-500 font-medium mb-0.5">ใช้จริงไปแล้ว</p>
-              <p className="text-xl font-bold text-indigo-700">{loaCountTotals.used} ครั้ง</p>
+              <p className="text-xl font-bold text-indigo-700">{loaSelCountTotals.used} ครั้ง</p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3 text-center">
               <p className="text-[11px] text-slate-500 font-medium mb-0.5">เหลือ</p>
-              <p className="text-xl font-bold text-slate-700">{loaCountTotals.left} ครั้ง</p>
+              <p className="text-xl font-bold text-slate-700">{loaSelCountTotals.left} ครั้ง</p>
             </div>
             <div className="bg-emerald-50 rounded-xl p-3 text-center">
               <p className="text-[11px] text-emerald-600 font-medium mb-0.5">ทำได้ทั้งหมด</p>
-              <p className="text-xl font-bold text-emerald-700">{loaCountTotals.total} ครั้ง</p>
+              <p className="text-xl font-bold text-emerald-700">{loaSelCountTotals.total} ครั้ง</p>
             </div>
           </div>
 
           {/* Stacked comparison bars: ใช้จริง (เข้ม) + เหลือ (อ่อน) = ทำได้ทั้งหมด */}
           <div className="space-y-4 mb-2">
-            {loaCountCompare.map((r) => (
+            {loaSelCountCompare.map((r) => (
               <div key={r.key}>
                 <div className="flex items-baseline justify-between mb-1">
                   <p className="text-sm font-semibold text-slate-700">{r.label}</p>
                   <p className="text-xs text-slate-500">
                     ใช้จริง <span className="font-semibold text-teal-600">{r.used}</span> / ทำได้ทั้งหมด{" "}
-                    <span className="font-semibold text-slate-700">{r.total}</span> ครั้ง
+                    <span className="font-semibold text-slate-700">{Math.max(r.total, r.used)}</span> ครั้ง
                   </p>
                 </div>
-                <div className="h-4 bg-slate-100 rounded-full overflow-hidden flex" style={{ width: `${Math.max((r.total / maxLoaCountTotal) * 100, 8)}%` }}>
+                <div className="h-4 bg-slate-100 rounded-full overflow-hidden flex" style={{ width: `${Math.max((Math.max(r.total, r.used, 1) / maxLoaSelCountTotal) * 100, 8)}%` }}>
                   <div
                     className="h-full bg-teal-500 flex items-center justify-end pr-1"
-                    style={{ width: `${(r.used / r.total) * 100}%` }}
+                    style={{ width: `${r.total > 0 ? Math.min((r.used / r.total) * 100, 100) : 0}%` }}
                   />
-                  <div className="h-full bg-teal-100" style={{ width: `${(r.left / r.total) * 100}%` }} />
+                  {r.total > 0 && r.left > 0 && <div className="h-full bg-teal-100" style={{ width: `${(r.left / r.total) * 100}%` }} />}
                 </div>
               </div>
             ))}
@@ -2354,24 +2432,24 @@ export default function AdsDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {loaCountCompare.map((r) => (
+                {loaSelCountCompare.map((r) => (
                   <tr key={r.key} className="border-b border-slate-50 last:border-0">
                     <td className="py-2 text-slate-600">{r.label}</td>
                     <td className="py-2 text-right font-semibold text-indigo-600">{r.used}</td>
                     <td className="py-2 text-right text-slate-500">{r.left}</td>
                     <td className="py-2 text-right font-semibold text-slate-700">{r.total}</td>
-                    <td className={`py-2 text-right font-semibold ${r.used / r.total > 0.9 ? "text-rose-500" : "text-slate-700"}`}>
-                      {((r.used / r.total) * 100).toFixed(0)}%
+                    <td className={`py-2 text-right font-semibold ${r.total > 0 && r.used / r.total > 0.9 ? "text-rose-500" : "text-slate-700"}`}>
+                      {r.total > 0 ? `${((r.used / r.total) * 100).toFixed(0)}%` : "—"}
                     </td>
                   </tr>
                 ))}
                 <tr className="border-t border-slate-200">
                   <td className="py-2 font-semibold text-slate-700">รวมทุกหัตถการ</td>
-                  <td className="py-2 text-right font-semibold text-indigo-600">{loaCountTotals.used}</td>
-                  <td className="py-2 text-right text-slate-500">{loaCountTotals.left}</td>
-                  <td className="py-2 text-right font-semibold text-slate-700">{loaCountTotals.total}</td>
+                  <td className="py-2 text-right font-semibold text-indigo-600">{loaSelCountTotals.used}</td>
+                  <td className="py-2 text-right text-slate-500">{loaSelCountTotals.left}</td>
+                  <td className="py-2 text-right font-semibold text-slate-700">{loaSelCountTotals.total}</td>
                   <td className="py-2 text-right font-semibold text-slate-700">
-                    {((loaCountTotals.used / loaCountTotals.total) * 100).toFixed(0)}%
+                    {loaSelCountTotals.total > 0 ? `${((loaSelCountTotals.used / loaSelCountTotals.total) * 100).toFixed(0)}%` : "—"}
                   </td>
                 </tr>
               </tbody>
@@ -2381,8 +2459,10 @@ export default function AdsDashboard() {
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
             <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <p>
-              "ใช้จริงไปแล้ว" คำนวณจากจำนวนบรอดแคสต์สะสม ÷ {LOA_PEOPLE_PER_BROADCAST.toLocaleString()} คน/ครั้ง · "ทำได้ทั้งหมด" = ใช้จริง + เหลือ
-              (จากงบที่ตั้งไว้ทั้งเดือนของแต่ละหัตถการ) · ยกคิ้ว/เลื่อนไรผม ใช้ไปแล้ว {loaCountCompare.find((r) => r.key === "brow").used}/{loaCountCompare.find((r) => r.key === "brow").total} ครั้ง (100%) คือหัตถการเดียวที่ใช้โควตาครบแล้ว
+              "ใช้จริงไปแล้ว" คำนวณจากจำนวนบรอดแคสต์สะสม ÷ {loaChannelMeta.peoplePerBroadcast.toLocaleString()} คน/ครั้ง · "ทำได้ทั้งหมด" = ใช้จริง + เหลือ
+              (จากงบที่ตั้งไว้ทั้งเดือนของแต่ละหัตถการ)
+              {loaSelMostUsedPctRow &&
+                ` · ${loaSelMostUsedPctRow.label} ใช้ไปแล้ว ${loaSelMostUsedPctRow.used}/${loaSelMostUsedPctRow.total} ครั้ง (${((loaSelMostUsedPctRow.used / loaSelMostUsedPctRow.total) * 100).toFixed(0)}%) คือหัตถการที่ใช้โควตาไปมากที่สุด`}
             </p>
           </div>
         </div>
