@@ -559,6 +559,43 @@ const MONTH_BOUNDS = {
   aug26: ["2026-08-01", "2026-08-12"],
 };
 
+// ============================================================
+// ค่าโฆษณาแยกตามหัตถการ สำหรับช่วงวันที่ใดๆ — ใช้ร่วมกันทั้ง rangeSpend, activeFbSurgery
+// (การ์ด "ต้นทุนต่อการซื้อ") และ computeExecMetricsForRange เพื่อไม่ให้ตัวเลขเพี้ยนกันระหว่างจุดต่างๆ
+// เดือนที่ adSpend.json มี breakdown รายหัตถการจริง (มิ.ย.-ส.ค. 2026) ใช้ตัวเลขจริงเฉลี่ยตามสัดส่วนวันที่
+// ทับซ้อน · เดือนอื่นที่มีแค่ยอดรวม ประมาณโดยใช้สัดส่วนหัตถการของเดือนมิ.ย. (CATEGORIES) แทน
+// ============================================================
+// "inter" ไม่ใช่บัญชีโฆษณาแยก แต่เป็นแคมเปญย่อยในบัญชี Nose Open 02 อยู่แล้ว (ดูคอมเมนต์ jul26 ด้านบน)
+// ดังนั้น "all" ต้องอิงยอดรวมเดือนจริง (MONTHLY_DATA[mk].spend อ่านจากฟิลด์ "total" ใน adSpend.json) ตรงๆ
+// ห้ามเอา perCategory มาบวกกันเอง เพราะจะนับ Inter ซ้ำเข้าไปในยอด Nose Open อีกที
+const SPEND_CATEGORY_KEYS = ["nose_open", "nose_semi", "breast_lipo", "brow_hairline", "inter"];
+function categorySpendForRange(range) {
+  const result = Object.fromEntries(SPEND_CATEGORY_KEYS.map((k) => [k, 0]));
+  let all = 0;
+  Object.entries(MONTH_BOUNDS).forEach(([mk, [monthStart, monthEnd]]) => {
+    const overlapStart = range.start > monthStart ? range.start : monthStart;
+    const overlapEnd = range.end < monthEnd ? range.end : monthEnd;
+    if (overlapStart > overlapEnd) return;
+    const overlapDays = Math.round((new Date(overlapEnd) - new Date(overlapStart)) / 86400000) + 1;
+    const totalDaysInMonth = Math.round((new Date(monthEnd) - new Date(monthStart)) / 86400000) + 1;
+    const frac = overlapDays / totalDaysInMonth;
+    all += (MONTHLY_DATA[mk]?.spend || 0) * frac;
+    const monthCat = adSpendData?.months?.[MONTH_ISO[mk]];
+    const hasBreakdown = monthCat && SPEND_CATEGORY_KEYS.some((k) => typeof monthCat[k] === "number");
+    SPEND_CATEGORY_KEYS.forEach((k) => {
+      if (hasBreakdown) {
+        result[k] += (monthCat[k] || 0) * frac;
+      } else {
+        const ratio = CATEGORIES[k].spend / GRAND_TOTAL.spend;
+        result[k] += (MONTHLY_DATA[mk]?.spend || 0) * frac * ratio;
+      }
+    });
+  });
+  const rounded = Object.fromEntries(Object.entries(result).map(([k, v]) => [k, Math.round(v)]));
+  rounded.all = Math.round(all);
+  return rounded;
+}
+
 function computeExecMetricsForRange(range, proc) {
   const isFullJun = range.start === "2026-06-01" && range.end === "2026-06-30";
   const txInRange = RAW_TX.filter((t) => t.d >= range.start && t.d <= range.end);
@@ -578,21 +615,8 @@ function computeExecMetricsForRange(range, proc) {
 
   const fbSpend = (() => {
     if (isFullJun) return proc === "all" ? GRAND_TOTAL.spend : CATEGORIES[proc].spend;
-    let total = 0;
-    Object.entries(MONTHLY_DATA).forEach(([mk, mv]) => {
-      const [monthStart, monthEnd] = MONTH_BOUNDS[mk];
-      const overlapStart = range.start > monthStart ? range.start : monthStart;
-      const overlapEnd = range.end < monthEnd ? range.end : monthEnd;
-      if (overlapStart <= overlapEnd) {
-        const overlapDays = Math.round((new Date(overlapEnd) - new Date(overlapStart)) / 86400000) + 1;
-        const totalDaysInMonth = Math.round((new Date(monthEnd) - new Date(monthStart)) / 86400000) + 1;
-        total += mv.spend * (overlapDays / totalDaysInMonth);
-      }
-    });
-    const allProcSpend = Math.round(total);
-    if (proc === "all") return allProcSpend;
-    const procRatio = CATEGORIES[proc].spend / GRAND_TOTAL.spend;
-    return Math.round(allProcSpend * procRatio);
+    const spendByCat = categorySpendForRange(range);
+    return proc === "all" ? spendByCat.all : spendByCat[proc] ?? 0;
   })();
 
   const ratio = fbSales > 0 ? fbSpend / fbSales : 0;
@@ -1033,12 +1057,13 @@ export default function AdsDashboard() {
     ? FB_SURGERY
     : (() => {
         const fb = txInRange.filter((t) => t.ch === "Facebook");
+        const spendByCat = categorySpendForRange(dateRange);
         return ["nose_open", "nose_semi", "brow_hairline", "breast_lipo"].map((k) => {
           const rows = fb.filter((t) => t.p === k);
           return {
             key: k,
             label: PROC_LABELS_SHORT[k],
-            spend: null,
+            spend: spendByCat[k] ?? null,
             cases: rows.length,
             deposit: rows.reduce((s, r) => s + r.dep, 0),
             online: rows.reduce((s, r) => s + r.onl, 0),
@@ -1099,23 +1124,9 @@ export default function AdsDashboard() {
         sales: txInRangeByProc.reduce((s, t) => s + t.tot, 0),
       };
   const rangeSpend = (() => {
-    // เฉลี่ยงบ Facebook รายเดือนจริงตามสัดส่วนจำนวนวันที่ทับซ้อนกับเดือนนั้นๆ (สเปนด์ระดับหัตถการรายวันไม่มีข้อมูล
-    // จึงประมาณโดยเทียบสัดส่วนสเปนด์ต่อหัตถการจากชีต Budget Allocate กับสเปนด์รวมทั้งคลินิก)
-    let total = 0;
-    Object.entries(MONTHLY_DATA).forEach(([mk, mv]) => {
-      const [monthStart, monthEnd] = MONTH_BOUNDS[mk];
-      const overlapStart = dateRange.start > monthStart ? dateRange.start : monthStart;
-      const overlapEnd = dateRange.end < monthEnd ? dateRange.end : monthEnd;
-      if (overlapStart <= overlapEnd) {
-        const overlapDays = Math.round((new Date(overlapEnd) - new Date(overlapStart)) / 86400000) + 1;
-        const totalDaysInMonth = Math.round((new Date(monthEnd) - new Date(monthStart)) / 86400000) + 1;
-        total += mv.spend * (overlapDays / totalDaysInMonth);
-      }
-    });
-    const allProcSpend = isJunFull ? GRAND_TOTAL.spend : Math.round(total);
-    if (procFilter === "all") return allProcSpend;
-    const procRatio = CATEGORIES[procFilter].spend / GRAND_TOTAL.spend;
-    return Math.round(allProcSpend * procRatio);
+    if (isJunFull) return procFilter === "all" ? GRAND_TOTAL.spend : CATEGORIES[procFilter].spend;
+    const spendByCat = categorySpendForRange(dateRange);
+    return procFilter === "all" ? spendByCat.all : spendByCat[procFilter] ?? 0;
   })();
 
   const THAI_MONTHS_SHORT = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
