@@ -599,6 +599,38 @@ function computeExecMetricsForRange(range, proc) {
   return { sales, fbSales, fbSpend, ratio, roas };
 }
 
+// เป้าหมายยอดขายรายเดือน (CATEGORIES[key].target) เป็นตัวเลขต่อ 1 เดือนเต็ม — ประมาณค่าเป้าหมายสำหรับช่วงวันที่ใดๆ
+// โดยเฉลี่ยตามสัดส่วนวันที่ทับซ้อนกับแต่ละเดือนปฏิทิน (วิธีเดียวกับที่ใช้ประมาณ fbSpend ด้านบน)
+function computeProratedTarget(range, monthlyTarget) {
+  let total = 0;
+  Object.values(MONTH_BOUNDS).forEach(([monthStart, monthEnd]) => {
+    const overlapStart = range.start > monthStart ? range.start : monthStart;
+    const overlapEnd = range.end < monthEnd ? range.end : monthEnd;
+    if (overlapStart <= overlapEnd) {
+      const overlapDays = Math.round((new Date(overlapEnd) - new Date(overlapStart)) / 86400000) + 1;
+      const totalDaysInMonth = Math.round((new Date(monthEnd) - new Date(monthStart)) / 86400000) + 1;
+      total += monthlyTarget * (overlapDays / totalDaysInMonth);
+    }
+  });
+  return Math.round(total);
+}
+
+// หัตถการที่มีข้อมูลยอดขายจริงระดับรายวันใน RAW_TX (Inter ไม่ได้แท็กแยกในไฟล์ธุรกรรม จึงใช้ได้เฉพาะเดือนมิ.ย.เต็มเดือนเท่านั้น)
+const DAILY_CATEGORY_KEYS = ["nose_open", "nose_semi", "breast_lipo", "brow_hairline"];
+
+// รวมค่าจาก array รายวัน (index 0 = วันที่ 1 ของเดือนนั้น) เฉพาะวันที่ทับซ้อนกับช่วงที่เลือก — คืนค่า null ถ้าไม่มี array (เช่น dailyOr ของ ก.ค.)
+function sumDailyOverlap(range, monthStart, monthEnd, dailyArr) {
+  if (!dailyArr) return null;
+  const overlapStart = range.start > monthStart ? range.start : monthStart;
+  const overlapEnd = range.end < monthEnd ? range.end : monthEnd;
+  if (overlapStart > overlapEnd) return 0;
+  const startDay = Number(overlapStart.slice(8, 10));
+  const endDay = Number(overlapEnd.slice(8, 10));
+  let sum = 0;
+  for (let d = startDay; d <= endDay; d++) sum += dailyArr[d - 1] || 0;
+  return sum;
+}
+
 // เปอร์เซ็นต์เปลี่ยนแปลงจากช่วงเทียบ (compare) ไปช่วงปัจจุบัน — null ถ้าฐานเป็น 0 (เทียบไม่ได้)
 function pctDelta(current, previous) {
   if (!previous) return null;
@@ -1108,13 +1140,21 @@ export default function AdsDashboard() {
   };
   const thisMonthStart = `${todayAnchor.slice(0, 7)}-01`;
   const thisMonthLabel = `เดือนนี้ (${THAI_MONTHS_SHORT[Number(todayAnchor.slice(5, 7)) - 1]})`;
+  const thisMonthNum = Number(todayAnchor.slice(5, 7));
+  const thisYearNum = Number(todayAnchor.slice(0, 4));
+  const lastMonthNum = thisMonthNum === 1 ? 12 : thisMonthNum - 1;
+  const lastMonthYear = thisMonthNum === 1 ? thisYearNum - 1 : thisYearNum;
+  const lastMonthStart = `${lastMonthYear}-${String(lastMonthNum).padStart(2, "0")}-01`;
+  const lastMonthEndDay = new Date(lastMonthYear, lastMonthNum, 0).getDate();
+  const lastMonthEnd = `${lastMonthYear}-${String(lastMonthNum).padStart(2, "0")}-${String(lastMonthEndDay).padStart(2, "0")}`;
+  const lastMonthLabel = `เดือนที่แล้ว (${THAI_MONTHS_SHORT[lastMonthNum - 1]})`;
   const DATE_PRESETS = [
     { key: "today", label: "วันนี้", range: () => ({ start: todayAnchor, end: todayAnchor }) },
     { key: "7d", label: "7 วันที่ผ่านมา", range: () => ({ start: isoDaysAgo(6), end: todayAnchor }) },
     { key: "14d", label: "14 วันที่ผ่านมา", range: () => ({ start: isoDaysAgo(13), end: todayAnchor }) },
     { key: "28d", label: "28 วันที่ผ่านมา", range: () => ({ start: isoDaysAgo(27), end: todayAnchor }) },
     { key: "thismonth", label: thisMonthLabel, range: () => ({ start: thisMonthStart, end: todayAnchor }) },
-    { key: "lastmonth", label: "เดือนที่แล้ว (มิ.ย.)", range: () => ({ start: "2026-06-01", end: "2026-06-30" }) },
+    { key: "lastmonth", label: lastMonthLabel, range: () => ({ start: lastMonthStart, end: lastMonthEnd }) },
     { key: "may", label: "พฤษภาคม 2026", range: () => ({ start: "2026-05-01", end: "2026-05-31" }) },
     { key: "apr", label: "เมษายน 2026", range: () => ({ start: "2026-04-01", end: "2026-04-30" }) },
     { key: "q2", label: "ไตรมาส เม.ย.–มิ.ย. 2026", range: () => ({ start: "2026-04-01", end: "2026-06-30" }) },
@@ -1186,12 +1226,27 @@ export default function AdsDashboard() {
   const compareRangeLabel =
     compareRange.start === compareRange.end ? fmtDateTh(compareRange.start) : `${fmtDateTh(compareRange.start)} – ${fmtDateTh(compareRange.end)}`;
 
-  const chartData = Object.entries(CATEGORIES).map(([key, c]) => ({ key, label: c.label, spend: c.spend, sales: c.sales }));
+  // ทั้ง 2 ตัวนี้อิงช่วงวันที่ที่เลือกจริง (dateRange) — เดือนมิ.ย.เต็มเดือนใช้ตัวเลขทางการจาก CATEGORIES เหมือนเดิม
+  // ช่วงอื่นคำนวณยอดขายจาก RAW_TX จริงรายวัน + ประมาณค่าโฆษณา/เป้าหมายตามสัดส่วนวันที่ทับซ้อนกับแต่ละเดือน
+  // "Inter" ไม่มีแท็กแยกในไฟล์ธุรกรรมรายวัน จึงโชว์ได้เฉพาะตอนเลือกเต็มเดือนมิ.ย. เท่านั้น
+  const chartData = isJunFull
+    ? Object.entries(CATEGORIES).map(([key, c]) => ({ key, label: c.label, spend: c.spend, sales: c.sales }))
+    : DAILY_CATEGORY_KEYS.map((key) => {
+        const m = computeExecMetricsForRange(dateRange, key);
+        return { key, label: CATEGORIES[key].label, spend: m.fbSpend, sales: m.sales };
+      });
 
-  const targetRanking = useMemo(
-    () => Object.entries(CATEGORIES).map(([key, c]) => ({ key, ...c })).sort((a, b) => b.targetPct - a.targetPct),
-    []
-  );
+  const targetRanking = useMemo(() => {
+    if (isJunFull) {
+      return Object.entries(CATEGORIES).map(([key, c]) => ({ key, ...c })).sort((a, b) => b.targetPct - a.targetPct);
+    }
+    return DAILY_CATEGORY_KEYS.map((key) => {
+      const m = computeExecMetricsForRange(dateRange, key);
+      const target = computeProratedTarget(dateRange, CATEGORIES[key].target);
+      const targetPct = target > 0 ? m.sales / target : 0;
+      return { key, label: CATEGORIES[key].label, sales: m.sales, spend: m.fbSpend, target, targetPct };
+    }).sort((a, b) => b.targetPct - a.targetPct);
+  }, [dateRange, isJunFull]);
 
   // สรุปเคสแยกตามหมอ — กรองตามหัตถการที่เลือกได้ (dropdown แยกจากหัตถการด้านบน)
   const sortedDoctors = useMemo(() => {
@@ -1497,13 +1552,29 @@ export default function AdsDashboard() {
   const channelMixSorted = [...CHANNEL_MIX].sort((a, b) => b.budget - a.budget);
   const maxChannelBudget = Math.max(...CHANNEL_MIX.map((c) => c.budget));
   const tiktokChannel = CHANNEL_MIX.find((c) => c.key === "tiktok");
-  // ยอดขายรวมทุกช่องทาง / Facebook / ROAS ใช้ค่าจากมุมมอง "รวมทุกหัตถการ" เพื่อสรุปภาพรวมทั้งเดือน
-  const summaryAllSales = GRAND_TOTAL.sales;
-  const summaryAllSpend = GRAND_TOTAL.spend;
-  const summaryFbSales = FB_TOTAL.total;
-  const summaryFbSpend = GRAND_TOTAL.spend; // คอลัมน์ spend ในชีต Budget Allocate คือ Facebook เท่านั้น
-  const summaryRoas = summaryFbSpend > 0 ? summaryFbSales / summaryFbSpend : 0;
-  const summaryFunnelAll = FUNNEL_DATA.all;
+  // ยอดขายรวมทุกช่องทาง / Facebook / ROAS ในสรุปภาพรวม — ใช้ตัวเลขเดียวกับ Metric Cards ด้านบน (ตามช่วงวันที่ที่เลือกจริง, มุมมอง "รวมทุกหัตถการ")
+  const summaryAllSales = execSales;
+  const summaryFbSales = execFbSales;
+  const summaryFbSpend = execFbSpend;
+  const summaryRoas = execRoas;
+  // เคสมัดจำในช่วงที่เลือก — เดือนมิ.ย.เต็มเดือนใช้ DOCTOR_TOTAL ทางการ ช่วงอื่นรวมจาก RAW_TX จริง (activeDoctors)
+  const summaryDoctorCases = isJunFull ? DOCTOR_TOTAL.cases : (activeDoctors || []).reduce((s, d) => s + d.cases, 0);
+  // Funnel (Inbox/OR) มีข้อมูลรายวันแค่ มิ.ย. (FUNNEL_DATA) กับ ก.ค. (FUNNEL_DATA_JUL ไม่มี dailyOr) — รวมเฉพาะวันที่ทับซ้อนกับ 2 เดือนนี้
+  const hasJuneOverlap = dateRange.start <= "2026-06-30" && dateRange.end >= "2026-06-01";
+  const hasJulyOverlap = dateRange.start <= "2026-07-31" && dateRange.end >= "2026-07-01";
+  const hasFunnelCoverage = hasJuneOverlap || hasJulyOverlap;
+  const summaryInboxTotal =
+    sumDailyOverlap(dateRange, "2026-06-01", "2026-06-30", FUNNEL_DATA.all.dailyInbox) +
+    sumDailyOverlap(dateRange, "2026-07-01", "2026-07-31", FUNNEL_DATA_JUL.all.dailyInbox);
+  // OR มีข้อมูลรายวันเฉพาะมิ.ย. เท่านั้น (ก.ค. dailyOr เป็น null) — ถ้าช่วงที่เลือกไม่ทับซ้อนมิ.ย.เลย ให้ถือว่า "ไม่มีข้อมูล" ไม่ใช่ 0
+  const summaryOrTotal = hasJuneOverlap ? sumDailyOverlap(dateRange, "2026-06-01", "2026-06-30", FUNNEL_DATA.all.dailyOr) : null;
+  const summaryOrMissingJuly = hasJulyOverlap; // ถ้าช่วงที่เลือกครอบคลุมบางส่วนของ ก.ค. ตัวเลข OR ด้านบน (ถ้ามี) จะไม่รวมส่วนนั้น
+  // LOA (LINE OA Broadcast) มีแค่ยอดรวมทั้งเดือน ไม่มีรายวัน จึงใช้ได้เฉพาะตอนเลือกเต็มเดือนมิ.ย./ก.ค. เท่านั้น (ช่องทางปกติ)
+  const loaSummarySource = isJunFull ? LOA_JUNE : dateRange.start === "2026-07-01" && dateRange.end === "2026-07-31" ? LOA_JUL_NORMAL : null;
+  const loaSummaryTotal = loaSummarySource
+    ? loaSummarySource.reduce((acc, r) => ({ budgetUsed: acc.budgetUsed + r.budgetUsed, budgetLeft: acc.budgetLeft + r.budgetLeft }), { budgetUsed: 0, budgetLeft: 0 })
+    : null;
+  const loaSummaryMostUrgent = loaSummarySource ? [...loaSummarySource].sort((a, b) => a.timesLeft - b.timesLeft)[0] : null;
 
   const targetTone = (pct) => {
     if (pct >= 0.7) return { bar: "bg-emerald-500", text: "text-emerald-600" };
@@ -1515,11 +1586,25 @@ export default function AdsDashboard() {
     if (procFilter === "all") {
       const best = targetRanking[0];
       const worst = targetRanking[targetRanking.length - 1];
-      return `เดือนมิถุนายน 2026 ยอดขายรวมทุกช่องทาง ฿${fmtTHB(totals.sales)} (อ้างอิงแถว "รวม" ในชีต) เทียบค่าโฆษณา Facebook ฿${fmtTHB(fbSpend)} โดย Facebook ทำยอดขายได้ ฿${fmtTHB(fbSales)} (Ads/ยอดขาย Facebook ${(ratio * 100).toFixed(1)}%, ROAS Facebook ${roas.toFixed(1)}x) หัตถการที่ทำเป้าหมายยอดขายได้ดีที่สุดคือ ${best.label} (${(best.targetPct * 100).toFixed(0)}% ของเป้า) ส่วน ${worst.label} ยังทำได้เพียง ${(worst.targetPct * 100).toFixed(0)}%`;
+      const interNote = isJunFull ? "" : " (ไม่รวม Inter เนื่องจากไม่มีข้อมูลยอดขายรายวันแยกหัตถการนี้ในไฟล์ธุรกรรม)";
+      const rankNote =
+        best && worst
+          ? ` หัตถการที่ทำเป้าหมายยอดขายได้ดีที่สุดคือ ${best.label} (${(best.targetPct * 100).toFixed(0)}% ของเป้า) ส่วน ${worst.label} ยังทำได้เพียง ${(worst.targetPct * 100).toFixed(0)}%`
+          : "";
+      return `${rangeLabel} ยอดขายรวมทุกช่องทาง ฿${fmtTHB(execSales)} เทียบค่าโฆษณา Facebook ฿${fmtTHB(execFbSpend)} โดย Facebook ทำยอดขายได้ ฿${fmtTHB(execFbSales)} (Ads/ยอดขาย Facebook ${(execRatio * 100).toFixed(1)}%, ROAS Facebook ${execRoas.toFixed(1)}x)${rankNote}${interNote}`;
     }
-    const c = CATEGORIES[procFilter];
-    return `${c.label} ในเดือนมิถุนายน ยอดขายรวมทุกช่องทาง ฿${fmtTHB(c.sales)} เทียบค่าโฆษณา Facebook ฿${fmtTHB(fbSpend)} โดย Facebook ทำยอดขายได้ ฿${fmtTHB(fbSales)} (ROAS Facebook ${roas.toFixed(1)}x) คิดเป็น ${(c.targetPct * 100).toFixed(0)}% ของเป้าหมายยอดขาย ฿${fmtTHB(c.target)}`;
-  }, [procFilter, totals, targetRanking, fbSales, fbSpend, ratio, roas]);
+    if (procFilter === "inter" && !isJunFull) {
+      return `หัตถการ Inter ไม่มีข้อมูลยอดขายรายวันแยกในไฟล์ธุรกรรม จึงดูได้เฉพาะช่วงเดือนมิถุนายน 2026 เต็มเดือนเท่านั้น — เลือก "เดือนที่แล้ว (มิ.ย.)" จากปุ่มเลือกวันที่ด้านบน`;
+    }
+    if (isJunFull) {
+      const c = CATEGORIES[procFilter];
+      return `${c.label} ในเดือนมิถุนายน ยอดขายรวมทุกช่องทาง ฿${fmtTHB(c.sales)} เทียบค่าโฆษณา Facebook ฿${fmtTHB(c.spend)} โดย Facebook ทำยอดขายได้ ฿${fmtTHB(execFbSales)} (ROAS Facebook ${execRoas.toFixed(1)}x) คิดเป็น ${(c.targetPct * 100).toFixed(0)}% ของเป้าหมายยอดขาย ฿${fmtTHB(c.target)}`;
+    }
+    const m = computeExecMetricsForRange(dateRange, procFilter);
+    const target = computeProratedTarget(dateRange, CATEGORIES[procFilter].target);
+    const targetPct = target > 0 ? m.sales / target : 0;
+    return `${CATEGORIES[procFilter].label} ช่วง ${rangeLabel} ยอดขายรวมทุกช่องทาง ฿${fmtTHB(m.sales)} เทียบค่าโฆษณา Facebook ฿${fmtTHB(m.fbSpend)} โดย Facebook ทำยอดขายได้ ฿${fmtTHB(m.fbSales)} (ROAS Facebook ${m.roas.toFixed(1)}x) คิดเป็นประมาณ ${(targetPct * 100).toFixed(0)}% ของเป้าหมายยอดขายช่วงนี้ (≈฿${fmtTHB(target)})`;
+  }, [procFilter, isJunFull, dateRange, rangeLabel, targetRanking, execSales, execFbSales, execFbSpend, execRatio, execRoas]);
 
   return (
     <div className={dark ? "dark" : ""}>
@@ -1573,9 +1658,10 @@ export default function AdsDashboard() {
             <p className="text-xs text-emerald-800 leading-relaxed">
               <span className="font-semibold">เลือกช่วงวันที่ได้อิสระที่ปุ่มด้านบน</span> — ส่วนที่เปลี่ยนตามช่วงวันที่จริง (คำนวณสดจากไฟล์ธุรกรรม
               รายแถว วันต่อวัน ไม่ใช่แค่รายเดือน): ยอดขายรวม, Facebook breakdown แยกหัตถการ, ช่องทางอื่น (Line/Sale-BA), สรุปเคสมัดจำแยกตามหมอ,
-              ระยะเวลาปิด OR (ค่าโฆษณาประมาณการจากยอดรายเดือนจริงของ Facebook Ads Connector เฉลี่ยตามสัดส่วนวันที่เลือก) ·{" "}
-              <span className="font-semibold">ส่วนที่ยังคงล็อกไว้ที่มิถุนายนเท่านั้น</span> เพราะไม่มีข้อมูลรายวันของเดือนอื่น: Sales Funnel รายวัน,
-              Inbox เป้าหมายรายวัน, LINE OA Broadcast, Bad Lead, ข้อมูล Inter, เคสเด่นคุณหมอ, แผนงาน Digital ต่างๆ
+              ระยะเวลาปิด OR, กราฟ/เป้าหมาย/AI Insight ต่อหัตถการ (ยกเว้น Inter ที่ไม่มีแท็กแยกในไฟล์ธุรกรรม), ยอด OR/Inbox และงบ LINE OA Broadcast
+              ในสรุปภาพรวม (เฉพาะช่วงที่ตรงกับเดือนมิ.ย./ก.ค. ที่มีข้อมูล — ค่าโฆษณาประมาณการจากยอดรายเดือนจริงเฉลี่ยตามสัดส่วนวันที่เลือก) ·{" "}
+              <span className="font-semibold">ส่วนที่ยังคงล็อกไว้ที่มิถุนายนเท่านั้น</span> เพราะไม่มีข้อมูลรายวันของเดือนอื่น: สัดส่วนงบตามช่องทางโฆษณา, Bad
+              Lead, เคสเด่นคุณหมอ, แผนงาน Digital ต่างๆ (Sales Funnel/Inbox/LINE OA Broadcast รายหัตถการมีตัวเลือกเดือน มิ.ย./ก.ค. แยกในการ์ดของตัวเองแล้ว)
             </p>
           </div>
         )}
@@ -1898,7 +1984,9 @@ export default function AdsDashboard() {
         {/* Chart */}
 {activePage === "overview" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mb-6">
-          <h2 className="text-sm font-semibold text-slate-700 mb-4">ยอดขาย เทียบ ค่าโฆษณา ต่อหัตถการ — มิถุนายน 2026 (ทุกช่องทาง)</h2>
+          <h2 className="text-sm font-semibold text-slate-700 mb-4">
+            ยอดขาย เทียบ ค่าโฆษณา ต่อหัตถการ — {rangeLabel} (ทุกช่องทาง{isJunFull ? "" : " · ไม่รวม Inter"})
+          </h2>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d9f2ee" />
@@ -2516,9 +2604,9 @@ export default function AdsDashboard() {
             <div className="w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center">
               <Activity size={16} />
             </div>
-            <h2 className="text-sm font-semibold text-slate-700">สรุปภาพรวม Dashboard — มิถุนายน 2569</h2>
+            <h2 className="text-sm font-semibold text-slate-700">สรุปภาพรวม Dashboard — {rangeLabel}</h2>
           </div>
-          <p className="text-xs text-slate-400 mb-5 ml-10">รวบรวมตัวเลขสำคัญจากทุกส่วนด้านบนไว้ในที่เดียว</p>
+          <p className="text-xs text-slate-400 mb-5 ml-10">รวบรวมตัวเลขสำคัญจากทุกส่วนด้านบนไว้ในที่เดียว ตามช่วงวันที่ที่เลือก</p>
 
           {/* Recap grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
@@ -2539,29 +2627,45 @@ export default function AdsDashboard() {
               <p className="text-base font-bold text-slate-800">{summaryRoas.toFixed(1)}x</p>
             </div>
             <div className="bg-indigo-50 rounded-xl p-3">
-              <p className="text-[11px] text-indigo-600 font-medium mb-0.5">เคสมัดจำทั้งเดือน</p>
-              <p className="text-base font-bold text-indigo-700">{fmtTHB(DOCTOR_TOTAL.cases)} เคส</p>
+              <p className="text-[11px] text-indigo-600 font-medium mb-0.5">เคสมัดจำ (ช่วงที่เลือก)</p>
+              <p className="text-base font-bold text-indigo-700">{fmtTHB(summaryDoctorCases)} เคส</p>
             </div>
             <div className="bg-amber-50 rounded-xl p-3">
-              <p className="text-[11px] text-amber-600 font-medium mb-0.5">ยอด OR จริง (Funnel)</p>
-              <p className="text-base font-bold text-amber-700">฿{fmtTHB(summaryFunnelAll.or)}</p>
+              <p className="text-[11px] text-amber-600 font-medium mb-0.5">
+                ยอด OR จริง (Funnel){summaryOrTotal != null && summaryOrMissingJuly ? " · ไม่รวม ก.ค." : ""}
+              </p>
+              <p className="text-base font-bold text-amber-700">{summaryOrTotal != null ? `฿${fmtTHB(summaryOrTotal)}` : "—"}</p>
             </div>
             <div className="bg-sky-50 rounded-xl p-3">
-              <p className="text-[11px] text-sky-600 font-medium mb-0.5">Inbox ทั้งเดือน (Funnel)</p>
-              <p className="text-base font-bold text-sky-700">{fmtTHB(summaryFunnelAll.inbox)}</p>
+              <p className="text-[11px] text-sky-600 font-medium mb-0.5">Inbox (Funnel)</p>
+              <p className="text-base font-bold text-sky-700">{hasFunnelCoverage ? fmtTHB(summaryInboxTotal) : "—"}</p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3">
               <p className="text-[11px] text-slate-500 font-medium mb-0.5">งบ LINE OA Broadcast ใช้ไป</p>
-              <p className="text-base font-bold text-slate-800">{((loaTotal.budgetUsed / LOA_MONTHLY_BUDGET) * 100).toFixed(0)}%</p>
+              <p className="text-base font-bold text-slate-800">
+                {loaSummaryTotal ? `${((loaSummaryTotal.budgetUsed / LOA_MONTHLY_BUDGET) * 100).toFixed(0)}%` : "—"}
+              </p>
             </div>
             <div className="bg-rose-50 rounded-xl p-3">
-              <p className="text-[11px] text-rose-500 font-medium mb-0.5">Broadcast ใช้โควตาครบแล้ว</p>
-              <p className="text-base font-bold text-rose-700">ยกคิ้ว/เลื่อนไรผม (100%)</p>
+              <p className="text-[11px] text-rose-500 font-medium mb-0.5">Broadcast ใช้โควตามากที่สุด</p>
+              <p className="text-base font-bold text-rose-700">
+                {loaSummaryMostUrgent
+                  ? `${loaSummaryMostUrgent.label} (${loaSummaryMostUrgent.timesLeft <= 0 ? "ครบ/เกินโควตา" : `เหลือ ${Math.round(loaSummaryMostUrgent.timesLeft)}x`})`
+                  : "—"}
+              </p>
             </div>
           </div>
+          {(!hasFunnelCoverage || !loaSummarySource) && (
+            <p className="text-[11px] text-slate-400 -mt-3 mb-6">
+              * Funnel (OR/Inbox) และ LINE OA Broadcast มีข้อมูลรายวัน/รายเดือนแค่มิถุนายนกับกรกฎาคม 2026 เท่านั้น — ช่วงวันที่ที่เลือกไม่ตรงกับข้อมูลที่มี
+              จึงแสดง "—"
+            </p>
+          )}
 
           {/* Channel budget mix */}
-          <p className="text-xs font-medium text-slate-500 mb-2">สัดส่วนงบโฆษณาแยกตามช่องทาง (ทุกหัตถการรวมกัน)</p>
+          <p className="text-xs font-medium text-slate-500 mb-2">
+            สัดส่วนงบโฆษณาแยกตามช่องทาง (ทุกหัตถการรวมกัน) — <span className="font-semibold">ข้อมูลเดือนมิถุนายน 2569 เท่านั้น</span> (ยังไม่มีข้อมูลสัดส่วนช่องทางของเดือนอื่น)
+          </p>
           <div className="space-y-3 mb-3">
             {channelMixSorted.map((c) => {
               const pct = (c.budget / CHANNEL_MIX_TOTAL) * 100;
@@ -2607,8 +2711,8 @@ export default function AdsDashboard() {
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
             <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <p>
-              สัดส่วนงบตามช่องทางอ้างอิงจากชีต "June26" (แถว Total ของ Facebook/Line Broadcast/Line Ads/Tiktok/Google) ส่วนตัวเลขสรุปอื่นๆ
-              รวบรวมจากทุกส่วนด้านบนของ Dashboard นี้
+              สัดส่วนงบตามช่องทางอ้างอิงจากชีต "June26" (แถว Total ของ Facebook/Line Broadcast/Line Ads/Tiktok/Google) เท่านั้น — ยังไม่มีไฟล์เทียบเท่าของเดือนอื่น
+              ส่วนตัวเลขสรุปด้านบน (ยอดขาย/ค่าโฆษณา/ROAS/เคสมัดจำ) จะเปลี่ยนตามช่วงวันที่ที่เลือกจริง
             </p>
           </div>
         </div>
