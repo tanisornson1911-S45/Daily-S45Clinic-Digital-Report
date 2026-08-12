@@ -76,7 +76,7 @@ function liveMonthTotal(monthKey, fallback) {
   return categoryValues.length ? categoryValues.reduce((a, b) => a + b, 0) : fallback;
 }
 // MONTHLY_DATA ใช้ key แบบ oct25/nov25/... ส่วน adSpend.json ใช้ ISO "YYYY-MM" — แมประหว่างสองแบบตรงนี้
-const MONTH_ISO = { oct25: "2025-10", nov25: "2025-11", dec25: "2025-12", jan26: "2026-01", feb26: "2026-02", mar26: "2026-03", apr26: "2026-04", may26: "2026-05", jun26: "2026-06", jul26: "2026-07" };
+const MONTH_ISO = { oct25: "2025-10", nov25: "2025-11", dec25: "2025-12", jan26: "2026-01", feb26: "2026-02", mar26: "2026-03", apr26: "2026-04", may26: "2026-05", jun26: "2026-06", jul26: "2026-07", aug26: "2026-08" };
 
 // เดือนที่ใช้เป็น "ค่าเริ่มต้น/ปัจจุบัน" ของหน้าแรก — แก้ตรงนี้เดือนเดียวเวลาเลื่อนเดือน
 const CURRENT_SPEND_MONTH = "2026-06";
@@ -105,7 +105,7 @@ const GRAND_TOTAL = {
 };
 
 // ============================================================
-// ข้อมูลรายเดือน (ต.ค. 2025 – ก.ค. 2026) สำหรับ Filter เลือกเดือน
+// ข้อมูลรายเดือน (ต.ค. 2025 – ส.ค. 2026) สำหรับ Filter เลือกเดือน
 // spend: ดึงสดจาก Facebook Ads MCP จริง (6 บัญชี รวม Nose Open 01-03, Semi Open, เสริมหน้าอก, ยกคิ้ว-ดึงหน้า)
 // deposit/online/sales: คำนวณจากไฟล์ธุรกรรมจริง Data_S45_Clinic (มีถึง 9 ส.ค. 2026 เท่านั้น
 // ไฟล์นี้ไม่ครอบคลุมย้อนไปถึง ต.ค.-ธ.ค. 2025 จึงไม่มียอดขายให้เดือนเหล่านั้น)
@@ -123,10 +123,12 @@ const MONTHLY_DATA = {
   may26: { label: "พฤษภาคม 2026", spend: liveMonthTotal(MONTH_ISO.may26, 1430197), deposit: 3300981, online: 12605700, sales: 13185700 },
   // spend: เท่ากับ GRAND_TOTAL.spend เสมอ (คำนวณจาก adSpend.json เดือน 2026-06 ถ้ามี)
   jun26: { label: "มิถุนายน 2026", spend: GRAND_TOTAL.spend, deposit: 2678980, online: 11608200, sales: 10448010 },
-  // อัปเดตสเปนด์ ก.ค. 2026 สดจาก Facebook Ads MCP ณ 27 ก.ค. 2026 (รวม Nose Open 01-03 + Semi Open + เสริมหน้าอก/ดูดไขมัน + ยกคิ้ว-ดึงหน้า + Inter)
+  // อัปเดตสเปนด์ ก.ค. 2026 สดจาก Facebook Ads MCP ณ 12 ส.ค. 2026 — เดือนปิดครบแล้ว (1-31 ก.ค.)
   // ยอดรวมใช้ค่า total ใน adSpend.json = ผลรวม 6 บัญชี (ไม่นับ Inter ซ้ำ เพราะ Inter เป็นแคมเปญย่อยในบัญชี Nose Open 02 อยู่แล้ว)
-  // deposit/online/sales ยังคงอ้างอิงไฟล์ธุรกรรมเดิม (ไฟล์ SharePoint ล่าสุดที่ตรวจสอบยังไม่มีข้อมูลธุรกรรมเกินปลายเดือนมิ.ย. — ยังไม่ได้อัปเดตส่วนนี้)
-  jul26: { label: "กรกฎาคม 2026 (1–27, สเปนด์สดถึงวันนี้)", spend: liveMonthTotal(MONTH_ISO.jul26, 1382418), deposit: 91000, online: 880800, sales: 287300 },
+  // deposit/online/sales คำนวณจาก RAW_TX จริงทั้งเดือน (ไฟล์ Data_S45_Clinic ครอบคลุมถึง 9 ส.ค. 2026 จึงมีข้อมูล ก.ค. ครบทั้งเดือน)
+  jul26: { label: "กรกฎาคม 2026", spend: liveMonthTotal(MONTH_ISO.jul26, 1550958), deposit: 3609892, online: 11298798, sales: 15612190 },
+  // สเปนด์สดถึงวันนี้ (1-12 ส.ค.) จาก Facebook Ads MCP · deposit/online/sales จาก RAW_TX เฉพาะ 1-9 ส.ค. (ขอบเขตข้อมูลจริงล่าสุดในไฟล์ธุรกรรม)
+  aug26: { label: "สิงหาคม 2026 (1–9, ข้อมูลธุรกรรมล่าสุด)", spend: liveMonthTotal(MONTH_ISO.aug26, 531522), deposit: 403000, online: 3780300, sales: 2259030 },
 };
 const MONTH_OPTIONS = Object.entries(MONTHLY_DATA).map(([k, v]) => [k, v.label]);
 
@@ -552,7 +554,8 @@ const MONTH_BOUNDS = {
   apr26: ["2026-04-01", "2026-04-30"],
   may26: ["2026-05-01", "2026-05-31"],
   jun26: ["2026-06-01", "2026-06-30"],
-  jul26: ["2026-07-01", "2026-07-27"],
+  jul26: ["2026-07-01", "2026-07-31"],
+  aug26: ["2026-08-01", "2026-08-12"],
 };
 
 function computeExecMetricsForRange(range, proc) {
