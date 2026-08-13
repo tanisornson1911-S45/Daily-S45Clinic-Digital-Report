@@ -238,6 +238,17 @@ const DOCTOR_PROC_LABELS = {
   other: "อื่นๆ (Eye/เสริมคาง/เสริมหน้าผาก)",
 };
 const DOCTOR_PROC_OPTIONS = [["all", "รวมทุกหัตถการ"], ...Object.entries(DOCTOR_PROC_LABELS)];
+// รายชื่อหมอทั้งหมด ใช้เป็นตัวเลือก Dropdown "แยกหมอ" ในสรุปเคสมัดจำแยกตามหมอ — รวมทั้งชื่อจาก DOCTOR_PROC (มิ.ย.)
+// และชื่อจริงทั้งหมดที่พบในไฟล์ธุรกรรม RAW_TX (ครอบคลุมทุกเดือน) เพราะสะกดไม่ตรงกันบางชื่อ (เช่น "หมอจิจ๊ะ" ในไฟล์มิ.ย.
+// กับ "หมอจิ๊จ๊ะ" ในไฟล์ธุรกรรมดิบ) และมีหมอบางคนที่ไม่มีเคสมัดจำในมิ.ย.เลยจึงไม่อยู่ใน DOCTOR_PROC แต่มีเคสในเดือนอื่น
+// ตัดค่า "รอระบุ" ออกเพราะไม่ใช่ชื่อหมอจริง (แปลว่ายังไม่ได้ระบุ)
+const DOCTOR_NAME_OPTIONS = [
+  ["all", "ทุกคน (รวม)"],
+  ...[...new Set([...DOCTOR_PROC.map((r) => r.doctor), ...RAW_TX.map((t) => t.doc)])]
+    .filter((name) => name && name !== "รอระบุ")
+    .sort()
+    .map((name) => [name, name]),
+];
 
 const DOCTOR_TOTAL = DOCTOR_PROC.reduce(
   (acc, r) => ({ cases: acc.cases + r.cases, deposit: acc.deposit + r.deposit }),
@@ -1041,6 +1052,7 @@ export default function AdsDashboard() {
   const [procFilter, setProcFilter] = useState("all");
   const [doctorSort, setDoctorSort] = useState("cases"); // "cases" | "deposit"
   const [doctorProcFilter, setDoctorProcFilter] = useState("all");
+  const [doctorNameFilter, setDoctorNameFilter] = useState("all");
   const [funnelFilter, setFunnelFilter] = useState("all");
   const [funnelMonthFilter, setFunnelMonthFilter] = useState("jul");
   const [loaChannel, setLoaChannel] = useState("normal");
@@ -1108,7 +1120,8 @@ export default function AdsDashboard() {
   const activeDoctors = isJunFull
     ? null
     : (() => {
-        const withDeposit = txInRange.filter((t) => t.dep > 0);
+        const byProc = doctorProcFilter === "all" ? txInRange : txInRange.filter((t) => t.p === doctorProcFilter);
+        const withDeposit = byProc.filter((t) => t.dep > 0);
         const byDoc = {};
         withDeposit.forEach((t) => {
           if (!byDoc[t.doc]) byDoc[t.doc] = { name: t.doc, cases: 0, deposit: 0, total: 0 };
@@ -2093,14 +2106,18 @@ export default function AdsDashboard() {
               <h2 className="text-sm font-semibold text-slate-700">สรุปเคสมัดจำแยกตามหมอ</h2>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {isJunFull && (
-                <Select
-                  icon={Stethoscope}
-                  value={doctorProcFilter}
-                  onChange={setDoctorProcFilter}
-                  options={DOCTOR_PROC_OPTIONS}
-                />
-              )}
+              <Select
+                icon={Stethoscope}
+                value={doctorProcFilter}
+                onChange={setDoctorProcFilter}
+                options={DOCTOR_PROC_OPTIONS}
+              />
+              <Select
+                icon={Users}
+                value={doctorNameFilter}
+                onChange={setDoctorNameFilter}
+                options={DOCTOR_NAME_OPTIONS}
+              />
               <button
                 onClick={() => setDoctorSort(doctorSort === "cases" ? "deposit" : "cases")}
                 className="flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5"
@@ -2114,7 +2131,8 @@ export default function AdsDashboard() {
             คนไข้ที่มัดจำเข้ามาช่วง {rangeLabel} ทุกช่องทาง
             {!isJunFull ? (
               <> · รวม {(activeDoctors || []).reduce((s, d) => s + d.cases, 0)} เคส · ยอดมัดจำรวม ฿
-                {fmtTHB((activeDoctors || []).reduce((s, d) => s + d.deposit, 0))} (ไม่แยกหัตถการสำหรับเดือนนี้)</>
+                {fmtTHB((activeDoctors || []).reduce((s, d) => s + d.deposit, 0))}
+                {doctorProcFilter !== "all" ? ` · เฉพาะ ${DOCTOR_PROC_LABELS[doctorProcFilter]}` : ""}</>
             ) : doctorProcFilter === "all" ? (
               <> · รวม {DOCTOR_TOTAL.cases} เคส · ยอดมัดจำรวม ฿{fmtTHB(DOCTOR_TOTAL.deposit)}</>
             ) : (
@@ -2123,11 +2141,18 @@ export default function AdsDashboard() {
           </p>
 
           {(() => {
-            const doctorRows = isJunFull ? sortedDoctors : [...(activeDoctors || [])].sort((a, b) => (doctorSort === "cases" ? b.cases - a.cases : b.deposit - a.deposit));
-            const maxC = isJunFull ? maxCases : Math.max(...doctorRows.map((d) => d.cases), 1);
-            const maxD = isJunFull ? maxDeposit : Math.max(...doctorRows.map((d) => d.deposit), 1);
+            const allRows = isJunFull ? sortedDoctors : [...(activeDoctors || [])].sort((a, b) => (doctorSort === "cases" ? b.cases - a.cases : b.deposit - a.deposit));
+            const doctorRows = doctorNameFilter === "all" ? allRows : allRows.filter((d) => d.name === doctorNameFilter);
+            const maxC = isJunFull ? maxCases : Math.max(...allRows.map((d) => d.cases), 1);
+            const maxD = isJunFull ? maxDeposit : Math.max(...allRows.map((d) => d.deposit), 1);
             if (doctorRows.length === 0) {
-              return <p className="text-sm text-slate-400 py-4 text-center">ไม่มีเคสมัดจำในเดือนนี้ {!isJunFull && activeDoctors && activeDoctors.length === 0 ? "(ไม่มีข้อมูลในช่วงวันที่นี้)" : ""}</p>;
+              return (
+                <p className="text-sm text-slate-400 py-4 text-center">
+                  {doctorNameFilter !== "all"
+                    ? `ไม่มีเคสมัดจำของ ${doctorNameFilter} ในช่วงนี้`
+                    : `ไม่มีเคสมัดจำในเดือนนี้ ${!isJunFull && activeDoctors && activeDoctors.length === 0 ? "(ไม่มีข้อมูลในช่วงวันที่นี้)" : ""}`}
+                </p>
+              );
             }
             return (
               <div className="space-y-3">
