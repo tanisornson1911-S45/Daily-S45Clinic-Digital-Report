@@ -1709,30 +1709,6 @@ export default function AdsDashboard() {
           </div>
         </div>
 
-        {activePage === "overview" && (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 px-4 py-3 mb-6 flex items-start gap-2">
-            <CheckCircle2 size={16} className="text-emerald-600 mt-0.5 shrink-0" />
-            <p className="text-xs text-emerald-800 leading-relaxed">
-              <span className="font-semibold">เลือกช่วงวันที่ได้อิสระที่ปุ่มด้านบน</span> — ส่วนที่เปลี่ยนตามช่วงวันที่จริง (คำนวณสดจากไฟล์ธุรกรรม
-              รายแถว วันต่อวัน ไม่ใช่แค่รายเดือน): ยอดขายรวม, Facebook breakdown แยกหัตถการ, ช่องทางอื่น (Line/Sale-BA), สรุปเคสมัดจำแยกตามหมอ,
-              ระยะเวลาปิด OR, กราฟ/เป้าหมาย/AI Insight ต่อหัตถการ (ยกเว้น Inter ที่ไม่มีแท็กแยกในไฟล์ธุรกรรม), ยอด OR/Inbox และงบ LINE OA Broadcast
-              ในสรุปภาพรวม (เฉพาะช่วงที่ตรงกับเดือนมิ.ย./ก.ค. ที่มีข้อมูล — ค่าโฆษณาประมาณการจากยอดรายเดือนจริงเฉลี่ยตามสัดส่วนวันที่เลือก) ·{" "}
-              <span className="font-semibold">ส่วนที่ยังคงล็อกไว้ที่มิถุนายนเท่านั้น</span> เพราะไม่มีข้อมูลรายวันของเดือนอื่น: สัดส่วนงบตามช่องทางโฆษณา, Bad
-              Lead, เคสเด่นคุณหมอ, แผนงาน Digital ต่างๆ (Sales Funnel/Inbox/LINE OA Broadcast รายหัตถการมีตัวเลือกเดือน มิ.ย./ก.ค. แยกในการ์ดของตัวเองแล้ว)
-            </p>
-          </div>
-        )}
-        {isDataStale && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 mb-6 flex items-start gap-2">
-            <AlertTriangle size={16} className="text-amber-600 mt-0.5 shrink-0" />
-            <p className="text-xs text-amber-800 leading-relaxed">
-              <span className="font-semibold">วันนี้ตามเวลาจริงคือ {fmtDateTh(REAL_TODAY)}</span> ซึ่งเลยกว่าข้อมูลล่าสุดที่มีในไฟล์
-              ({fmtDateTh(MAX_DATA_DATE)}) — ปุ่มเลือกวันที่จึงจำกัดไม่ให้เลือกเกินวันที่มีข้อมูลจริงไปก่อน เพื่อเลี่ยงตัวเลขว่างเปล่า
-              กรุณาอัปเดตไฟล์ธุรกรรมและ Facebook Ads spend ให้ครอบคลุมถึงวันนี้เพื่อให้แดชบอร์ดสดตามเวลาจริงทั้งหมด
-            </p>
-          </div>
-        )}
-
         {/* ---- All-channel totals + ROAS breakdown (แถว "รวม" สีน้ำตาลในชีตต้นฉบับ) ---- */}
 {activePage === "sales" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mb-6">
