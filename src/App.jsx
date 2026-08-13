@@ -3793,10 +3793,10 @@ export default function AdsDashboard() {
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-slate-700">Semi Open</p>
                   <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100 rounded-full px-2 py-0.5">
-                    Phase 1 — เริ่มดำเนินการแล้ว
+                    Phase 2 — กำลังดำเนินการ
                   </span>
                 </div>
-                <p className="text-sm text-slate-600 mt-0.5">เริ่มทำตามแผนแยกเพจแล้วในขั้นตอน Phase 1</p>
+                <p className="text-sm text-slate-600 mt-0.5">ผ่าน Phase 1 แล้ว และกำลังดำเนินการ Phase 2 สำหรับแผนของเพจรอง</p>
               </div>
             </div>
 
