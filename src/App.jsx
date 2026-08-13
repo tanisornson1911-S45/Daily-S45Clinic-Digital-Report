@@ -538,17 +538,17 @@ function MetricCard({ icon: Icon, label, value, sub, tone = "slate", delta, good
   const isFlat = hasDelta && Math.abs(delta) < 0.05;
   const isGood = isFlat ? null : isUp === (goodDirection === "up");
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <div className="flex items-center gap-2">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${tones[tone]}`}>
+    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm overflow-hidden min-w-0">
+      <div className="flex items-center justify-between gap-x-2 gap-y-1 mb-3 flex-wrap">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${tones[tone]}`}>
             <Icon size={16} />
           </div>
           <span className="text-sm text-slate-500 font-medium">{label}</span>
         </div>
         {hasDelta && (
           <span
-            className={`flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-md ${
+            className={`flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-md shrink-0 whitespace-nowrap ${
               isFlat ? "bg-slate-50 text-slate-400" : isGood ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
             }`}
           >
@@ -557,8 +557,8 @@ function MetricCard({ icon: Icon, label, value, sub, tone = "slate", delta, good
           </span>
         )}
       </div>
-      <div className="text-2xl font-bold text-slate-800 tracking-tight">{value}</div>
-      {sub && <div className={`text-xs mt-1 font-medium ${tone === "red" ? "text-rose-500" : "text-slate-400"}`}>{sub}</div>}
+      <div className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight break-words">{value}</div>
+      {sub && <div className={`text-xs mt-1 font-medium break-words ${tone === "red" ? "text-rose-500" : "text-slate-400"}`}>{sub}</div>}
     </div>
   );
 }
