@@ -3585,16 +3585,16 @@ export default function AdsDashboard() {
         </div>
 )}
 
-        {/* ---- NEW: Ads Plan Jul 2026 ---- */}
+        {/* ---- NEW: Ads Plan Aug 2026 ---- */}
 {activePage === "ads" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center">
               <Rocket size={16} />
             </div>
-            <h2 className="text-sm font-semibold text-slate-700">แผนโฆษณา Digital — Ads Plan Jul 2026</h2>
+            <h2 className="text-sm font-semibold text-slate-700">แผนโฆษณา Digital — Ads Plan Aug 2026</h2>
           </div>
-          <p className="text-xs text-slate-400 mb-5 ml-10">แผนการดำเนินงานโฆษณาเดือนกรกฎาคม 2026</p>
+          <p className="text-xs text-slate-400 mb-5 ml-10">แผนการดำเนินงานโฆษณาเดือนสิงหาคม 2026</p>
 
           {/* KPI targets */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
@@ -3623,16 +3623,17 @@ export default function AdsDashboard() {
                 <h3 className="text-sm font-semibold text-slate-700">รูปแบบโฆษณา &amp; งบประมาณ</h3>
               </div>
               <ul className="space-y-1.5 text-sm text-slate-600 list-disc list-inside">
-                <li>ปล่อย Ads รูปแบบ Sale + Messenger ทั้งหมด</li>
-                <li>เฉลี่ยงบ Ads ให้พอดีกับหัตถการ และจำนวนคุณหมอที่ดูแลหัตถการนั้นๆ</li>
-                <li>เพิ่ม Engage Post ในบางตัว เพื่อกระตุ้นภาพรวม Branding</li>
                 <li>
-                  กระจายงบแต่ละหัตถการ <span className="font-semibold text-violet-600">30%</span> จากงบหลัก ไปใช้บนเพจรอง
-                  เพื่อสร้าง Traffic ให้เพจรองของหัตถการนั้น
+                  ปล่อย Ads รูปแบบ <span className="font-semibold">Sale + Messenger</span> และ{" "}
+                  <span className="font-semibold">Engagement + Messenger</span>
                 </li>
                 <li>
-                  <span className="font-semibold">Inter</span> เปลี่ยนมาใช้งานโฆษณาบน <span className="font-semibold">IG</span> แทนการใช้
-                  WhatsApp ร่วมด้วย เนื่องจากปริมาณแชทที่เป็น Bad Lead สูงใน WhatsApp
+                  เพิ่ม <span className="font-semibold">Engagement Post</span> ทุกครั้งที่มีการขึ้น Ads ราคา ทั้งแบบ{" "}
+                  <span className="font-semibold">Dark Post</span> และ <span className="font-semibold">Page Post</span>
+                </li>
+                <li>เฉลี่ยงบ Ads ให้พอดีกับหัตถการ และจำนวนคุณหมอที่ดูแลหัตถการนั้นๆ</li>
+                <li>
+                  เพิ่ม Engage Post ในส่วนของเคส<span className="font-semibold">คุณหมอตี้</span> (แบบไม่เห็นหน้าคุณหมอตี้หรือไม่มีภาพคุณหมอตี้)
                 </li>
               </ul>
             </div>
@@ -3644,14 +3645,27 @@ export default function AdsDashboard() {
               </div>
               <ul className="space-y-1.5 text-sm text-slate-600 list-disc list-inside">
                 <li>
-                  ปรับกลุ่มเป้าหมายเป็น <span className="font-semibold">Interest + Behavior</span> แทนกลุ่มเป้าหมายเดิม
+                  ปรับกลุ่มเป้าหมายเป็น{" "}
+                  <span className="font-semibold">Interest + Behavior + Interest Luxury Brandname</span>
                 </li>
                 <li>
-                  วิเคราะห์กลุ่มเป้าหมายให้ตรง Target Interest มากขึ้น ด้วยการศึกษาพฤติกรรมของ Influencer หรือเคสที่เคยเข้ามารับบริการกับเราแล้ว
+                  <span className="font-semibold">Nose Open</span> — กลุ่มอายุ 25-45 ปี ใช้รูปแบบ Specific Ads (ไม่ใช้ Advantage+)
                 </li>
                 <li>
-                  ใช้งาน <span className="font-semibold">Partnership Ads</span> ร่วมกับ Influencer ที่เคยเป็นเคสของเราเพิ่มเติม โดยดึงเอา
-                  Target ของ Influencer มาใช้งานใน Ads เลย (ผู้ติดตาม, คนที่มีส่วนร่วมกับ Account, คนที่มีปฏิสัมพันธ์กับโพสต์ Influencer)
+                  <span className="font-semibold">Semi-Open</span> — กลุ่มอายุ 25-45 ปี ใช้กลุ่ม Interest Self Confidence + Shopping
+                </li>
+                <li>
+                  <span className="font-semibold">Brow-lift</span> — ใช้กลุ่ม Interest Anti-Aging, Luxury Brandname
+                </li>
+                <li>
+                  <span className="font-semibold">Face-Lift</span> — ใช้กลุ่ม Interest Anti-Aging, Luxury Brand
+                </li>
+                <li>
+                  <span className="font-semibold">Breast</span> — ใช้กลุ่ม Interest Female Body Building
+                </li>
+                <li>
+                  <span className="font-semibold">Inter</span> — ใช้กลุ่มหลักตามแบบของไทย ส่วนกลุ่ม Scale ใช้ Interest High Value
+                  Purchase (Indo) + Location Indonesia
                 </li>
               </ul>
             </div>
@@ -3663,11 +3677,12 @@ export default function AdsDashboard() {
               </div>
               <ul className="space-y-1.5 text-sm text-slate-600 list-disc list-inside">
                 <li>
-                  เน้นโซนกรุงเทพฯ และ<span className="font-semibold">ปริมณฑล</span> รัศมี <span className="font-semibold">40 กม.</span> รอบคลินิกก่อน (สำหรับโพสต์รีวิว, Promotion)
+                  <span className="font-semibold">กลุ่มระยะใกล้</span> — Location The Klinique รัศมี{" "}
+                  <span className="font-semibold">20-40 กม.</span>
                 </li>
                 <li>
-                  ขยายทั่วประเทศ เน้นจังหวัดที่ GDP ต่อหัวค่อนข้างสูง:{" "}
-                  <span className="font-semibold">เชียงใหม่, ขอนแก่น, ภูเก็ต, อุบลราชธานี, พัทยา</span> (Promotion)
+                  <span className="font-semibold">กลุ่มระยะไกล</span> — Location ประเทศไทย เน้นจังหวัด{" "}
+                  <span className="font-semibold">เชียงใหม่, ขอนแก่น, อุบลราชธานี, พัทยา, ภูเก็ต, กรุงเทพฯ</span>
                 </li>
               </ul>
             </div>
@@ -3709,7 +3724,40 @@ export default function AdsDashboard() {
 
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
             <Layers size={14} className="text-slate-400 mt-0.5 shrink-0" />
-            <p>แผนงานนี้เป็นแผนการดำเนินงานที่ทีมวางไว้สำหรับเดือนกรกฎาคม 2026 ยังไม่ใช่ผลจริง — ใช้เป็นแนวทางติดตามเทียบกับผลลัพธ์เมื่อถึงรอบรายงานเดือนถัดไป</p>
+            <p>แผนงานนี้เป็นแผนการดำเนินงานที่ทีมวางไว้สำหรับเดือนสิงหาคม 2026 ยังไม่ใช่ผลจริง — ใช้เป็นแนวทางติดตามเทียบกับผลลัพธ์เมื่อถึงรอบรายงานเดือนถัดไป</p>
+          </div>
+        </div>
+)}
+
+        {/* ---- NEW: แผนเพิ่มเติม Nose Open หมอจิ๊จ๊ะ ---- */}
+{activePage === "ads" && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-8 h-8 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center">
+              <Megaphone size={16} />
+            </div>
+            <h2 className="text-sm font-semibold text-slate-700">แผนเพิ่มเติม Nose Open หมอจิ๊จ๊ะ</h2>
+          </div>
+          <p className="text-xs text-slate-400 mb-5 ml-10">Funnel Ads ใหม่ทั้งหมดสำหรับคุณหมอจิ๊จ๊ะ — สิงหาคม 2026</p>
+
+          <div className="rounded-xl border border-pink-100 bg-pink-50/50 p-4">
+            <ul className="space-y-1.5 text-sm text-slate-600 list-disc list-inside">
+              <li>
+                ทำ <span className="font-semibold">Funnel Ads ใหม่ทั้งหมด</span> ของหมอจิ๊จ๊ะ โดยเริ่มจาก{" "}
+                <span className="font-semibold">Engagement Post</span> เพื่อดึงให้คนเข้าถึงราคา{" "}
+                <span className="font-semibold text-pink-600">79,000 บาท</span> เนื่องจากยังไม่มีคนรู้จักราคานี้
+              </li>
+              <li>
+                นำ Creative ของคุณหมอจิ๊จ๊ะที่เป็น <span className="font-semibold">Vlog</span> และ{" "}
+                <span className="font-semibold">เปิดตัวหมอ</span> เข้ามาทำ Engagement เพิ่ม
+              </li>
+              <li>
+                ทำ Engagement Post ของ <span className="font-semibold">Dark Post Ads</span> ราคา 79,000 บาท
+              </li>
+              <li>
+                ปล่อยอัดโพสต์เคสเด่นของคุณหมอจิ๊จ๊ะเพิ่ม พร้อม <span className="font-semibold">Ads Messenger</span>
+              </li>
+            </ul>
           </div>
         </div>
 )}
