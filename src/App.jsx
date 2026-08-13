@@ -123,11 +123,12 @@ const MONTHLY_DATA = {
   may26: { label: "พฤษภาคม 2026", spend: liveMonthTotal(MONTH_ISO.may26, 1430197), deposit: 3300981, online: 12605700, sales: 13185700 },
   // spend: เท่ากับ GRAND_TOTAL.spend เสมอ (คำนวณจาก adSpend.json เดือน 2026-06 ถ้ามี)
   jun26: { label: "มิถุนายน 2026", spend: GRAND_TOTAL.spend, deposit: 2678980, online: 11608200, sales: 10448010 },
-  // อัปเดตสเปนด์ ก.ค. 2026 สดจาก Facebook Ads MCP ณ 12 ส.ค. 2026 — เดือนปิดครบแล้ว (1-31 ก.ค.)
-  // ยอดรวมใช้ค่า total ใน adSpend.json = ผลรวม 6 บัญชี (ไม่นับ Inter ซ้ำ เพราะ Inter เป็นแคมเปญย่อยในบัญชี Nose Open 02 อยู่แล้ว)
+  // สเปนด์ ก.ค. 2026 อัปเดต 13 ส.ค. 2026 เป็น 1,673,928.18 บาท (ปัดเป็น 1673928) ตามตัวเลขที่ทีมยืนยันมา ครอบคลุม
+  // ทุกบัญชีและทุกแคมเปญทั้งที่ปิด/ลบ/รันอยู่ — สูงกว่ายอดที่ดึงจาก Facebook Ads MCP account-level ตรงๆ (1,550,958)
+  // เพราะ MCP ดึงยอดระดับบัญชีไม่ครบทุกแคมเปญที่ถูกลบ (ดู comment ใน src/data/adSpend.json "UPDATE 2026-08-13")
   // deposit/online คำนวณจาก RAW_TX จริงทั้งเดือน · sales ใช้ Total price ถ้าเคสปิดแล้ว ไม่งั้น fallback เป็น Online
   // price (เคสที่ยังไม่ถึงวันผ่าตัดจริง จึงยังไม่มี Total price บันทึก) — 36 เคสจาก 131 เคสของเดือนนี้ใช้ fallback
-  jul26: { label: "กรกฎาคม 2026", spend: liveMonthTotal(MONTH_ISO.jul26, 1550958), deposit: 3609892, online: 11298798, sales: 19544667 },
+  jul26: { label: "กรกฎาคม 2026", spend: liveMonthTotal(MONTH_ISO.jul26, 1673928), deposit: 3609892, online: 11298798, sales: 19544667 },
   // สเปนด์สดถึงวันนี้ (1-12 ส.ค.) จาก Facebook Ads MCP · deposit/online/sales จาก RAW_TX เฉพาะ 1-9 ส.ค. (ขอบเขตข้อมูลจริงล่าสุดในไฟล์ธุรกรรม)
   aug26: { label: "สิงหาคม 2026 (1–9, ข้อมูลธุรกรรมล่าสุด)", spend: liveMonthTotal(MONTH_ISO.aug26, 531522), deposit: 403000, online: 3780300, sales: 2259030 },
 };
