@@ -1053,8 +1053,10 @@ export default function AdsDashboard() {
   const [interDoctorFilter, setInterDoctorFilter] = useState("all");
   const [interMonthFilter, setInterMonthFilter] = useState("jul");
   const [dateRange, setDateRange] = useState({ start: "2026-06-01", end: "2026-06-30" });
-  const [compareEnabled, setCompareEnabled] = useState(false);
-  const [compareRange, setCompareRange] = useState(previousPeriodRange({ start: "2026-06-01", end: "2026-06-30" }));
+  // ค่าเริ่มต้นเปิด Compare ไว้เลย เทียบมิถุนายนกับพฤษภาคมเต็มเดือน (ไม่ใช้ previousPeriodRange เพราะพ.ค. มี 31 วัน
+  // ยาวกว่ามิ.ย. 1 วัน จะเลื่อนไปเริ่ม 2 พ.ค. แทนที่จะเป็นทั้งเดือน) — ผู้ใช้ยังปรับช่วงเทียบเองได้ตามปกติจาก Date Picker
+  const [compareEnabled, setCompareEnabled] = useState(true);
+  const [compareRange, setCompareRange] = useState({ start: "2026-05-01", end: "2026-05-31" });
   const monthFilter = "jun26"; // คงไว้เพื่อความเข้ากันได้กับส่วนที่ล็อกไว้ที่มิถุนายน (Sales Funnel/Inbox/LOA/Bad Lead/Inter)
 
   // ---- Sidebar navigation + dark mode ----
