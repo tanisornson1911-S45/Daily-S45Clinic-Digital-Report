@@ -46,8 +46,9 @@ if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET) {
 const DRIVE_ID = "b!EzzI__YZKkOT4A8owKgx9plShVOjW0VJq7Ee489Af4_1GTH3bJdHTYtt0_IUxba2";
 const ITEM_ID = "01LCP4JOM2VG676DMNTZA33WKVSVTZLJS5";
 
-// The 3 sheets that hold real (not just planning) transaction/OR data.
+// The sheets that hold real (not just planning) transaction/OR data.
 const SHEETS = [
+  "มัดจำ 2026",
   "ปรึกษา 2026",
   "ยอดORจริง+Forecast (พี่เปา)",
   "Forecast OR ยอดออนไลน์ 2026",
