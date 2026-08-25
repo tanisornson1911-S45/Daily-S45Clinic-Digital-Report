@@ -304,7 +304,7 @@ const DOCTOR_TOTAL = DOCTOR_PROC.reduce(
 // deposit (ยอดมัดจำ) = Online Price + Medical check up Etc. (ไม่รวม Top up)
 // total (ยอด OR / Total) = คอลัมน์ Total ในไฟล์ต้นฉบับ
 // ============================================================
-const INTER_MONTH_LABELS = { jun26: "มิถุนายน 2026", jul26: "กรกฎาคม 2026" };
+const INTER_MONTH_LABELS = { jun26: "มิถุนายน 2569", jul26: "กรกฎาคม 2569" };
 const INTER_MONTH_OPTIONS = Object.entries(INTER_MONTH_LABELS);
 const INTER_DOCTOR_LABELS = {
   all: "ทุกคน (รวม)",
@@ -428,8 +428,8 @@ const LOA_CHANNEL_OPTIONS = [
   ["aftercare", "Line OA Aftercare"],
 ];
 const LOA_MONTH_OPTIONS = [
-  ["jul", "กรกฎาคม 2026"],
-  ["jun", "มิถุนายน 2026"],
+  ["jul", "กรกฎาคม 2569"],
+  ["jun", "มิถุนายน 2569"],
 ];
 
 // ============================================================
@@ -1227,6 +1227,11 @@ export default function AdsDashboard() {
     return result;
   })();
 
+  // ระยะเวลาปิด OR สำหรับ "หน้า Inbox & Bad Lead" — ต้องผูกกับ funnelMonthFilter (มิ.ย./ก.ค. เลือกจาก
+  // dropdown บนหัวข้อ Inbox) ไม่ใช่ dateRange ของตัวเลือกวันที่หลักด้านบนสุด (คนละตัวกัน — ก่อนหน้านี้หน้านี้
+  // ใช้ activeLeadTime ซึ่งอิงตาม dateRange ทำให้ตัวเลขไม่ตรงกับหัตถการ/เดือนที่เลือกในหน้า Inbox เอง)
+  const funnelLeadTime = liveLeadTimeDays(funnelMonthFilter === "jul" ? "2026-07" : "2026-06");
+
   // ยอดขายรวม (deposit/online/sales) ในช่วงวันที่เลือก + ค่าโฆษณา (ประมาณจากยอดรายเดือนจริง เฉลี่ยตามสัดส่วนวันที่ทับซ้อน)
   // แก้บั๊ก: เดิมไม่กรองตาม procFilter ทำให้สลับหัตถการแล้วยอดไม่เปลี่ยนเมื่อช่วงวันที่ไม่ใช่เดือนมิ.ย.เต็มเดือน
   const txInRangeByProc = procFilter === "all" ? txInRange : txInRange.filter((t) => t.p === procFilter);
@@ -1404,8 +1409,8 @@ export default function AdsDashboard() {
 
   const funnelOptions = Object.entries(FUNNEL_DATA).map(([k, v]) => [k, v.label]);
   const FUNNEL_MONTH_OPTIONS = [
-    ["jul", "กรกฎาคม 2026"],
-    ["jun", "มิถุนายน 2026"],
+    ["jul", "กรกฎาคม 2569"],
+    ["jun", "มิถุนายน 2569"],
   ];
   const funnelSource = funnelMonthFilter === "jul" ? FUNNEL_DATA_JUL : FUNNEL_DATA;
   const funnel = funnelSource[funnelFilter];
@@ -1673,7 +1678,7 @@ export default function AdsDashboard() {
   );
   const maxLoaSelCountTotal = Math.max(...loaSelCountCompare.map((r) => r.total));
   const loaSelMostUsedPctRow = [...loaSelCountCompare].filter((r) => r.total > 0).sort((a, b) => b.used / b.total - a.used / a.total)[0];
-  const loaSelMonthLabel = loaChannel === "aftercare" ? "กรกฎาคม 2026" : loaMonthFilter === "jul" ? "กรกฎาคม 2026" : "มิถุนายน 2569";
+  const loaSelMonthLabel = loaChannel === "aftercare" ? "กรกฎาคม 2569" : loaMonthFilter === "jul" ? "กรกฎาคม 2569" : "มิถุนายน 2569";
   const loaSelSheetNote =
     loaChannel === "aftercare"
       ? 'ไฟล์ "S45 - LINE OA After Care (LOA)" กรกฎาคม 2026 '
@@ -2256,7 +2261,7 @@ export default function AdsDashboard() {
             </div>
           </div>
           <p className="text-xs text-slate-400 mb-4 ml-10">
-            จากไฟล์ Inter Sale เดือน{interMonthFilter === "jul" ? "กรกฎาคม (ถึง 29/7) 2026" : "มิถุนายน 2026"} · {INTER_DOCTOR_LABELS[interDoctorFilter]} · รวม {interDoctorTotal.cases} เคส
+            จากไฟล์ Inter Sale เดือน{interMonthFilter === "jul" ? "กรกฎาคม (ถึง 29/7) 2569" : "มิถุนายน 2569"} · {INTER_DOCTOR_LABELS[interDoctorFilter]} · รวม {interDoctorTotal.cases} เคส
           </p>
 
           <div className="grid grid-cols-3 gap-3 mb-5">
@@ -2332,7 +2337,7 @@ export default function AdsDashboard() {
           </div>
           <p className="text-xs text-slate-400 mb-4">
             {funnel.label} · ยอดยิง Ads → Inbox{funnel.sales != null ? " → ปิดบิล (มัดจำ+ปรึกษา) → ยอด OR จริง" : ""} · รายวันทั้งเดือน
-            {funnelMonthFilter === "jul" ? "กรกฎาคม 2026" : "มิถุนายน 2026"}
+            {funnelMonthFilter === "jul" ? "กรกฎาคม 2569" : "มิถุนายน 2569"}
           </p>
 
           {/* Funnel metric cards */}
@@ -2852,7 +2857,7 @@ export default function AdsDashboard() {
             </div>
           </div>
           <p className="text-xs text-slate-400 mb-5 ml-10">
-            {inboxDailyFunnel.label} · รายวันทั้งเดือน{funnelMonthFilter === "jul" ? "กรกฎาคม 2026" : "มิถุนายน 2569"} ·{" "}
+            {inboxDailyFunnel.label} · รายวันทั้งเดือน{funnelMonthFilter === "jul" ? "กรกฎาคม 2569" : "มิถุนายน 2569"} ·{" "}
             {inboxDailyTargetPerDay != null
               ? `เป้าหมาย ${fmtTHB(inboxDailyTargetPerDay)} แชท/วัน (ตัวเลขจริงที่ทีมกำหนด)`
               : "หัตถการนี้ยังไม่มีเป้าหมาย Inbox ต่อวันที่กำหนดไว้"}
@@ -2911,14 +2916,14 @@ export default function AdsDashboard() {
             <div className="flex items-center gap-2 mb-3">
               <Clock size={14} className="text-cyan-600" />
               <h3 className="text-sm font-semibold text-slate-700">
-                ระยะเวลาที่ใช้ปิด OR (จากวันที่ทัก → วันผ่าตัดจริง) — {rangeLabel}
+                ระยะเวลาที่ใช้ปิด OR (จากวันที่ทัก → วันผ่าตัดจริง) — {funnelMonthFilter === "jul" ? "กรกฎาคม 2569" : "มิถุนายน 2569"}
               </h3>
             </div>
-            {!activeLeadTime ? (
-              <p className="text-sm text-slate-400 py-4 text-center">ไม่มีข้อมูลสำหรับเดือนนี้ (ไฟล์ธุรกรรมครอบคลุมเฉพาะ ม.ค.–25 ส.ค. 2026)</p>
+            {!funnelLeadTime ? (
+              <p className="text-sm text-slate-400 py-4 text-center">ไม่มีข้อมูลสำหรับเดือนนี้</p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                {Object.entries(activeLeadTime).map(([key, r]) => (
+                {Object.entries(funnelLeadTime).map(([key, r]) => (
                   <div key={key} className="bg-white rounded-lg p-3 border border-cyan-100 text-center">
                     <p className="text-[11px] text-slate-500 font-medium mb-0.5">{r.label}</p>
                     <p className="text-lg font-bold text-cyan-700">{r.medianDays != null ? `${r.medianDays} วัน` : "—"}</p>
@@ -2984,8 +2989,8 @@ export default function AdsDashboard() {
             เป้าหมาย Inbox/วัน: Nose Open 120 แชท · Semi Open 35 แชท · ยกคิ้ว 130 แชท · เสริมหน้าอก 25 แชท · Inter 10 แชท (ตัวเลขจริงที่ทีมกำหนด) —
             "รวมทุกหัตถการ" ใช้ผลรวมของทั้ง 5 หัตถการ ({fmtTHB(INBOX_DAILY_TARGET_ALL)} แชท/วัน)
             {inboxHasSalesData
-              ? ` · ยอดปิดปรึกษา/ปิดมัดจำ มาจากไฟล์ Sales Funnel เดียวกับ Inbox (ไม่ได้แยกช่องทาง จึงเป็นยอดรวมทุกช่องทาง ไม่ใช่ Facebook อย่างเดียว) ส่วน "จำนวนเคสที่ปิด OR" นับจากวันที่ระบุในคอลัมน์ OR Date ของไฟล์ธุรกรรมจริง (Data_S45_Clinic) เดือนมิถุนายน 2026 — ก็ไม่ได้แยกช่องทางเช่นกัน`
-              : " · Inbox รายวันมาจากไฟล์ \"ยอดขาย Online S45 Clinic\" ชีตกรกฎาคม 2026 (ไม่ได้แยกช่องทาง จึงเป็นยอดรวมทุกช่องทาง ไม่ใช่ Facebook อย่างเดียว)"}
+              ? ` · ยอดปิดปรึกษา/ปิดมัดจำ มาจากไฟล์ Sales Funnel เดียวกับ Inbox (ไม่ได้แยกช่องทาง จึงเป็นยอดรวมทุกช่องทาง ไม่ใช่ Facebook อย่างเดียว) ส่วน "จำนวนเคสที่ปิด OR" นับจากวันที่ระบุในคอลัมน์ OR Date ของไฟล์ธุรกรรมจริง (Data_S45_Clinic) เดือนมิถุนายน 2569 — ก็ไม่ได้แยกช่องทางเช่นกัน`
+              : " · Inbox รายวันมาจากไฟล์ \"ยอดขาย Online S45 Clinic\" ชีตกรกฎาคม 2569 (ไม่ได้แยกช่องทาง จึงเป็นยอดรวมทุกช่องทาง ไม่ใช่ Facebook อย่างเดียว)"}
           </p>
 
           {/* ทีม Online: กำลังคนและภาระงานเฉลี่ยต่อคน */}
@@ -3015,8 +3020,11 @@ export default function AdsDashboard() {
           <div className="rounded-xl border border-rose-100 bg-rose-50/50 p-4 mb-5">
             <div className="flex items-center gap-2 mb-3">
               <XCircle size={14} className="text-rose-500" />
-              <h3 className="text-sm font-semibold text-slate-700">Bad Lead เทียบ Inbox ทั้งหมด</h3>
+              <h3 className="text-sm font-semibold text-slate-700">Bad Lead เทียบ Inbox ทั้งหมด — กรกฎาคม 2569</h3>
             </div>
+            <p className="text-[11px] text-amber-600 mb-2">
+              ⚠ การ์ดนี้ตรึงไว้ที่ ก.ค. 2569 เสมอ ไม่ขยับตาม Dropdown เดือนด้านบน เพราะไฟล์ Bad Lead ต้นฉบับมีข้อมูลเดือนกรกฎาคมเดือนเดียว
+            </p>
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-white rounded-lg p-3 border border-rose-100">
                 <p className="text-[11px] text-slate-500 font-medium mb-0.5">จำนวน Bad Lead</p>
