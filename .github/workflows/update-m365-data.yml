@@ -1,9 +1,8 @@
-name: Update M365 raw data (staging)
+name: Update M365 data (RAW_TX pipeline)
 
-# ดึงข้อมูลดิบจากไฟล์ "Data S45 Clinic (5).xlsx" บน SharePoint/OneDrive
-# ผ่าน Microsoft Graph API แล้ว commit ทับ src/data/m365Raw.json อัตโนมัติ
-# ถ้าข้อมูลเปลี่ยน — นี่เป็นการดึงข้อมูลดิบมาเตรียมไว้ (staging) เท่านั้น
-# ยังไม่ถูกนำไปคำนวณตัวเลขจริงบน Dashboard จนกว่าจะมีการตรวจสอบ mapping
+# ดึงข้อมูลดิบจากไฟล์ "Data S45 Clinic (5).xlsx" บน SharePoint/OneDrive ผ่าน Microsoft
+# Graph API (src/data/m365Raw.json) แล้วแปลงเป็น src/data/rawTx.json ที่ App.jsx import
+# ใช้คำนวณ RAW_TX จริง — Dashboard จึงอัปเดตข้อมูลธุรกรรมอัตโนมัติทุกวัน ไม่ต้อง paste มือแล้ว
 #
 # ต้องตั้ง repo secrets ที่ Settings → Secrets and variables → Actions →
 # New repository secret:
@@ -40,14 +39,26 @@ jobs:
           MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
         run: node scripts/fetch-m365-data.mjs
 
+      - name: Build RAW_TX from M365 data
+        run: node scripts/build-raw-tx.mjs
+
       - name: Commit & push if data changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src/data/m365Raw.json
-          if git diff --cached --quiet -- src/data/m365Raw.json; then
-            echo "No change in m365Raw.json — nothing to commit."
-          else
-            git commit -m "chore: update M365 raw data (automated)"
-            git push origin HEAD:main
+          git add src/data/m365Raw.json src/data/rawTx.json
+          if git diff --cached --quiet -- src/data/m365Raw.json src/data/rawTx.json; then
+            echo "No change — nothing to commit."
+            exit 0
           fi
+          git commit -m "chore: update M365 data + rebuild RAW_TX (automated)"
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt) — rebasing onto latest main and retrying..."
+            git fetch origin main
+            git rebase origin/main
+          done
+          echo "::error::Failed to push after 5 attempts."
+          exit 1

@@ -2,18 +2,18 @@
 /**
  * fetch-m365-data.mjs
  * ---------------------------------------------------------------
- * Pulls raw rows from the "Data S45 Clinic (5).xlsx" workbook
- * (live-maintained master file on SharePoint/OneDrive) via the
- * Microsoft Graph Excel API and writes them to src/data/m365Raw.json.
+ * Pulls raw rows from the "Data S45 Clinic (5).xlsx" and
+ * "Inter S45 2026 - Sale part.xlsx" workbooks (live-maintained master
+ * files on SharePoint/OneDrive) via the Microsoft Graph Excel API and
+ * writes them to src/data/m365Raw.json.
  *
- * This is a STAGING pull only — it writes the raw sheet rows as-is.
- * It is intentionally NOT wired into RAW_TX / MONTHLY_DATA in App.jsx
- * yet. Turning these rows into the numbers the dashboard actually
- * calculates from needs a field-by-field mapping + validation pass
- * against known-correct totals (the same way every other data change
- * in this dashboard has been verified before shipping), because this
- * workbook's sheets are forecast/tracking tables, not a 1:1 match for
- * RAW_TX's per-case shape (d/or/ch/p/doc/dep/onl/tot).
+ * This is a raw staging pull — scripts/build-raw-tx.mjs (run right
+ * after this, see .github/workflows/update-m365-data.yml) is what
+ * turns the "มัดจำ 2026" sheet into src/data/rawTx.json, which
+ * src/App.jsx imports as RAW_TX. The Inter Sale Part workbook is
+ * pulled for reconciliation/reference but is not currently mapped
+ * into the dashboard (see App.jsx comments near CATEGORIES/GRAND_TOTAL
+ * for why — most Inter cases are already recorded in "มัดจำ 2026").
  *
  * Auth: Azure AD app registration, client-credentials (app-only) flow
  * with the Files.Read.All Application permission + admin consent.
