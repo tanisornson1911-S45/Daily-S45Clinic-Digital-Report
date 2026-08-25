@@ -188,18 +188,39 @@ const MONTH_OPTIONS = Object.entries(MONTHLY_DATA).map(([k, v]) => [k, v.label])
 
 
 
+// helper: จัดกลุ่ม RAW_TX เดือน CURRENT_SPEND_MONTH ตามหัตถการ กรองด้วย predicate ของ channel
+// (cases/deposit/online/total) — ใช้สร้าง FB_SURGERY/OTHER_CHANNEL_DATA สดแทนพิมพ์ตัวเลขมือ
+function liveSurgeryByChannel(monthIso, channelPredicate, otherLabel) {
+  const rows = txInMonth(monthIso).filter(channelPredicate);
+  const defs = [
+    ["nose_open", "Nose Open"],
+    ["brow_hairline", "Brow Lift"],
+    ["breast_lipo", "Breast"],
+    ["nose_semi", "Semi Open"],
+    ["other", otherLabel],
+  ];
+  return defs.map(([key, label]) => {
+    const sub = rows.filter((t) => t.p === key);
+    return {
+      key,
+      label,
+      cases: sub.length,
+      deposit: sub.reduce((s, t) => s + t.dep, 0),
+      online: sub.reduce((s, t) => s + t.onl, 0),
+      total: sub.reduce((s, t) => s + (t.tot || 0), 0),
+    };
+  });
+}
+
 // ============================================================
-// SOURCE 2 — raw transaction log CSV, filtered Channel = Facebook,
-// Date 1-31 Jul 2026, grouped by Surgery (คำนวณจากไฟล์ธุรกรรมจริง Data_S45_Clinic กรอง Channel = Facebook เท่านั้น)
-// spend: ใช้ค่าสดจาก adSpend.json เดือน CURRENT_SPEND_MONTH เช่นเดียวกับ CATEGORIES
+// SOURCE 2 — RAW_TX เดือน CURRENT_SPEND_MONTH กรอง Channel = Facebook เท่านั้น กรุ๊ปตามหัตถการ
+// คำนวณสดทุกครั้งที่โหลดหน้า (liveSurgeryByChannel) — spend: ใช้ค่าสดจาก adSpend.json เช่นเดียวกับ CATEGORIES
 // ============================================================
-const FB_SURGERY = [
-  { key: "nose_open", label: "Nose Open", cases: 22, deposit: 688163, online: 4435500, total: 3894930, spend: liveSpend(CURRENT_SPEND_MONTH, "nose_open", 892768) },
-  { key: "brow_hairline", label: "Brow Lift", cases: 19, deposit: 342390, online: 2046331, total: 1957210, spend: liveSpend(CURRENT_SPEND_MONTH, "brow_hairline", 503632) },
-  { key: "breast_lipo", label: "Breast", cases: 4, deposit: 20000, online: 223100, total: 159800, spend: liveSpend(CURRENT_SPEND_MONTH, "breast_lipo", 46232) },
-  { key: "nose_semi", label: "Semi Open", cases: 17, deposit: 127000, online: 540400, total: 434200, spend: liveSpend(CURRENT_SPEND_MONTH, "nose_semi", 101825) },
-  { key: "other", label: "อื่นๆ (Eye/เสริมขมับ)", cases: 2, deposit: 50000, online: 120000, total: 148850, spend: null },
-];
+const FB_SURGERY_SPEND_FALLBACK = { nose_open: 892768, brow_hairline: 503632, breast_lipo: 46232, nose_semi: 101825 };
+const FB_SURGERY = liveSurgeryByChannel(CURRENT_SPEND_MONTH, (t) => t.ch === "Facebook", "อื่นๆ (Eye/เสริมขมับ)").map((r) => ({
+  ...r,
+  spend: r.key === "other" ? null : liveSpend(CURRENT_SPEND_MONTH, r.key, FB_SURGERY_SPEND_FALLBACK[r.key]),
+}));
 const FB_BY_KEY = Object.fromEntries(FB_SURGERY.map((r) => [r.key, r]));
 const FB_TOTAL = FB_SURGERY.reduce(
   (acc, r) => ({
@@ -212,8 +233,8 @@ const FB_TOTAL = FB_SURGERY.reduce(
 );
 
 // ============================================================
-// SOURCE 2b — same raw transaction CSV, filtered Channel = Line / WhatsApp / (Sale หาเอง + ช่องทางส่วนตัว BA)
-// Date 1-31 Jul 2026, grouped by Surgery — mirrors FB_SURGERY structure
+// SOURCE 2b — RAW_TX เดือน CURRENT_SPEND_MONTH กรอง Channel = Line / WhatsApp / (Sale หาเอง + ช่องทางส่วนตัว BA)
+// คำนวณสดทุกครั้งที่โหลดหน้า เหมือน FB_SURGERY
 // ============================================================
 const OTHER_CHANNEL_META = {
   line: { label: "LINE", color: "green" },
@@ -221,27 +242,9 @@ const OTHER_CHANNEL_META = {
   sale_ba: { label: "ช่องทางอื่น (Sale หรือ BA)", color: "amber" },
 };
 const OTHER_CHANNEL_DATA = {
-  line: [
-    { key: "nose_open", label: "Nose Open", cases: 16, deposit: 814990, online: 2653280, total: 3063400 },
-    { key: "brow_hairline", label: "Brow Lift", cases: 7, deposit: 100000, online: 607277, total: 614600 },
-    { key: "breast_lipo", label: "Breast", cases: 0, deposit: 0, online: 0, total: 0 },
-    { key: "nose_semi", label: "Semi Open", cases: 5, deposit: 28000, online: 162500, total: 93800 },
-    { key: "other", label: "อื่นๆ (Eye ฯลฯ)", cases: 1, deposit: 3000, online: 39900, total: 64490 },
-  ],
-  whatsapp: [
-    { key: "nose_open", label: "Nose Open", cases: 3, deposit: 75000, online: 306700, total: 935700 },
-    { key: "brow_hairline", label: "Brow Lift", cases: 0, deposit: 0, online: 0, total: 0 },
-    { key: "breast_lipo", label: "Breast", cases: 0, deposit: 0, online: 0, total: 0 },
-    { key: "nose_semi", label: "Semi Open", cases: 0, deposit: 0, online: 0, total: 0 },
-    { key: "other", label: "อื่นๆ (Eye/ETC. ฯลฯ)", cases: 0, deposit: 0, online: 0, total: 0 },
-  ],
-  sale_ba: [
-    { key: "nose_open", label: "Nose Open", cases: 12, deposit: 577989, online: 0, total: 2459510 },
-    { key: "brow_hairline", label: "Brow Lift", cases: 5, deposit: 90000, online: 0, total: 638290 },
-    { key: "breast_lipo", label: "Breast", cases: 5, deposit: 387380, online: 0, total: 502100 },
-    { key: "nose_semi", label: "Semi Open", cases: 5, deposit: 23000, online: 0, total: 92500 },
-    { key: "other", label: "อื่นๆ (Eye ฯลฯ)", cases: 2, deposit: 20000, online: 0, total: 75800 },
-  ],
+  line: liveSurgeryByChannel(CURRENT_SPEND_MONTH, (t) => t.ch === "Line", "อื่นๆ (Eye ฯลฯ)"),
+  whatsapp: liveSurgeryByChannel(CURRENT_SPEND_MONTH, (t) => t.ch === "WhatsApp", "อื่นๆ (Eye/ETC. ฯลฯ)"),
+  sale_ba: liveSurgeryByChannel(CURRENT_SPEND_MONTH, (t) => t.ch === "Sale หาเอง" || t.ch === "ช่องทางส่วนตัว BA", "อื่นๆ (Eye ฯลฯ)"),
 };
 const otherChannelTotalOf = (rows) =>
   rows.reduce(
@@ -250,36 +253,25 @@ const otherChannelTotalOf = (rows) =>
   );
 
 // ============================================================
-// SOURCE 3 — same raw CSV, ALL channels, July 2026, rows with a deposit,
-// grouped by Doctor + Surgery (เคสที่มีการมัดจำเข้ามาในเดือนกรกฎาคม)
-// key maps to the same หัตถการ categories used above; "other" = Eye/เสริมคาง/เสริมหน้าผาก ฯลฯ
+// SOURCE 3 — RAW_TX เดือน CURRENT_SPEND_MONTH ทุกช่องทาง เฉพาะแถวที่มีมัดจำ (dep > 0)
+// กรุ๊ปตาม Doctor + Surgery คำนวณสดทุกครั้งที่โหลดหน้า — key ตรงกับหมวดหัตถการเดียวกับด้านบน
 // ชื่อหมอคงไว้ตามที่พิมพ์ในไฟล์ต้นฉบับเป๊ะ (มีสะกดต่างกัน "จิจ๊ะ"/"จิ๊จ๊ะ" และแถวเคสร่วม 2 หมอ ไม่ได้รวมให้เอง)
 // ============================================================
-const DOCTOR_PROC = [
-  { doctor: "รอระบุ", key: "brow_hairline", cases: 2, deposit: 30000, online: 199800, total: 0 },
-  { doctor: "หมอจิจ๊ะ", key: "nose_open", cases: 6, deposit: 90000, online: 476600, total: 405200 },
-  { doctor: "หมอจิจ๊ะ", key: "nose_semi", cases: 4, deposit: 18000, online: 9900, total: 34700 },
-  { doctor: "หมอจิ๊จ๊ะ", key: "nose_open", cases: 1, deposit: 7563, online: 59100, total: 69100 },
-  { doctor: "หมอจิ๊จ๊ะ+หมอตี้", key: "nose_open", cases: 2, deposit: 30000, online: 0, total: 159500 },
-  { doctor: "หมอจิ๊จ๊ะ+หมอตี้", key: "nose_semi", cases: 1, deposit: 3000, online: 0, total: 9900 },
-  { doctor: "หมอตี้", key: "nose_open", cases: 7, deposit: 1160090, online: 2335000, total: 3272700 },
-  { doctor: "หมอตูน", key: "brow_hairline", cases: 11, deposit: 160000, online: 732831, total: 1388310 },
-  { doctor: "หมอตูน", key: "nose_open", cases: 21, deposit: 813489, online: 1731400, total: 3868920 },
-  { doctor: "หมอตูน", key: "nose_semi", cases: 20, deposit: 136000, online: 620100, total: 438200 },
-  { doctor: "หมอบอย", key: "breast_lipo", cases: 9, deposit: 407380, online: 223100, total: 661900 },
-  { doctor: "หมอบอย", key: "nose_open", cases: 2, deposit: 10000, online: 83380, total: 83380 },
-  { doctor: "หมอบอย", key: "nose_semi", cases: 5, deposit: 30000, online: 143600, total: 137700 },
-  { doctor: "หมอบอย", key: "other", cases: 3, deposit: 58980, online: 24900, total: 89800 },
-  { doctor: "หมอหนอน", key: "brow_hairline", cases: 1, deposit: 5000, online: 139000, total: 0 },
-  { doctor: "หมอเช", key: "brow_hairline", cases: 4, deposit: 55000, online: 228900, total: 378390 },
-  { doctor: "หมอเช", key: "nose_open", cases: 5, deposit: 75000, online: 816000, total: 498000 },
-  { doctor: "หมอเช", key: "other", cases: 1, deposit: 30000, online: 0, total: 54900 },
-  { doctor: "หมอเติ้ง", key: "brow_hairline", cases: 8, deposit: 212390, online: 754377, total: 834500 },
-  { doctor: "หมอเติ้ง", key: "other", cases: 3, deposit: 33000, online: 159900, total: 184340 },
-  { doctor: "หมอเป็ด", key: "brow_hairline", cases: 5, deposit: 70000, online: 598700, total: 608900 },
-  { doctor: "หมอโรส", key: "nose_open", cases: 9, deposit: 170000, online: 1884000, total: 2117520 },
-  { doctor: "หมอไบร์ท", key: "nose_open", cases: 1, deposit: 10000, online: 119900, total: 100000 },
-];
+function liveDoctorProc(monthIso) {
+  const rows = txInMonth(monthIso).filter((t) => t.dep > 0);
+  const map = new Map();
+  for (const t of rows) {
+    const k = `${t.doc}|${t.p}`;
+    if (!map.has(k)) map.set(k, { doctor: t.doc, key: t.p, cases: 0, deposit: 0, online: 0, total: 0 });
+    const e = map.get(k);
+    e.cases += 1;
+    e.deposit += t.dep;
+    e.online += t.onl;
+    e.total += t.tot || 0;
+  }
+  return [...map.values()];
+}
+const DOCTOR_PROC = liveDoctorProc(CURRENT_SPEND_MONTH);
 
 const DOCTOR_PROC_LABELS = {
   nose_open: "เสริมจมูกโอเพ่น",
@@ -536,15 +528,29 @@ const S45_LOGO = "data:image/webp;base64,UklGRm4VAABXRUJQVlA4TGIVAAAv88FSEJegoG0
 // ระยะเวลาจากวันที่ทักเข้ามา (Date) ถึงวันผ่าตัดจริง (OR Date) แยกตามหัตถการ
 // ใช้ "มัธยฐาน (Median)" แทนค่าเฉลี่ย เพราะข้อมูลจริงมีเคสที่ใช้เวลานานผิดปกติ (สูงสุดถึง 180 วัน) ปนอยู่
 // ซึ่งจะดึงค่าเฉลี่ยให้สูงเกินจริง มัธยฐานสะท้อน "ค่าปกติทั่วไป" ได้แม่นยำกว่า
-// คำนวณจากไฟล์ Data_S45_Clinic: กรอง "Date" ให้อยู่ในเดือนกรกฎาคม 2026 แล้วดูเฉพาะเคสที่มี "OR Date" แล้วจริง
+// คำนวณสดจาก RAW_TX เดือน CURRENT_SPEND_MONTH เฉพาะเคสที่มี OR Date แล้วจริง (สูตรเดียวกับ
+// activeLeadTime ที่ใช้คำนวณเดือนอื่นๆ แบบสด — ดูใน component ด้านล่าง)
 // ============================================================
-const OR_LEAD_TIME_DAYS = {
-  nose_open: { label: "Nose Open", medianDays: 11, minDays: 0, maxDays: 171, n: 48 },
-  nose_semi: { label: "Semi Open", medianDays: 17, minDays: 0, maxDays: 117, n: 26 },
-  brow_hairline: { label: "ยกคิ้ว", medianDays: 10, minDays: 1, maxDays: 161, n: 25 },
-  breast_lipo: { label: "เสริมหน้าอก/ดูดไขมัน", medianDays: 20, minDays: 1, maxDays: 93, n: 8 },
-  all: { label: "รวมทุกหัตถการ", medianDays: 11, minDays: 0, maxDays: 171, n: 113 },
-};
+const LEAD_TIME_LABELS = { nose_open: "Nose Open", nose_semi: "Semi Open", brow_hairline: "ยกคิ้ว", breast_lipo: "เสริมหน้าอก/ดูดไขมัน", all: "รวมทุกหัตถการ" };
+function liveLeadTimeDays(monthIso) {
+  const rows = txInMonth(monthIso).filter((t) => t.or && t.or >= t.d);
+  const calc = (list) => {
+    if (list.length === 0) return null;
+    const days = list.map((t) => Math.round((new Date(t.or) - new Date(t.d)) / 86400000)).sort((a, b) => a - b);
+    const mid = Math.floor(days.length / 2);
+    const median = days.length % 2 ? days[mid] : (days[mid - 1] + days[mid]) / 2;
+    return { median, min: days[0], max: days[days.length - 1], n: days.length };
+  };
+  const result = {};
+  for (const k of ["nose_open", "nose_semi", "brow_hairline", "breast_lipo"]) {
+    const r = calc(rows.filter((t) => t.p === k));
+    result[k] = r ? { label: LEAD_TIME_LABELS[k], medianDays: r.median, minDays: r.min, maxDays: r.max, n: r.n } : { label: LEAD_TIME_LABELS[k], medianDays: null, n: null };
+  }
+  const rAll = calc(rows);
+  result.all = rAll ? { label: LEAD_TIME_LABELS.all, medianDays: rAll.median, minDays: rAll.min, maxDays: rAll.max, n: rAll.n } : { label: LEAD_TIME_LABELS.all, medianDays: null, n: null };
+  return result;
+}
+const OR_LEAD_TIME_DAYS = liveLeadTimeDays(CURRENT_SPEND_MONTH);
 
 const AD_COST_THRESHOLD = 0.1;
 
