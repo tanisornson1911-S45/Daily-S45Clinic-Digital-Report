@@ -44,10 +44,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- src/data/m365Raw.json; then
+          git add src/data/m365Raw.json
+          if git diff --cached --quiet -- src/data/m365Raw.json; then
             echo "No change in m365Raw.json — nothing to commit."
           else
-            git add src/data/m365Raw.json
             git commit -m "chore: update M365 raw data (automated)"
             git push origin HEAD:main
           fi
