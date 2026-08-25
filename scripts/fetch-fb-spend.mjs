@@ -31,19 +31,24 @@ if (!FB_ACCESS_TOKEN) {
 
 // S45 ad accounts -> dashboard category key
 // (IDs confirmed live via Facebook Ads MCP on 2026-07-12)
+// NOTE: account 1711014813661620 was "Nose Open 03" on 2026-07-12 but had been
+// renamed to "S45 - Inter" by 2026-08-06 — the team repurposed it into a
+// dedicated Inter account instead of tagging individual campaigns inside Nose
+// Open 02. It is therefore EXCLUDED from the nose_open bucket below and its
+// full spend is added to `inter` instead (see INTER_DEDICATED_ACCOUNT_ID).
 const ACCOUNTS = {
   nose_open_01: { id: "2214227468912072", category: "nose_open" },
   nose_open_02: { id: "1117617719803706", category: "nose_open" },
-  nose_open_03: { id: "1711014813661620", category: "nose_open" },
   semi_open: { id: "983591777378317", category: "nose_semi" },
   breast: { id: "1948728392195994", category: "breast_lipo" },
   brow_facelift: { id: "225618075", category: "brow_hairline" },
 };
 
-// "Inter" category is NOT a whole ad account — it's whichever campaigns
-// inside Nose Open 02 have "Inter" in their name (confirmed with the team
-// on 2026-07-12). Sum spend across those campaigns instead of the account.
-const INTER_ACCOUNT_ID = "1117617719803706"; // Nose Open 02
+// "Inter" spend = the dedicated Inter ad account (renamed from Nose Open 03,
+// confirmed 2026-08-06) PLUS any leftover campaigns inside Nose Open 02 whose
+// name still contains "Inter" from before the reorg (confirmed 2026-07-12).
+const INTER_DEDICATED_ACCOUNT_ID = "1711014813661620";
+const INTER_CAMPAIGN_SEARCH_ACCOUNT_ID = "1117617719803706"; // Nose Open 02
 const INTER_NAME_MATCH = /inter/i;
 
 async function fetchInterCampaignSpend(accountId, since, until) {
@@ -116,16 +121,17 @@ async function main() {
       console.log(`  ${name} (${category}): ฿${spend.toLocaleString()}`);
     }
 
-    const interSpend = await fetchInterCampaignSpend(INTER_ACCOUNT_ID, since, until);
+    const interDedicatedSpend = await fetchAccountSpend(INTER_DEDICATED_ACCOUNT_ID, since, until);
+    const interCampaignSpend = await fetchInterCampaignSpend(INTER_CAMPAIGN_SEARCH_ACCOUNT_ID, since, until);
+    const interSpend = interDedicatedSpend + interCampaignSpend;
     result[key].inter = interSpend;
-    console.log(`  inter (campaigns matching "Inter" in Nose Open 02): ฿${interSpend.toLocaleString()}`);
+    console.log(`  inter (dedicated account ฿${interDedicatedSpend.toLocaleString()} + legacy "Inter" campaigns in Nose Open 02 ฿${interCampaignSpend.toLocaleString()}): ฿${interSpend.toLocaleString()}`);
 
-    // 'inter' campaigns live inside Nose Open 02, whose full spend is already in
-    // the nose_open category — so summing the category fields would double-count
-    // them. Store an explicit month 'total' = sum of the 6 ad accounts instead,
-    // which the dashboard's liveMonthTotal() prefers over summing the breakdown.
-    result[key].total = accountsTotal;
-    console.log(`  total (6 accounts, no inter double-count): ฿${accountsTotal.toLocaleString()}`);
+    // Store an explicit month 'total' = sum of the 5 nose/semi/breast/brow accounts
+    // plus the dedicated Inter account, which the dashboard's liveMonthTotal()
+    // prefers over summing the breakdown fields.
+    result[key].total = accountsTotal + interDedicatedSpend;
+    console.log(`  total: ฿${result[key].total.toLocaleString()}`);
   }
 
   const outDir = path.resolve("src/data");
