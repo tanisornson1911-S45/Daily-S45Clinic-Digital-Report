@@ -41,17 +41,33 @@ if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET) {
   process.exit(1);
 }
 
-// "Data S45 Clinic (5).xlsx" — personal/sales_sup_s45clinic_com/Documents/Desktop/
-// (drive + item IDs located via SharePoint search on 2026-08-25)
-const DRIVE_ID = "b!EzzI__YZKkOT4A8owKgx9plShVOjW0VJq7Ee489Af4_1GTH3bJdHTYtt0_IUxba2";
-const ITEM_ID = "01LCP4JOM2VG676DMNTZA33WKVSVTZLJS5";
-
-// The sheets that hold real (not just planning) transaction/OR data.
-const SHEETS = [
-  "มัดจำ 2026",
-  "ปรึกษา 2026",
-  "ยอดORจริง+Forecast (พี่เปา)",
-  "Forecast OR ยอดออนไลน์ 2026",
+// Workbooks + the sheets in each that hold real (not just planning) data.
+// Drive/item IDs located via SharePoint search.
+const WORKBOOKS = [
+  {
+    key: "data_s45_clinic",
+    // "Data S45 Clinic (5).xlsx" — personal/sales_sup_s45clinic_com/Documents/Desktop/ (2026-08-25)
+    driveId: "b!EzzI__YZKkOT4A8owKgx9plShVOjW0VJq7Ee489Af4_1GTH3bJdHTYtt0_IUxba2",
+    itemId: "01LCP4JOM2VG676DMNTZA33WKVSVTZLJS5",
+    sheets: [
+      "มัดจำ 2026",
+      "ปรึกษา 2026",
+      "ยอดORจริง+Forecast (พี่เปา)",
+      "Forecast OR ยอดออนไลน์ 2026",
+    ],
+  },
+  {
+    key: "inter_sale_part",
+    // "Inter S45 2026 - Sale part.xlsx" — personal/marketinginter_s45clinic_com/Documents/ (2026-08-25)
+    // Per-case Inter (international patient) ledger, one sheet per month, with its own
+    // Online price / Total price columns — the authoritative source for Inter's sales
+    // figures. Many of the same cases also appear in "มัดจำ 2026" (same patient, tracked
+    // by the general sales-ops team too) — see App.jsx comments near CATEGORIES/RAW_TX
+    // for how those are de-duplicated.
+    driveId: "b!UYH87cOq2UqumY8MIpZRT6PLpRROcdpBpT3eeYIb3NJC5-zjt4pTQ6CIgsAcPJdX",
+    itemId: "01HRTVWCEESO57GCA255BYTDGHN5JQ5KDI",
+    sheets: ["Jan 01", "Feb02", "March 03", "April 04", "May 05", "June 06", "July 07", "August 08"],
+  },
 ];
 
 async function getAccessToken() {
@@ -74,9 +90,9 @@ async function getAccessToken() {
   return json.access_token;
 }
 
-async function fetchSheetUsedRange(token, sheetName) {
+async function fetchSheetUsedRange(token, driveId, itemId, sheetName) {
   const encodedSheet = encodeURIComponent(sheetName);
-  const url = `https://graph.microsoft.com/v1.0/drives/${DRIVE_ID}/items/${ITEM_ID}/workbook/worksheets('${encodedSheet}')/usedRange(valuesOnly=true)`;
+  const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${itemId}/workbook/worksheets('${encodedSheet}')/usedRange(valuesOnly=true)`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -91,12 +107,17 @@ async function main() {
   console.log("Authenticating with Microsoft Graph...");
   const token = await getAccessToken();
 
-  const sheets = {};
-  for (const sheetName of SHEETS) {
-    console.log(`Fetching sheet "${sheetName}"...`);
-    const values = await fetchSheetUsedRange(token, sheetName);
-    sheets[sheetName] = values;
-    console.log(`  ${values.length} rows`);
+  const workbooks = {};
+  for (const { key, driveId, itemId, sheets: sheetNames } of WORKBOOKS) {
+    console.log(`Workbook "${key}":`);
+    const sheets = {};
+    for (const sheetName of sheetNames) {
+      console.log(`  Fetching sheet "${sheetName}"...`);
+      const values = await fetchSheetUsedRange(token, driveId, itemId, sheetName);
+      sheets[sheetName] = values;
+      console.log(`    ${values.length} rows`);
+    }
+    workbooks[key] = sheets;
   }
 
   const outDir = path.resolve("src/data");
@@ -104,7 +125,7 @@ async function main() {
   const outPath = path.join(outDir, "m365Raw.json");
   await writeFile(
     outPath,
-    JSON.stringify({ generatedAt: new Date().toISOString(), sheets }, null, 2)
+    JSON.stringify({ generatedAt: new Date().toISOString(), workbooks }, null, 2)
   );
   console.log(`\nWrote ${outPath}`);
 }
