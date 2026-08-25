@@ -1,3 +1,227 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ============================================================
+   Liquid Glass — frosted translucent panels for every "box"
+   -----------------------------------------------------------
+   Every card/panel/popover in the app is built with the same
+   handful of Tailwind utility classes (bg-white, bg-{hue}-50, ...).
+   Rather than touch every className across a 3000-line component,
+   we re-theme by overriding those exact classes so they render as
+   frosted glass: translucent + blurred + saturated, so the page
+   background/logo watermark shows softly through. The page's own
+   root background (bg-slate-50) and small solid indicator swatches
+   (bg-slate-400/800) are intentionally left out — glass floats
+   above a solid backdrop, it doesn't replace it.
+   ============================================================ */
+
+:root { --glass-blur: blur(20px) saturate(160%); }
+
+.bg-white,
+.bg-slate-100,
+.bg-amber-50, .bg-amber-50\/40, .bg-amber-50\/50, .bg-amber-50\/60, .bg-amber-50\/70, .bg-amber-100,
+.bg-blue-50, .bg-blue-50\/60,
+.bg-cyan-50\/50,
+.bg-emerald-50, .bg-emerald-50\/40, .bg-emerald-50\/50, .bg-emerald-50\/60, .bg-emerald-50\/70, .bg-emerald-100, .bg-emerald-100\/60,
+.bg-green-50,
+.bg-indigo-50, .bg-indigo-50\/50, .bg-indigo-100,
+.bg-pink-50,
+.bg-rose-50, .bg-rose-50\/50, .bg-rose-50\/60,
+.bg-sky-50, .bg-sky-50\/50, .bg-sky-50\/60, .bg-sky-100,
+.bg-violet-50, .bg-violet-50\/40, .bg-violet-50\/60 {
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+.bg-white { background-color: rgba(255, 255, 255, 0.6) !important; }
+.bg-slate-100 { background-color: rgba(241, 245, 249, 0.55) !important; }
+.bg-amber-50, .bg-amber-50\/40, .bg-amber-50\/50, .bg-amber-50\/60, .bg-amber-50\/70 { background-color: rgba(255, 251, 235, 0.55) !important; }
+.bg-amber-100 { background-color: rgba(254, 243, 199, 0.6) !important; }
+.bg-blue-50, .bg-blue-50\/60 { background-color: rgba(239, 246, 255, 0.55) !important; }
+.bg-cyan-50\/50 { background-color: rgba(236, 254, 255, 0.5) !important; }
+.bg-emerald-50, .bg-emerald-50\/40, .bg-emerald-50\/50, .bg-emerald-50\/60, .bg-emerald-50\/70 { background-color: rgba(236, 253, 245, 0.55) !important; }
+.bg-emerald-100, .bg-emerald-100\/60 { background-color: rgba(209, 250, 229, 0.6) !important; }
+.bg-green-50 { background-color: rgba(240, 253, 244, 0.55) !important; }
+.bg-indigo-50, .bg-indigo-50\/50 { background-color: rgba(238, 242, 255, 0.55) !important; }
+.bg-indigo-100 { background-color: rgba(224, 231, 255, 0.6) !important; }
+.bg-pink-50 { background-color: rgba(253, 242, 248, 0.55) !important; }
+.bg-rose-50, .bg-rose-50\/50, .bg-rose-50\/60 { background-color: rgba(255, 241, 242, 0.55) !important; }
+.bg-sky-50, .bg-sky-50\/50, .bg-sky-50\/60 { background-color: rgba(240, 249, 255, 0.55) !important; }
+.bg-sky-100 { background-color: rgba(224, 242, 254, 0.6) !important; }
+.bg-violet-50, .bg-violet-50\/40, .bg-violet-50\/60 { background-color: rgba(245, 243, 255, 0.55) !important; }
+
+/* glass rim: soft light border + lifted shadow instead of flat gray edges */
+.border-slate-50 { border-color: rgba(255, 255, 255, 0.7) !important; }
+.border-slate-100 { border-color: rgba(255, 255, 255, 0.55) !important; }
+.border-slate-200 { border-color: rgba(255, 255, 255, 0.45) !important; }
+.shadow-sm { box-shadow: 0 8px 30px -8px rgba(20, 184, 166, 0.14), 0 1px 2px rgba(15, 23, 42, 0.04) !important; }
+.shadow-lg { box-shadow: 0 20px 45px -12px rgba(20, 184, 166, 0.22), 0 4px 10px rgba(15, 23, 42, 0.06) !important; }
+
+/* ============================================================
+   Dark mode — global override layer
+   -----------------------------------------------------------
+   The app is built entirely with static Tailwind utility classes
+   (no dark: variants sprinkled through the JSX). Rather than touch
+   every className across a 3000-line component, we re-theme by
+   overriding the exact utility classes already in use, scoped
+   under a `.dark` ancestor (toggled by the ThemeToggle switch).
+   Selector specificity (.dark .bg-white = 0,2,0) beats Tailwind's
+   own utility (0,1,0), so these always win once `.dark` is active,
+   regardless of stylesheet order. Backgrounds stay rgba (not opaque
+   hex) so the glass blur above still has something to blur through.
+   ============================================================ */
+
+.dark { color-scheme: dark; }
+
+/* ---- surfaces ---- */
+.dark .bg-slate-50,
+.dark .bg-slate-50\/40 { background-color: #0b1220; }
+.dark .bg-white { background-color: rgba(20, 28, 47, 0.65) !important; }
+.dark .bg-slate-100 { background-color: rgba(30, 41, 59, 0.55) !important; }
+.dark .bg-slate-800 { background-color: #0f172a; }
+.dark .bg-slate-400 { background-color: #64748b; }
+.dark .to-slate-50 { --tw-gradient-to: #0b1220; }
+.dark .from-pink-50 { --tw-gradient-from: #3b0a26; }
+
+/* ---- borders / rings ---- */
+.dark .border-slate-50 { border-color: rgba(148, 163, 184, 0.18) !important; }
+.dark .border-slate-100 { border-color: rgba(148, 163, 184, 0.14) !important; }
+.dark .border-slate-200 { border-color: rgba(148, 163, 184, 0.2) !important; }
+.dark .border-slate-300 { border-color: #334155; }
+.dark .ring-slate-200 { --tw-ring-color: #334155; }
+
+/* ---- text scale (inverted) ---- */
+.dark .text-slate-800 { color: #f1f5f9; }
+.dark .text-slate-700 { color: #e2e8f0; }
+.dark .text-slate-600 { color: #cbd5e1; }
+.dark .text-slate-500 { color: #94a3b8; }
+.dark .text-slate-400 { color: #7c8ba3; }
+.dark .text-slate-300 { color: #64748b; }
+
+/* ---- tinted accent surfaces (bg-{hue}-50[/opacity]) ---- */
+.dark .bg-amber-50, .dark .bg-amber-50\/40, .dark .bg-amber-50\/50, .dark .bg-amber-50\/60, .dark .bg-amber-50\/70 { background-color: rgba(120, 53, 15, 0.28) !important; }
+.dark .bg-amber-100 { background-color: rgba(120, 53, 15, 0.4) !important; }
+.dark .bg-blue-50, .dark .bg-blue-50\/60 { background-color: rgba(30, 58, 138, 0.28) !important; }
+.dark .bg-cyan-50\/50 { background-color: rgba(22, 78, 99, 0.28) !important; }
+.dark .bg-emerald-50, .dark .bg-emerald-50\/40, .dark .bg-emerald-50\/50, .dark .bg-emerald-50\/60, .dark .bg-emerald-50\/70 { background-color: rgba(6, 78, 59, 0.28) !important; }
+.dark .bg-emerald-100, .dark .bg-emerald-100\/60 { background-color: rgba(6, 78, 59, 0.4) !important; }
+.dark .bg-green-50 { background-color: rgba(20, 83, 45, 0.28) !important; }
+.dark .bg-indigo-50, .dark .bg-indigo-50\/50 { background-color: rgba(49, 46, 129, 0.32) !important; }
+.dark .bg-indigo-100 { background-color: rgba(49, 46, 129, 0.45) !important; }
+.dark .bg-pink-50 { background-color: rgba(131, 24, 67, 0.28) !important; }
+.dark .bg-rose-50, .dark .bg-rose-50\/50, .dark .bg-rose-50\/60 { background-color: rgba(136, 19, 55, 0.28) !important; }
+.dark .bg-sky-50, .dark .bg-sky-50\/50, .dark .bg-sky-50\/60 { background-color: rgba(12, 74, 110, 0.28) !important; }
+.dark .bg-sky-100 { background-color: rgba(12, 74, 110, 0.4) !important; }
+.dark .bg-violet-50, .dark .bg-violet-50\/40, .dark .bg-violet-50\/60 { background-color: rgba(76, 29, 149, 0.3) !important; }
+.dark .bg-teal-100 { background-color: rgba(19, 78, 74, 0.45) !important; }
+
+/* ---- tinted accent borders ---- */
+.dark .border-amber-100 { border-color: rgba(217, 119, 6, 0.35); }
+.dark .border-amber-200 { border-color: rgba(217, 119, 6, 0.45); }
+.dark .border-blue-100 { border-color: rgba(37, 99, 235, 0.35); }
+.dark .border-cyan-100 { border-color: rgba(8, 145, 178, 0.35); }
+.dark .border-emerald-100 { border-color: rgba(5, 150, 105, 0.35); }
+.dark .border-emerald-200 { border-color: rgba(5, 150, 105, 0.45); }
+.dark .border-indigo-100 { border-color: rgba(79, 70, 229, 0.4); }
+.dark .border-pink-200 { border-color: rgba(219, 39, 119, 0.4); }
+.dark .border-rose-100 { border-color: rgba(225, 29, 72, 0.35); }
+.dark .border-rose-200 { border-color: rgba(225, 29, 72, 0.45); }
+.dark .border-sky-100 { border-color: rgba(2, 132, 199, 0.35); }
+.dark .border-violet-100 { border-color: rgba(124, 58, 237, 0.4); }
+.dark .border-violet-500 { border-color: #a78bfa; }
+
+/* ---- accent text (lightened) ---- */
+.dark .text-amber-500 { color: #fbbf24; }
+.dark .text-amber-600, .dark .text-amber-700, .dark .text-amber-800 { color: #fbbf3f; }
+.dark .text-blue-500, .dark .text-blue-600, .dark .text-blue-700 { color: #60a5fa; }
+.dark .text-cyan-600, .dark .text-cyan-700 { color: #22d3ee; }
+.dark .text-emerald-500, .dark .text-emerald-600, .dark .text-emerald-700, .dark .text-emerald-800 { color: #34d399; }
+.dark .text-green-600 { color: #4ade80; }
+.dark .text-indigo-500, .dark .text-indigo-600, .dark .text-indigo-700 { color: #a5b4fc; }
+.dark .text-pink-300, .dark .text-pink-500, .dark .text-pink-600 { color: #f472b6; }
+.dark .text-rose-500, .dark .text-rose-600, .dark .text-rose-700 { color: #fb7185; }
+.dark .text-sky-500, .dark .text-sky-600, .dark .text-sky-700 { color: #38bdf8; }
+.dark .text-teal-600 { color: #2dd4bf; }
+.dark .text-violet-400, .dark .text-violet-500, .dark .text-violet-600, .dark .text-violet-700 { color: #c4b5fd; }
+
+/* ---- shadows read as too heavy on dark surfaces ---- */
+.dark .shadow-sm { box-shadow: 0 8px 30px -10px rgba(45, 212, 191, 0.18), 0 1px 2px 0 rgba(0, 0, 0, 0.4) !important; }
+.dark .shadow-lg { box-shadow: 0 20px 45px -12px rgba(45, 212, 191, 0.22), 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important; }
+
+/* ---- scrollbar (calendar / tables) ---- */
+.dark ::-webkit-scrollbar-thumb { background-color: #334155; }
+
+/* ============================================================
+   2026 refresh — typography, depth, and brand-accent pass
+   -----------------------------------------------------------
+   Same technique as the glass/dark layers above: re-theme by
+   overriding the exact utility classes already in use, so this
+   applies uniformly across every page without touching the
+   thousands of className strings in App.jsx.
+   ============================================================ */
+
+html { font-family: "IBM Plex Sans Thai", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; }
+body { font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+
+/* ---- scrollbar, light mode (dark mode already covered above) ---- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+.dark ::-webkit-scrollbar-thumb { border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+
+/* ---- page backdrop: subtle teal/indigo glow mesh instead of flat gray ---- */
+.min-h-screen.bg-slate-50 {
+  background-color: #f4f6fa;
+  background-image:
+    radial-gradient(1100px 520px at -6% -12%, rgba(45, 212, 191, 0.16), transparent 60%),
+    radial-gradient(900px 480px at 108% 0%, rgba(99, 102, 241, 0.12), transparent 55%),
+    radial-gradient(1200px 700px at 50% 118%, rgba(20, 184, 166, 0.08), transparent 60%);
+  background-attachment: fixed;
+}
+.dark .min-h-screen.bg-slate-50 {
+  background-color: #070c17;
+  background-image:
+    radial-gradient(1100px 520px at -6% -12%, rgba(45, 212, 191, 0.16), transparent 60%),
+    radial-gradient(900px 480px at 108% 0%, rgba(129, 140, 248, 0.14), transparent 55%),
+    radial-gradient(1200px 700px at 50% 118%, rgba(45, 212, 191, 0.09), transparent 60%);
+  background-attachment: fixed;
+}
+
+/* ---- card depth: crisper edge + softer ambient shadow ---- */
+.rounded-2xl.border.shadow-sm {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 32px -14px rgba(20, 184, 166, 0.16) !important;
+}
+.dark .rounded-2xl.border.shadow-sm {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 32px -14px rgba(45, 212, 191, 0.16) !important;
+}
+
+/* ---- sidebar: frosted surface + teal active pill (brand-consistent, was indigo) ---- */
+aside.bg-white { background-color: rgba(255, 255, 255, 0.72) !important; backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); }
+.dark aside.bg-white { background-color: rgba(11, 18, 32, 0.75) !important; }
+aside .bg-indigo-50.text-indigo-700 {
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.14), rgba(45, 212, 191, 0.08)) !important;
+  color: #0f766e !important;
+  box-shadow: inset 0 0 0 1px rgba(20, 184, 166, 0.18);
+}
+aside .bg-indigo-50.text-indigo-700 svg { color: #0d9488 !important; }
+.dark aside .bg-indigo-50.text-indigo-700 { color: #5eead4 !important; box-shadow: inset 0 0 0 1px rgba(45, 212, 191, 0.22); }
+.dark aside .bg-indigo-50.text-indigo-700 svg { color: #2dd4bf !important; }
+
+/* ---- charts: quieter gridlines, crisper tooltip ---- */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line { stroke: rgba(148, 163, 184, 0.28); }
+.dark .recharts-cartesian-grid-horizontal line,
+.dark .recharts-cartesian-grid-vertical line { stroke: rgba(148, 163, 184, 0.14); }
+.recharts-tooltip-wrapper { filter: drop-shadow(0 12px 28px rgba(15, 23, 42, 0.18)); }
+.dark .recharts-default-tooltip { background-color: rgba(15, 23, 42, 0.92) !important; border-color: rgba(148, 163, 184, 0.25) !important; }
+.dark .recharts-default-tooltip * { color: #e2e8f0 !important; }
+.recharts-legend-item-text { color: #64748b !important; }
+.dark .recharts-legend-item-text { color: #94a3b8 !important; }
+
+/* ---- inputs/buttons: smoother focus + hover feedback everywhere ---- */
+button, select, input { transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease; }
+button:focus-visible, select:focus-visible, input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.35);
+}
