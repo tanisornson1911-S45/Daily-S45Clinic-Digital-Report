@@ -26,6 +26,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # ต้องดึงประวัติเต็ม (ไม่ใช่ shallow clone ค่า default) ไม่งั้น "git rebase origin/main"
+          # ใน step ท้ายจะเจอ "add/add" conflict มั่วเพราะ git หา common ancestor ไม่เจอ
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
