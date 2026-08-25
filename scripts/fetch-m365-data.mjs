@@ -68,6 +68,30 @@ const WORKBOOKS = [
     itemId: "01HRTVWCEESO57GCA255BYTDGHN5JQ5KDI",
     sheets: ["Jan 01", "Feb02", "March 03", "April 04", "May 05", "June 06", "July 07", "August 08"],
   },
+  {
+    key: "loa_broadcast",
+    // "S45 - ยอดบลอดแคส LINE OA After Care.xlsx" — personal/digital_mkt_s45clinic_com/Documents/ (2026-08-25)
+    // Daily LINE OA broadcast reach per procedure category, one "LOA- <month>" sheet per
+    // month (column layout varies by month — some months split Open/Semi/หน้าอก/ยกคิ้ว/
+    // แบรนด์ดิ้ง, earlier months only have จมูก/หน้าอก/ยกคิ้ว). This is a raw staging pull
+    // only for now — turning it into LOA_JUNE/LOA_JUL_NORMAL-shaped data (broadcastReach/
+    // budgetUsed/budgetLeft/quotaLeft/timesLeft) needs a per-month column-mapping transform
+    // that hasn't been written yet (see the "connect every section" audit in the PR that
+    // added this workbook). "Summary" has month-over-month rollups including Inbox by doctor.
+    driveId: "b!xxDvakZnBUOmKljZWLuYZ9g177OXvLtHthxJClpsEqA5xrnAHB8PRI3WaLvrDur8",
+    itemId: "01JXWUHPAC7HVGV4MFYJDYUVKEHAQZRYME",
+    sheets: [
+      "Summary",
+      "LOA- มกราคม",
+      "LOA- กุมภาพันธ์",
+      "LOA- มีนาคม",
+      "LOA- เมษายน",
+      "LOA- พฤษภาคม",
+      "LOA- มิถุนายน",
+      "LOA- กรกฎาคม",
+      "LOA- สิงหาคม",
+    ],
+  },
 ];
 
 async function getAccessToken() {
@@ -113,9 +137,16 @@ async function main() {
     const sheets = {};
     for (const sheetName of sheetNames) {
       console.log(`  Fetching sheet "${sheetName}"...`);
-      const values = await fetchSheetUsedRange(token, driveId, itemId, sheetName);
-      sheets[sheetName] = values;
-      console.log(`    ${values.length} rows`);
+      try {
+        const values = await fetchSheetUsedRange(token, driveId, itemId, sheetName);
+        sheets[sheetName] = values;
+        console.log(`    ${values.length} rows`);
+      } catch (err) {
+        // A sheet that's missing/renamed/not-yet-created (e.g. next month's LOA sheet
+        // before anyone has added it) shouldn't take down the whole pipeline — skip it
+        // and keep going so "มัดจำ 2026" (RAW_TX's source) still gets fetched.
+        console.warn(`    ! Skipping "${sheetName}": ${err.message}`);
+      }
     }
     workbooks[key] = sheets;
   }
