@@ -105,11 +105,16 @@ const CATEGORIES = {
 // (ยอดมัดจำ/Online/Total Price เป็นยอดขายรวมของคลินิก ไม่แยกช่องทาง)
 // spend: รวมจาก CATEGORIES ด้านบน (ซึ่งอ่านค่าสดจาก adSpend.json แล้ว) แทนตัวเลขคงที่เดิม
 // deposit/online/sales: รวมจาก CATEGORIES ด้านบนเช่นกัน (ก.ค. 2026)
+// หมายเหตุ 25 ส.ค. 2026: deposit/online/sales รวมเฉพาะ 4 หมวดหลัก (ไม่รวม "inter") เพราะทีมยืนยันว่า
+// เคส Inter ส่วนใหญ่ถูกบันทึกซ้ำอยู่ใน "มัดจำ 2026" (Data S45 Clinic — Core Data ที่ถูกต้องกว่า) อยู่แล้ว
+// ภายใต้หมวด nose_open การรวม CATEGORIES.inter.sales เข้าไปด้วยจะนับซ้ำ — ตัดออกจากยอดขายรวม (แต่ spend
+// ยังรวม inter ตามเดิม เพราะเป็นค่าโฆษณาจริงที่แยกบัญชี ไม่ใช่ยอดขายที่มาซ้ำ)
+const GRAND_TOTAL_SALES_CATEGORIES = ["nose_open", "breast_lipo", "brow_hairline", "nose_semi"];
 const GRAND_TOTAL = {
   spend: Object.values(CATEGORIES).reduce((sum, c) => sum + (c.spend || 0), 0),
-  deposit: Object.values(CATEGORIES).reduce((sum, c) => sum + (c.deposit || 0), 0),
-  online: Object.values(CATEGORIES).reduce((sum, c) => sum + (c.online || 0), 0),
-  sales: Object.values(CATEGORIES).reduce((sum, c) => sum + (c.sales || 0), 0),
+  deposit: GRAND_TOTAL_SALES_CATEGORIES.reduce((sum, k) => sum + (CATEGORIES[k].deposit || 0), 0),
+  online: GRAND_TOTAL_SALES_CATEGORIES.reduce((sum, k) => sum + (CATEGORIES[k].online || 0), 0),
+  sales: GRAND_TOTAL_SALES_CATEGORIES.reduce((sum, k) => sum + (CATEGORIES[k].sales || 0), 0),
 };
 
 // ============================================================
