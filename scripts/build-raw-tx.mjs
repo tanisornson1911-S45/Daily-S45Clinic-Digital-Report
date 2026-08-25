@@ -113,7 +113,11 @@ function main() {
     const onl = typeof r[10] === "number" ? r[10] : 0;
     const tot = typeof r[11] === "number" ? r[11] : 0;
     const ch = typeof r[15] === "string" && r[15] !== "" ? r[15] : "Sale หาเอง";
-    out.push({ d: dt, or, ch, p, doc, dep, onl, tot });
+    // cons = true if the "Sale Consult" column (index 3, employee name) is filled — used by
+    // scripts/build-funnel.mjs to derive daily consult-close counts the same way
+    // FUNNEL_DATA_JUL in App.jsx was originally hand-derived (see its comment).
+    const cons = typeof r[3] === "string" && r[3].trim() !== "";
+    out.push({ d: dt, or, ch, p, doc, dep, onl, tot, cons });
   }
   out.sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0));
 

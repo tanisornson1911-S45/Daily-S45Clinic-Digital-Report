@@ -1,9 +1,11 @@
 name: Update M365 data (RAW_TX pipeline)
 
 # ดึงข้อมูลดิบจากไฟล์ Excel บน SharePoint/OneDrive (Data S45 Clinic, Inter Sale Part,
-# LINE OA Broadcast) ผ่าน Microsoft Graph API (src/data/m365Raw.json) แล้วแปลงเป็น
-# src/data/rawTx.json (RAW_TX) และ src/data/loaData.json (LOA broadcast section) ที่
-# App.jsx import ใช้จริง — Dashboard จึงอัปเดตข้อมูลธุรกรรม+LOA อัตโนมัติทุกวัน ไม่ต้อง paste มือแล้ว
+# LINE OA Broadcast, ยอดขาย Online S45 Clinic) ผ่าน Microsoft Graph API
+# (src/data/m365Raw.json) แล้วแปลงเป็น src/data/rawTx.json (RAW_TX), src/data/loaData.json
+# (LOA broadcast section) และ src/data/funnelAug.json (Inbox & Bad Lead page's สิงหาคม
+# option) ที่ App.jsx import ใช้จริง — Dashboard จึงอัปเดตข้อมูลธุรกรรม+LOA+Inbox อัตโนมัติ
+# ทุกวัน ไม่ต้อง paste มือแล้ว
 #
 # ต้องตั้ง repo secrets ที่ Settings → Secrets and variables → Actions →
 # New repository secret:
@@ -50,12 +52,15 @@ jobs:
       - name: Build LOA data from M365 data
         run: node scripts/build-loa.mjs
 
+      - name: Build August Inbox funnel data from M365 data + RAW_TX
+        run: node scripts/build-funnel.mjs
+
       - name: Commit & push if data changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json
-          if git diff --cached --quiet -- src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json; then
+          git add src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json src/data/funnelAug.json
+          if git diff --cached --quiet -- src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json src/data/funnelAug.json; then
             echo "No change — nothing to commit."
             exit 0
           fi

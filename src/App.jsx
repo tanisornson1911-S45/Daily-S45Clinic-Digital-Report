@@ -57,6 +57,7 @@ import {
 import adSpendData from "./data/adSpend.json";
 import RAW_TX_DATA from "./data/rawTx.json";
 import LOA_DATA from "./data/loaData.json";
+import FUNNEL_AUG_DATA from "./data/funnelAug.json";
 const loaDataByMonth = LOA_DATA.months;
 
 // ============================================================
@@ -519,6 +520,14 @@ const FUNNEL_CLOSE_COUNTS_JUL = {
   brow_hairline: { consult: 31, deposit: 31, consultValue: 4386077, depositValue: 4386077 },
   all: { consult: 121, deposit: 120, consultValue: 18719527, depositValue: 18631407 },
 };
+// FUNNEL_DATA_AUG / FUNNEL_CLOSE_COUNTS_AUG — ส.ค. 2569 ถึงวันที่ 23 (src/data/funnelAug.json,
+// สร้างสดโดย scripts/build-funnel.mjs): dailyAds/dailyInbox มาจากไฟล์ "ยอดขาย Online S45 Clinic"
+// (ชีต "ส.ค.69") ตรงๆ — consult/deposit/OR รายวันคำนวณจาก RAW_TX ด้วยนิยามเดียวกับ FUNNEL_DATA_JUL
+// (ดูคอมเมนต์ด้านบน) เพราะชีตต้นฉบับยังไม่กรอกตัวเลขกลุ่มนี้เหมือนกัน · inter ไม่มี key ใน
+// FUNNEL_CLOSE_COUNTS_AUG เหตุผลเดียวกับ FUNNEL_CLOSE_COUNTS_JUL
+const FUNNEL_DATA_AUG = FUNNEL_AUG_DATA.data;
+const FUNNEL_CLOSE_COUNTS_AUG = FUNNEL_AUG_DATA.closeCounts;
+const FUNNEL_AUG_DAYS = FUNNEL_AUG_DATA.daysWithData;
 
 // ============================================================
 // ลิงก์อ้างอิง Organic Post / Insight ที่ทีม Digital นำมาต่อยอดเป็น Ads Messenger
@@ -1264,7 +1273,9 @@ export default function AdsDashboard() {
   // ระยะเวลาปิด OR สำหรับ "หน้า Inbox & Bad Lead" — ต้องผูกกับ funnelMonthFilter (มิ.ย./ก.ค. เลือกจาก
   // dropdown บนหัวข้อ Inbox) ไม่ใช่ dateRange ของตัวเลือกวันที่หลักด้านบนสุด (คนละตัวกัน — ก่อนหน้านี้หน้านี้
   // ใช้ activeLeadTime ซึ่งอิงตาม dateRange ทำให้ตัวเลขไม่ตรงกับหัตถการ/เดือนที่เลือกในหน้า Inbox เอง)
-  const funnelLeadTime = liveLeadTimeDays(funnelMonthFilter === "jul" ? "2026-07" : "2026-06");
+  const funnelLeadTime = liveLeadTimeDays(
+    funnelMonthFilter === "aug" ? "2026-08" : funnelMonthFilter === "jul" ? "2026-07" : "2026-06"
+  );
 
   // ยอดขายรวม (deposit/online/sales) ในช่วงวันที่เลือก + ค่าโฆษณา (ประมาณจากยอดรายเดือนจริง เฉลี่ยตามสัดส่วนวันที่ทับซ้อน)
   // แก้บั๊ก: เดิมไม่กรองตาม procFilter ทำให้สลับหัตถการแล้วยอดไม่เปลี่ยนเมื่อช่วงวันที่ไม่ใช่เดือนมิ.ย.เต็มเดือน
@@ -1443,10 +1454,14 @@ export default function AdsDashboard() {
 
   const funnelOptions = Object.entries(FUNNEL_DATA).map(([k, v]) => [k, v.label]);
   const FUNNEL_MONTH_OPTIONS = [
+    ["aug", `สิงหาคม 2569 (1-${FUNNEL_AUG_DAYS})`],
     ["jul", "กรกฎาคม 2569"],
     ["jun", "มิถุนายน 2569"],
   ];
-  const funnelSource = funnelMonthFilter === "jul" ? FUNNEL_DATA_JUL : FUNNEL_DATA;
+  const funnelSource = funnelMonthFilter === "aug" ? FUNNEL_DATA_AUG : funnelMonthFilter === "jul" ? FUNNEL_DATA_JUL : FUNNEL_DATA;
+  const funnelMonthLabel =
+    funnelMonthFilter === "aug" ? `สิงหาคม 2569 (1-${FUNNEL_AUG_DAYS})` : funnelMonthFilter === "jul" ? "กรกฎาคม 2569" : "มิถุนายน 2569";
+  const funnelMonthShortLabel = funnelMonthFilter === "aug" ? "ส.ค." : funnelMonthFilter === "jul" ? "ก.ค." : "มิ.ย.";
   const funnel = funnelSource[funnelFilter];
   const funnelChartData = funnel.dailyAds.map((v, i) => ({
     day: i + 1,
@@ -1743,20 +1758,24 @@ export default function AdsDashboard() {
   const summaryRoas = execRoas;
   // เคสมัดจำในช่วงที่เลือก — เดือนมิ.ย.เต็มเดือนใช้ DOCTOR_TOTAL ทางการ ช่วงอื่นรวมจาก RAW_TX จริง (activeDoctors)
   const summaryDoctorCases = isJunFull ? DOCTOR_TOTAL.cases : (activeDoctors || []).reduce((s, d) => s + d.cases, 0);
-  // Funnel (Inbox/OR) มีข้อมูลรายวันแค่ มิ.ย. (FUNNEL_DATA) กับ ก.ค. (FUNNEL_DATA_JUL ไม่มี dailyOr) — รวมเฉพาะวันที่ทับซ้อนกับ 2 เดือนนี้
+  // Funnel (Inbox/OR) มีข้อมูลรายวันแค่ มิ.ย. (FUNNEL_DATA) ก.ค. (FUNNEL_DATA_JUL) และ ส.ค. ถึงวันที่ 23
+  // (FUNNEL_DATA_AUG) — รวมเฉพาะวันที่ทับซ้อนกับ 3 เดือนนี้
   const hasJuneOverlap = dateRange.start <= "2026-06-30" && dateRange.end >= "2026-06-01";
   const hasJulyOverlap = dateRange.start <= "2026-07-31" && dateRange.end >= "2026-07-01";
-  const hasFunnelCoverage = hasJuneOverlap || hasJulyOverlap;
+  const hasAugustOverlap = dateRange.start <= "2026-08-31" && dateRange.end >= "2026-08-01";
+  const hasFunnelCoverage = hasJuneOverlap || hasJulyOverlap || hasAugustOverlap;
   const summaryInboxTotal =
     sumDailyOverlap(dateRange, "2026-06-01", "2026-06-30", FUNNEL_DATA.all.dailyInbox) +
-    sumDailyOverlap(dateRange, "2026-07-01", "2026-07-31", FUNNEL_DATA_JUL.all.dailyInbox);
-  // OR มีข้อมูลรายวันครอบคลุม มิ.ย.-ก.ค. เท่านั้น — ถ้าช่วงที่เลือกไม่ทับซ้อนทั้งสองเดือนเลย ให้ถือว่า "ไม่มีข้อมูล" ไม่ใช่ 0
+    sumDailyOverlap(dateRange, "2026-07-01", "2026-07-31", FUNNEL_DATA_JUL.all.dailyInbox) +
+    sumDailyOverlap(dateRange, "2026-08-01", "2026-08-31", FUNNEL_DATA_AUG.all.dailyInbox);
+  // OR มีข้อมูลรายวันครอบคลุม มิ.ย.-ส.ค. เท่านั้น — ถ้าช่วงที่เลือกไม่ทับซ้อนเดือนใดเลย ให้ถือว่า "ไม่มีข้อมูล" ไม่ใช่ 0
   const summaryOrTotal = hasFunnelCoverage
     ? sumDailyOverlap(dateRange, "2026-06-01", "2026-06-30", FUNNEL_DATA.all.dailyOr) +
-      sumDailyOverlap(dateRange, "2026-07-01", "2026-07-31", FUNNEL_DATA_JUL.all.dailyOr)
+      sumDailyOverlap(dateRange, "2026-07-01", "2026-07-31", FUNNEL_DATA_JUL.all.dailyOr) +
+      sumDailyOverlap(dateRange, "2026-08-01", "2026-08-31", FUNNEL_DATA_AUG.all.dailyOr)
     : null;
-  // ถ้าช่วงที่เลือกยื่นออกไปนอก มิ.ย.-ก.ค. ตัวเลข OR ด้านบน (ถ้ามี) จะไม่รวมส่วนที่ยื่นออกไปนั้น
-  const summaryOrMissingRange = dateRange.start < "2026-06-01" || dateRange.end > "2026-07-31";
+  // ถ้าช่วงที่เลือกยื่นออกไปนอก มิ.ย.-ส.ค. (หรือเกินวันที่ 23 ส.ค.) ตัวเลข OR ด้านบน (ถ้ามี) จะไม่รวมส่วนที่ยื่นออกไปนั้น
+  const summaryOrMissingRange = dateRange.start < "2026-06-01" || dateRange.end > "2026-08-23";
   // LOA (LINE OA Broadcast) มีแค่ยอดรวมทั้งเดือน ไม่มีรายวัน จึงใช้ได้เฉพาะตอนเลือกเต็มเดือนมิ.ย./ก.ค. เท่านั้น (ช่องทางปกติ)
   const loaSummarySource = isJunFull ? LOA_JUNE : dateRange.start === "2026-07-01" && dateRange.end === "2026-07-31" ? LOA_JUL_NORMAL : null;
   const loaSummaryTotal = loaSummarySource
@@ -2386,7 +2405,7 @@ export default function AdsDashboard() {
           </div>
           <p className="text-xs text-slate-400 mb-4">
             {funnel.label} · ยอดยิง Ads → Inbox{funnel.sales != null ? " → ปิดบิล (มัดจำ+ปรึกษา) → ยอด OR จริง" : ""} · รายวันทั้งเดือน
-            {funnelMonthFilter === "jul" ? "กรกฎาคม 2569" : "มิถุนายน 2569"}
+            {funnelMonthLabel}
           </p>
 
           {/* Funnel metric cards */}
@@ -2472,7 +2491,12 @@ export default function AdsDashboard() {
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
             <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <p>
-              ข้อมูลชุดนี้มาจากไฟล์ "ยอดขาย Online S45 Clinic" ชีตเดือน{funnelMonthFilter === "jul" ? "กรกฎาคม 2026 (มีเฉพาะยอดยิง Ads กับ Inbox รายวัน ยังไม่มียอดขาย/OR แยกรายวันในไฟล์นี้)" : "มิถุนายน 2569 เท่านั้น · \"ยอดขาย (มัดจำ+ปรึกษา)\" คือมูลค่าบิลที่ปิดได้ (ไม่เท่ากับยอด OR ซึ่งเป็นรายรับจากการผ่าตัดจริง)"}
+              ข้อมูลชุดนี้มาจากไฟล์ "ยอดขาย Online S45 Clinic" ชีตเดือน
+              {funnelMonthFilter === "aug"
+                ? `สิงหาคม 2569 (ถึงวันที่ ${FUNNEL_AUG_DAYS} — มีเฉพาะยอดยิง Ads กับ Inbox รายวันจากไฟล์นี้ตรงๆ ส่วนยอดขาย/OR แยกรายวันคำนวณจากไฟล์ธุรกรรม Data S45 Clinic แทน)`
+                : funnelMonthFilter === "jul"
+                  ? "กรกฎาคม 2026 (มีเฉพาะยอดยิง Ads กับ Inbox รายวัน ยังไม่มียอดขาย/OR แยกรายวันในไฟล์นี้)"
+                  : "มิถุนายน 2569 เท่านั้น · \"ยอดขาย (มัดจำ+ปรึกษา)\" คือมูลค่าบิลที่ปิดได้ (ไม่เท่ากับยอด OR ซึ่งเป็นรายรับจากการผ่าตัดจริง)"}
             </p>
           </div>
         </div>
@@ -2918,7 +2942,7 @@ export default function AdsDashboard() {
             </div>
           </div>
           <p className="text-xs text-slate-400 mb-5 ml-10">
-            {inboxDailyFunnel.label} · รายวันทั้งเดือน{funnelMonthFilter === "jul" ? "กรกฎาคม 2569" : "มิถุนายน 2569"} ·{" "}
+            {inboxDailyFunnel.label} · รายวันทั้งเดือน{funnelMonthLabel} ·{" "}
             {inboxDailyTargetPerDay != null
               ? `เป้าหมาย ${fmtTHB(inboxDailyTargetPerDay)} แชท/วัน (ตัวเลขจริงที่ทีมกำหนด)`
               : "หัตถการนี้ยังไม่มีเป้าหมาย Inbox ต่อวันที่กำหนดไว้"}
@@ -2977,7 +3001,7 @@ export default function AdsDashboard() {
             <div className="flex items-center gap-2 mb-3">
               <Clock size={14} className="text-cyan-600" />
               <h3 className="text-sm font-semibold text-slate-700">
-                ระยะเวลาที่ใช้ปิด OR (จากวันที่ทัก → วันผ่าตัดจริง) — {funnelMonthFilter === "jul" ? "กรกฎาคม 2569" : "มิถุนายน 2569"}
+                ระยะเวลาที่ใช้ปิด OR (จากวันที่ทัก → วันผ่าตัดจริง) — {funnelMonthLabel}
               </h3>
             </div>
             {!funnelLeadTime ? (
@@ -3018,7 +3042,7 @@ export default function AdsDashboard() {
                   };
                   return [`${fmtTHB(v)} ${name === "or" ? "เคส" : "เคส/ครั้ง"}`, labels[name] || name];
                 }}
-                labelFormatter={(d) => `วันที่ ${d} ${funnelMonthFilter === "jul" ? "ก.ค." : "มิ.ย."}`}
+                labelFormatter={(d) => `วันที่ ${d} ${funnelMonthShortLabel}`}
                 contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 13 }}
               />
               <Legend
@@ -3104,11 +3128,12 @@ export default function AdsDashboard() {
 
           {/* ปิดปรึกษา / ปิดมัดจำ แยกตามหัตถการ เทียบ Inbox */}
           {(() => {
-            const closeCounts = funnelMonthFilter === "jul" ? FUNNEL_CLOSE_COUNTS_JUL : FUNNEL_CLOSE_COUNTS;
-            // ก.ค.: closeCounts.all รวมแค่ 4 หัตถการที่มีข้อมูล (ไม่รวม inter) — ตัวหาร Inbox ของแถวรวมต้องตัด inter ออกด้วย
+            const closeCounts =
+              funnelMonthFilter === "aug" ? FUNNEL_CLOSE_COUNTS_AUG : funnelMonthFilter === "jul" ? FUNNEL_CLOSE_COUNTS_JUL : FUNNEL_CLOSE_COUNTS;
+            // ก.ค./ส.ค.: closeCounts.all รวมแค่ 4 หัตถการที่มีข้อมูล (ไม่รวม inter) — ตัวหาร Inbox ของแถวรวมต้องตัด inter ออกด้วย
             // เพื่อให้ % สอดคล้องกับตัวตั้ง ไม่งั้น % จะต่ำเกินจริงเพราะหารด้วย Inbox ที่รวม inter (ซึ่งไม่มีใน closeCounts.all)
             const allInboxForClose =
-              funnelMonthFilter === "jul"
+              funnelMonthFilter === "jul" || funnelMonthFilter === "aug"
                 ? funnelSource.nose_open.inbox + funnelSource.nose_semi.inbox + funnelSource.breast_lipo.inbox + funnelSource.brow_hairline.inbox
                 : funnelSource.all.inbox;
             return (
@@ -3116,7 +3141,7 @@ export default function AdsDashboard() {
             <div className="flex items-center gap-2 mb-3">
               <ClipboardCheck size={14} className="text-emerald-600" />
               <h3 className="text-sm font-semibold text-slate-700">
-                ปิดปรึกษา / ปิดมัดจำ แยกตามหัตถการ (เทียบ Inbox) — {funnelMonthFilter === "jul" ? "กรกฎาคม 2569" : "มิถุนายน 2569"}
+                ปิดปรึกษา / ปิดมัดจำ แยกตามหัตถการ (เทียบ Inbox) — {funnelMonthLabel}
               </h3>
             </div>
 
@@ -3210,7 +3235,7 @@ export default function AdsDashboard() {
                 </tbody>
               </table>
             </div>
-            {funnelMonthFilter === "jul" && (
+            {(funnelMonthFilter === "jul" || funnelMonthFilter === "aug") && (
               <p className="text-[11px] text-slate-400 mt-2">
                 Inter ยังไม่มีข้อมูลปิดปรึกษา/ปิดมัดจำของเดือนนี้ (ไฟล์ธุรกรรมไม่ได้แท็ก Inter แยกเป็นหัตถการของตัวเอง) —
                 "รวมทุกหัตถการ" ด้านบนจึงรวมเฉพาะ 4 หัตถการที่มีข้อมูลจริงเท่านั้น
