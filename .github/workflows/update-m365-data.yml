@@ -1,8 +1,9 @@
 name: Update M365 data (RAW_TX pipeline)
 
-# ดึงข้อมูลดิบจากไฟล์ "Data S45 Clinic (5).xlsx" บน SharePoint/OneDrive ผ่าน Microsoft
-# Graph API (src/data/m365Raw.json) แล้วแปลงเป็น src/data/rawTx.json ที่ App.jsx import
-# ใช้คำนวณ RAW_TX จริง — Dashboard จึงอัปเดตข้อมูลธุรกรรมอัตโนมัติทุกวัน ไม่ต้อง paste มือแล้ว
+# ดึงข้อมูลดิบจากไฟล์ Excel บน SharePoint/OneDrive (Data S45 Clinic, Inter Sale Part,
+# LINE OA Broadcast) ผ่าน Microsoft Graph API (src/data/m365Raw.json) แล้วแปลงเป็น
+# src/data/rawTx.json (RAW_TX) และ src/data/loaData.json (LOA broadcast section) ที่
+# App.jsx import ใช้จริง — Dashboard จึงอัปเดตข้อมูลธุรกรรม+LOA อัตโนมัติทุกวัน ไม่ต้อง paste มือแล้ว
 #
 # ต้องตั้ง repo secrets ที่ Settings → Secrets and variables → Actions →
 # New repository secret:
@@ -46,12 +47,15 @@ jobs:
       - name: Build RAW_TX from M365 data
         run: node scripts/build-raw-tx.mjs
 
+      - name: Build LOA data from M365 data
+        run: node scripts/build-loa.mjs
+
       - name: Commit & push if data changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src/data/m365Raw.json src/data/rawTx.json
-          if git diff --cached --quiet -- src/data/m365Raw.json src/data/rawTx.json; then
+          git add src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json
+          if git diff --cached --quiet -- src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json; then
             echo "No change — nothing to commit."
             exit 0
           fi

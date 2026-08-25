@@ -1,0 +1,201 @@
+{
+  "generatedAt": "2026-08-25T11:28:44.297Z",
+  "months": {
+    "2026-01": {
+      "open": {
+        "broadcastReach": 1084567,
+        "budgetUsed": 65074.02,
+        "budgetLeft": null,
+        "quotaLeft": null
+      },
+      "breast": {
+        "broadcastReach": 275098,
+        "budgetUsed": 16505.88,
+        "budgetLeft": null,
+        "quotaLeft": null
+      },
+      "brow": {
+        "broadcastReach": 170374,
+        "budgetUsed": 10222.44,
+        "budgetLeft": null,
+        "quotaLeft": null
+      }
+    },
+    "2026-02": {
+      "open": {
+        "broadcastReach": 1116778,
+        "budgetUsed": 67006.68,
+        "budgetLeft": null,
+        "quotaLeft": null
+      },
+      "breast": {
+        "broadcastReach": 124455,
+        "budgetUsed": 7467.3,
+        "budgetLeft": null,
+        "quotaLeft": null
+      },
+      "brow": {
+        "broadcastReach": 261582,
+        "budgetUsed": 15694.92,
+        "budgetLeft": null,
+        "quotaLeft": null
+      }
+    },
+    "2026-03": {
+      "open": {
+        "broadcastReach": 1133728,
+        "budgetUsed": 68023.68,
+        "budgetLeft": null,
+        "quotaLeft": null
+      },
+      "breast": {
+        "broadcastReach": 54110,
+        "budgetUsed": 3246.6,
+        "budgetLeft": null,
+        "quotaLeft": null
+      },
+      "brow": {
+        "broadcastReach": 347162,
+        "budgetUsed": 20829.72,
+        "budgetLeft": null,
+        "quotaLeft": null
+      }
+    },
+    "2026-04": {
+      "open": {
+        "broadcastReach": 956618,
+        "budgetUsed": 57397.08,
+        "budgetLeft": null,
+        "quotaLeft": null
+      },
+      "semi": {
+        "broadcastReach": 63294,
+        "budgetUsed": 3797.64,
+        "budgetLeft": null,
+        "quotaLeft": null
+      },
+      "breast": {
+        "broadcastReach": 0,
+        "budgetUsed": 0,
+        "budgetLeft": null,
+        "quotaLeft": null
+      },
+      "brow": {
+        "broadcastReach": 332242,
+        "budgetUsed": 19934.52,
+        "budgetLeft": null,
+        "quotaLeft": null
+      },
+      "branding": {
+        "broadcastReach": 181095,
+        "budgetUsed": 10865.7,
+        "budgetLeft": null,
+        "quotaLeft": null
+      }
+    },
+    "2026-05": {
+      "open": {
+        "broadcastReach": 1028603,
+        "budgetUsed": 61716.18,
+        "budgetLeft": null,
+        "quotaLeft": null
+      },
+      "semi": {
+        "broadcastReach": 58013,
+        "budgetUsed": 3480.78,
+        "budgetLeft": null,
+        "quotaLeft": null
+      },
+      "breast": {
+        "broadcastReach": 0,
+        "budgetUsed": 0,
+        "budgetLeft": null,
+        "quotaLeft": null
+      },
+      "brow": {
+        "broadcastReach": 400057,
+        "budgetUsed": 24003.42,
+        "budgetLeft": null,
+        "quotaLeft": null
+      },
+      "branding": {
+        "broadcastReach": 38328,
+        "budgetUsed": 2299.68,
+        "budgetLeft": null,
+        "quotaLeft": null
+      }
+    },
+    "2026-06": {
+      "open": {
+        "broadcastReach": 1165774,
+        "budgetUsed": 69946.44,
+        "budgetLeft": 5053.56,
+        "quotaLeft": 82226
+      },
+      "semi": {
+        "broadcastReach": 39242,
+        "budgetUsed": 2354.52,
+        "budgetLeft": 7645.48,
+        "quotaLeft": 116758
+      },
+      "breast": {
+        "broadcastReach": 39291,
+        "budgetUsed": 2357.46,
+        "budgetLeft": 2642.54,
+        "quotaLeft": 38709
+      },
+      "brow": {
+        "broadcastReach": 305360,
+        "budgetUsed": 18321.6,
+        "budgetLeft": 2678.4,
+        "quotaLeft": 6640
+      },
+      "branding": {
+        "broadcastReach": 15597,
+        "budgetUsed": 935.82,
+        "budgetLeft": 9064.18,
+        "quotaLeft": 140403
+      }
+    },
+    "2026-07": {
+      "breast": {
+        "broadcastReach": 127095,
+        "budgetUsed": 7625.7,
+        "budgetLeft": 2374.3,
+        "quotaLeft": 39571
+      },
+      "brow": {
+        "broadcastReach": 127053,
+        "budgetUsed": 7623.18,
+        "budgetLeft": 2376.82,
+        "quotaLeft": 39613
+      },
+      "skin": {
+        "broadcastReach": 76243,
+        "budgetUsed": 4574.58,
+        "budgetLeft": 5425.42,
+        "quotaLeft": 90423
+      }
+    },
+    "2026-08": {
+      "breast": {
+        "broadcastReach": 25415,
+        "budgetUsed": 1524.9,
+        "budgetLeft": 8475.1,
+        "quotaLeft": 141251
+      },
+      "brow": {
+        "broadcastReach": 25419,
+        "budgetUsed": 1525.14,
+        "budgetLeft": 8474.86,
+        "quotaLeft": 141247
+      },
+      "skin": {
+        "broadcastReach": 0,
+        "budgetUsed": 0,
+        "budgetLeft": 10000,
+        "quotaLeft": 166666
+      }
+    }
+  }
+}
