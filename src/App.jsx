@@ -184,8 +184,9 @@ const MONTHLY_DATA = {
   // sales อัปเดต 25 ส.ค. 2026: 16,281,890 (Total price จริงเท่านั้น) แทน 19,544,667 เดิมที่ประมาณเคสยังไม่ปิดด้วย
   // Online price แทน — ทีมยืนยันแล้วว่ายอดขายรวมต้องนับจาก Total price จริงเท่านั้น ไม่ใช้ Online price มาประมาณ
   jul26: { label: "กรกฎาคม 2026", spend: liveMonthTotal(MONTH_ISO.jul26, 1673928), deposit: 3609892, online: 11298798, sales: 16281890 },
-  // สเปนด์สดถึงวันนี้จาก Facebook Ads MCP · deposit/online/sales จาก RAW_TX ครอบคลุม 1-25 ส.ค. (ขอบเขตข้อมูลจริงล่าสุดจาก M365 pipeline)
-  aug26: { label: "สิงหาคม 2026 (1–25, ข้อมูลธุรกรรมล่าสุด)", spend: liveMonthTotal(MONTH_ISO.aug26, 1246200), deposit: 1053986, online: 6508500, sales: 6125600 },
+  // สเปนด์สดถึงวันนี้จาก Facebook Ads MCP · deposit/online/sales จาก RAW_TX ครอบคลุมถึงวันที่ล่าสุดที่ pipeline ดึงมาได้
+  // (ไม่ระบุช่วงวันที่ในป้ายชื่อ เพราะระบบนี้อัปเดตต่อเนื่องไปเรื่อยๆ ทุกเดือน ไม่ใช่หยุดที่วันใดวันหนึ่งตายตัว)
+  aug26: { label: "สิงหาคม 2026", spend: liveMonthTotal(MONTH_ISO.aug26, 1246200), deposit: 1053986, online: 6508500, sales: 6125600 },
 };
 const MONTH_OPTIONS = Object.entries(MONTHLY_DATA).map(([k, v]) => [k, v.label]);
 
@@ -527,7 +528,6 @@ const FUNNEL_CLOSE_COUNTS_JUL = {
 // FUNNEL_CLOSE_COUNTS_AUG เหตุผลเดียวกับ FUNNEL_CLOSE_COUNTS_JUL
 const FUNNEL_DATA_AUG = FUNNEL_AUG_DATA.data;
 const FUNNEL_CLOSE_COUNTS_AUG = FUNNEL_AUG_DATA.closeCounts;
-const FUNNEL_AUG_DAYS = FUNNEL_AUG_DATA.daysWithData;
 
 // ============================================================
 // ลิงก์อ้างอิง Organic Post / Insight ที่ทีม Digital นำมาต่อยอดเป็น Ads Messenger
@@ -688,6 +688,25 @@ function MetricCard({ icon: Icon, label, value, sub, tone = "slate", delta, good
       <div className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight break-words">{value}</div>
       {sub && <div className={`text-xs mt-1 font-medium break-words ${tone === "red" ? "text-rose-500" : "text-slate-400"}`}>{sub}</div>}
     </div>
+  );
+}
+
+// ป้าย % เทียบเดือนก่อนหน้า (MoM) แบบย่อ ใช้กับกล่องสถิติเล็กๆ ที่ไม่ได้ใช้ MetricCard เต็มรูปแบบ
+// null = ไม่มีข้อมูลเดือนก่อนให้เทียบ (เช่น เลือกเดือนแรกสุดที่มีข้อมูล) จึงไม่แสดงป้ายเลย ไม่ใช่แสดง 0%
+function MoMBadge({ delta, goodDirection = "up" }) {
+  if (delta == null || !Number.isFinite(delta)) return null;
+  const isUp = delta > 0;
+  const isFlat = Math.abs(delta) < 0.05;
+  const isGood = isFlat ? null : isUp === (goodDirection === "up");
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 text-[10px] font-semibold ${
+        isFlat ? "text-slate-400" : isGood ? "text-emerald-600" : "text-rose-600"
+      }`}
+    >
+      {!isFlat && (isUp ? <ArrowUp size={9} /> : <ArrowDown size={9} />)}
+      {Math.abs(delta).toFixed(1)}% เทียบเดือนก่อน
+    </span>
   );
 }
 
@@ -929,7 +948,7 @@ function Sidebar({ activePage, setActivePage, mobileOpen, setMobileOpen }) {
 const CAL_WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const CAL_MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-function MonthCalendar({ y, m, draft, onDayClick, minDate, maxDate, onJump, yearOptions }) {
+function MonthCalendar({ y, m, draft, onDayClick, onJump, yearOptions }) {
   const isoOf = (d) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   const firstDow = new Date(y, m, 1).getDay();
   const daysInMonth = new Date(y, m + 1, 0).getDate();
@@ -966,23 +985,15 @@ function MonthCalendar({ y, m, draft, onDayClick, minDate, maxDate, onJump, year
         {cells.map((d, i) => {
           if (d === null) return <div key={i} />;
           const iso = isoOf(d);
-          const disabled = iso < minDate || iso > maxDate;
           const inRange = draft.start && draft.end && iso >= draft.start && iso <= draft.end;
           const isEdge = iso === draft.start || iso === draft.end;
           return (
             <div key={i} className="flex items-center justify-center py-0.5">
               <button
                 type="button"
-                disabled={disabled}
                 onClick={() => onDayClick(iso)}
                 className={`h-7 w-7 text-xs rounded-full flex items-center justify-center transition-colors ${
-                  disabled
-                    ? "text-slate-300 cursor-not-allowed"
-                    : isEdge
-                    ? "bg-indigo-600 text-white font-semibold"
-                    : inRange
-                    ? "bg-indigo-100 text-indigo-700"
-                    : "text-slate-600 hover:bg-slate-100"
+                  isEdge ? "bg-indigo-600 text-white font-semibold" : inRange ? "bg-indigo-100 text-indigo-700" : "text-slate-600 hover:bg-slate-100"
                 }`}
               >
                 {d}
@@ -995,7 +1006,7 @@ function MonthCalendar({ y, m, draft, onDayClick, minDate, maxDate, onJump, year
   );
 }
 
-function DateRangePicker({ value, compareEnabled, compareValue, onApply, presets, minDate, maxDate, fmtDate }) {
+function DateRangePicker({ value, compareEnabled, compareValue, onApply, presets, fmtDate }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value);
   const [selectingEnd, setSelectingEnd] = useState(false);
@@ -1019,13 +1030,23 @@ function DateRangePicker({ value, compareEnabled, compareValue, onApply, presets
 
   const rightMonth = viewMonth.m === 11 ? { y: viewMonth.y + 1, m: 0 } : { y: viewMonth.y, m: viewMonth.m + 1 };
 
+  // ถ้า Compare ยังผูกกับ preset อยู่ (ไม่ใช่ "กำหนดเอง") ต้องคำนวณช่วงเทียบใหม่ทุกครั้งที่ผู้ใช้
+  // เปลี่ยนช่วงหลักด้วย — ไม่งั้นค่าจะค้างที่ช่วงเดิม ไม่ขยับตามช่วงหลักที่เพิ่งเลือก
+  const syncCompareToDraft = (newDraft) => {
+    if (comparePreset === "prev_period") setDraftCompare(previousPeriodRange(newDraft));
+    else if (comparePreset === "prev_month") setDraftCompare(previousMonthRange(newDraft));
+  };
+
   const handleDayClick = (iso) => {
-    if (iso < minDate || iso > maxDate) return;
     if (!selectingEnd) {
-      setDraft({ start: iso, end: iso });
+      const next = { start: iso, end: iso };
+      setDraft(next);
+      syncCompareToDraft(next);
       setSelectingEnd(true);
     } else {
-      setDraft((d) => (iso < d.start ? { start: iso, end: d.start } : { start: d.start, end: iso }));
+      const next = iso < draft.start ? { start: iso, end: draft.start } : { start: draft.start, end: iso };
+      setDraft(next);
+      syncCompareToDraft(next);
       setSelectingEnd(false);
     }
   };
@@ -1076,6 +1097,7 @@ function DateRangePicker({ value, compareEnabled, compareValue, onApply, presets
                     key={p.key}
                     onClick={() => {
                       setDraft(r);
+                      syncCompareToDraft(r);
                       setSelectingEnd(false);
                       const d = new Date(`${r.end}T00:00:00`);
                       d.setMonth(d.getMonth() - 1);
@@ -1097,8 +1119,8 @@ function DateRangePicker({ value, compareEnabled, compareValue, onApply, presets
                 <ChevronLeft size={18} />
               </button>
               <div className="flex-1 grid grid-cols-2 gap-4 min-w-0">
-                <MonthCalendar y={viewMonth.y} m={viewMonth.m} draft={draft} onDayClick={handleDayClick} minDate={minDate} maxDate={maxDate} onJump={jumpTo("left")} yearOptions={yearOptions} />
-                <MonthCalendar y={rightMonth.y} m={rightMonth.m} draft={draft} onDayClick={handleDayClick} minDate={minDate} maxDate={maxDate} onJump={jumpTo("right")} yearOptions={yearOptions} />
+                <MonthCalendar y={viewMonth.y} m={viewMonth.m} draft={draft} onDayClick={handleDayClick} onJump={jumpTo("left")} yearOptions={yearOptions} />
+                <MonthCalendar y={rightMonth.y} m={rightMonth.m} draft={draft} onDayClick={handleDayClick} onJump={jumpTo("right")} yearOptions={yearOptions} />
               </div>
               <button onClick={() => setViewMonth((v) => (v.m === 11 ? { y: v.y + 1, m: 0 } : { y: v.y, m: v.m + 1 }))} className="text-slate-400 hover:text-slate-600 p-1 shrink-0">
                 <ChevronRight size={18} />
@@ -1317,7 +1339,6 @@ export default function AdsDashboard() {
     return d.toISOString().slice(0, 10);
   };
   const thisMonthStart = `${todayAnchor.slice(0, 7)}-01`;
-  const thisMonthLabel = `เดือนนี้ (${THAI_MONTHS_SHORT[Number(todayAnchor.slice(5, 7)) - 1]})`;
   const thisMonthNum = Number(todayAnchor.slice(5, 7));
   const thisYearNum = Number(todayAnchor.slice(0, 4));
   const lastMonthNum = thisMonthNum === 1 ? 12 : thisMonthNum - 1;
@@ -1325,17 +1346,18 @@ export default function AdsDashboard() {
   const lastMonthStart = `${lastMonthYear}-${String(lastMonthNum).padStart(2, "0")}-01`;
   const lastMonthEndDay = new Date(lastMonthYear, lastMonthNum, 0).getDate();
   const lastMonthEnd = `${lastMonthYear}-${String(lastMonthNum).padStart(2, "0")}-${String(lastMonthEndDay).padStart(2, "0")}`;
-  const lastMonthLabel = `เดือนที่แล้ว (${THAI_MONTHS_SHORT[lastMonthNum - 1]})`;
+  // ไม่ใส่ชื่อย่อเดือนในป้าย "เดือนนี้"/"เดือนที่แล้ว" เพราะระบบนี้ใช้งานต่อเนื่องไปเรื่อยๆ ทุกเดือน
+  // การ hardcode ชื่อเดือนไว้ในป้ายจะทำให้เข้าใจผิดว่าระบบหยุดอัปเดตที่เดือนนั้นเดือนเดียว
   const DATE_PRESETS = [
     { key: "today", label: "วันนี้", range: () => ({ start: todayAnchor, end: todayAnchor }) },
     { key: "7d", label: "7 วันที่ผ่านมา", range: () => ({ start: isoDaysAgo(6), end: todayAnchor }) },
     { key: "14d", label: "14 วันที่ผ่านมา", range: () => ({ start: isoDaysAgo(13), end: todayAnchor }) },
-    { key: "28d", label: "28 วันที่ผ่านมา", range: () => ({ start: isoDaysAgo(27), end: todayAnchor }) },
-    { key: "thismonth", label: thisMonthLabel, range: () => ({ start: thisMonthStart, end: todayAnchor }) },
-    { key: "lastmonth", label: lastMonthLabel, range: () => ({ start: lastMonthStart, end: lastMonthEnd }) },
-    { key: "may", label: "พฤษภาคม 2026", range: () => ({ start: "2026-05-01", end: "2026-05-31" }) },
-    { key: "q2", label: "ไตรมาส เม.ย.–มิ.ย. 2026", range: () => ({ start: "2026-04-01", end: "2026-06-30" }) },
-    { key: "ytd", label: "ตั้งแต่ต้นปี 2026", range: () => ({ start: "2026-01-01", end: todayAnchor }) },
+    { key: "30d", label: "30 วันที่ผ่านมา", range: () => ({ start: isoDaysAgo(29), end: todayAnchor }) },
+    { key: "thismonth", label: "เดือนนี้", range: () => ({ start: thisMonthStart, end: todayAnchor }) },
+    { key: "lastmonth", label: "เดือนที่แล้ว", range: () => ({ start: lastMonthStart, end: lastMonthEnd }) },
+    { key: "may", label: "พฤษภาคม 2569", range: () => ({ start: "2026-05-01", end: "2026-05-31" }) },
+    { key: "q2", label: "ไตรมาส เม.ย.–มิ.ย. 2569", range: () => ({ start: "2026-04-01", end: "2026-06-30" }) },
+    { key: "ytd", label: "ตั้งแต่ต้นปี 2569", range: () => ({ start: "2026-01-01", end: todayAnchor }) },
   ];
 
 
@@ -1454,13 +1476,13 @@ export default function AdsDashboard() {
 
   const funnelOptions = Object.entries(FUNNEL_DATA).map(([k, v]) => [k, v.label]);
   const FUNNEL_MONTH_OPTIONS = [
-    ["aug", `สิงหาคม 2569 (1-${FUNNEL_AUG_DAYS})`],
+    ["aug", "สิงหาคม 2569"],
     ["jul", "กรกฎาคม 2569"],
     ["jun", "มิถุนายน 2569"],
   ];
   const funnelSource = funnelMonthFilter === "aug" ? FUNNEL_DATA_AUG : funnelMonthFilter === "jul" ? FUNNEL_DATA_JUL : FUNNEL_DATA;
   const funnelMonthLabel =
-    funnelMonthFilter === "aug" ? `สิงหาคม 2569 (1-${FUNNEL_AUG_DAYS})` : funnelMonthFilter === "jul" ? "กรกฎาคม 2569" : "มิถุนายน 2569";
+    funnelMonthFilter === "aug" ? "สิงหาคม 2569" : funnelMonthFilter === "jul" ? "กรกฎาคม 2569" : "มิถุนายน 2569";
   const funnelMonthShortLabel = funnelMonthFilter === "aug" ? "ส.ค." : funnelMonthFilter === "jul" ? "ก.ค." : "มิ.ย.";
   const funnel = funnelSource[funnelFilter];
   const funnelChartData = funnel.dailyAds.map((v, i) => ({
@@ -1537,6 +1559,24 @@ export default function AdsDashboard() {
     { target: 0, actual: 0, consult: 0, deposit: 0, or: 0 }
   );
   const daysAboveTarget = inboxDailyTargetPerDay != null ? inboxDailyData.filter((r) => r.actual >= r.target).length : 0;
+
+  // เทียบ Inbox/ปิดปรึกษา/ปิดมัดจำ/OR ของเดือนที่เลือกกับเดือนก่อนหน้าติดกัน (มิ.ย.←ก.ค.←ส.ค.) — ไม่มีข้อมูล
+  // ก่อน มิ.ย. 2569 จึงไม่มีเดือนก่อนหน้าให้เทียบตอนเลือกมิ.ย. (null = ไม่แสดงป้าย ไม่ใช่ 0%)
+  const prevFunnelSource = funnelMonthFilter === "aug" ? FUNNEL_DATA_JUL : funnelMonthFilter === "jul" ? FUNNEL_DATA : null;
+  const prevInboxDailyFunnel = prevFunnelSource ? prevFunnelSource[inboxDailyFilter] : null;
+  const sumDaily = (arr) => (arr ? arr.reduce((s, v) => s + v, 0) : null);
+  const prevInboxDailyTotals = prevInboxDailyFunnel
+    ? {
+        actual: sumDaily(prevInboxDailyFunnel.dailyInbox),
+        consult: sumDaily(prevInboxDailyFunnel.dailyConsult),
+        deposit: sumDaily(prevInboxDailyFunnel.dailyDeposit),
+        or: sumDaily(prevInboxDailyFunnel.dailyOrCases),
+      }
+    : null;
+  const inboxActualMoM = prevInboxDailyTotals ? pctDelta(inboxDailyTotals.actual, prevInboxDailyTotals.actual) : null;
+  const inboxConsultMoM = prevInboxDailyTotals ? pctDelta(inboxDailyTotals.consult, prevInboxDailyTotals.consult) : null;
+  const inboxDepositMoM = prevInboxDailyTotals ? pctDelta(inboxDailyTotals.deposit, prevInboxDailyTotals.deposit) : null;
+  const inboxOrMoM = prevInboxDailyTotals ? pctDelta(inboxDailyTotals.or, prevInboxDailyTotals.or) : null;
 
   // ทีม Online: 5 คน ตอบทุกหัตถการหลัก + 1 คน ตอบเฉพาะ Inter
   const ONLINE_TEAM_MAIN = 5;
@@ -1847,8 +1887,6 @@ export default function AdsDashboard() {
               compareEnabled={compareEnabled}
               compareValue={compareRange}
               presets={DATE_PRESETS}
-              minDate="2025-10-01"
-              maxDate={todayAnchor}
               fmtDate={fmtDateTh}
               onApply={({ range, compareEnabled: ce, compareRange: cr }) => {
                 setDateRange(range);
@@ -2493,7 +2531,7 @@ export default function AdsDashboard() {
             <p>
               ข้อมูลชุดนี้มาจากไฟล์ "ยอดขาย Online S45 Clinic" ชีตเดือน
               {funnelMonthFilter === "aug"
-                ? `สิงหาคม 2569 (ถึงวันที่ ${FUNNEL_AUG_DAYS} — มีเฉพาะยอดยิง Ads กับ Inbox รายวันจากไฟล์นี้ตรงๆ ส่วนยอดขาย/OR แยกรายวันคำนวณจากไฟล์ธุรกรรม Data S45 Clinic แทน)`
+                ? "สิงหาคม 2569 (มีเฉพาะยอดยิง Ads กับ Inbox รายวันจากไฟล์นี้ตรงๆ ส่วนยอดขาย/OR แยกรายวันคำนวณจากไฟล์ธุรกรรม Data S45 Clinic แทน)"
                 : funnelMonthFilter === "jul"
                   ? "กรกฎาคม 2026 (มีเฉพาะยอดยิง Ads กับ Inbox รายวัน ยังไม่มียอดขาย/OR แยกรายวันในไฟล์นี้)"
                   : "มิถุนายน 2569 เท่านั้น · \"ยอดขาย (มัดจำ+ปรึกษา)\" คือมูลค่าบิลที่ปิดได้ (ไม่เท่ากับยอด OR ซึ่งเป็นรายรับจากการผ่าตัดจริง)"}
@@ -2539,10 +2577,12 @@ export default function AdsDashboard() {
             <div className="bg-sky-50 rounded-xl p-3">
               <p className="text-[11px] text-sky-600 font-medium mb-0.5">งบคงเหลือ</p>
               <p className="text-lg font-bold text-sky-700">฿{fmtTHB(loaSelTotal.budgetLeft)}</p>
+              <p className="text-[11px] text-sky-500 mt-0.5">{((loaSelTotal.budgetLeft / loaChannelMeta.monthlyBudget) * 100).toFixed(1)}% ของงบเดือน</p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3">
               <p className="text-[11px] text-slate-500 font-medium mb-0.5">โควตาบลอดคงเหลือ</p>
               <p className="text-lg font-bold text-slate-700">{fmtTHB(loaSelTotal.quotaLeft)} คน</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">{((loaSelTotal.quotaLeft / loaChannelMeta.monthlyQuota) * 100).toFixed(1)}% ของโควตาเดือน</p>
             </div>
           </div>
 
@@ -2957,6 +2997,7 @@ export default function AdsDashboard() {
             <div className="bg-sky-50 rounded-xl p-3">
               <p className="text-[11px] text-sky-600 font-medium mb-0.5">Inbox จริงรวมทั้งเดือน</p>
               <p className="text-base font-bold text-sky-700">{fmtTHB(inboxDailyTotals.actual)}</p>
+              <MoMBadge delta={inboxActualMoM} />
             </div>
             <div className="bg-emerald-50 rounded-xl p-3">
               <p className="text-[11px] text-emerald-600 font-medium mb-0.5">% เทียบเป้าทั้งเดือน</p>
@@ -2980,14 +3021,17 @@ export default function AdsDashboard() {
             <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-3">
               <p className="text-[11px] text-amber-600 font-medium mb-0.5">ยอดปิดปรึกษา (รวมทั้งเดือน)</p>
               <p className="text-xl font-bold text-amber-700">{fmtTHB(inboxDailyTotals.consult)} เคส</p>
+              <MoMBadge delta={inboxConsultMoM} />
             </div>
             <div className="rounded-xl border border-violet-100 bg-violet-50/60 p-3">
               <p className="text-[11px] text-violet-600 font-medium mb-0.5">ยอดปิดมัดจำ (รวมทั้งเดือน)</p>
               <p className="text-xl font-bold text-violet-700">{fmtTHB(inboxDailyTotals.deposit)} เคส</p>
+              <MoMBadge delta={inboxDepositMoM} />
             </div>
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
               <p className="text-[11px] text-emerald-600 font-medium mb-0.5">จำนวนเคสที่ปิด OR (รวมทั้งเดือน)</p>
               <p className="text-xl font-bold text-emerald-700">{fmtTHB(inboxDailyTotals.or)} เคส</p>
+              <MoMBadge delta={inboxOrMoM} />
             </div>
           </div>
           ) : (
