@@ -58,6 +58,7 @@ import adSpendData from "./data/adSpend.json";
 import RAW_TX_DATA from "./data/rawTx.json";
 import LOA_DATA from "./data/loaData.json";
 import FUNNEL_AUG_DATA from "./data/funnelAug.json";
+import AD_DAILY from "./data/adDaily.json";
 const loaDataByMonth = LOA_DATA.months;
 
 // ============================================================
@@ -841,8 +842,32 @@ function isoForMonthDay(monthKey, dayNum) {
 }
 // FUNNEL_DATA[_JUL/_AUG] ของเดือนนั้นๆ — ใช้ตอนช่วงวันที่ที่เลือกครอบคลุมมากกว่า 1 เดือน (เช่น "30 วันที่ผ่านมา"
 // ใกล้ต้นเดือนจะย้อนไปถึงเดือนก่อน) เพื่อไม่ให้ตัดข้อมูลของเดือนก่อนทิ้งไปเฉยๆ เหมือนตอนอ้างอิงแค่ activeMonthKey เดียว
+// dailyAds/dailyInbox สดจาก src/data/adDaily.json (Facebook Marketing API จริง, อัปเดตทุกคืน — ดู
+// scripts/fetch-fb-daily.mjs) มาแทนของเดิมที่มาจากไฟล์ Excel "ยอดขาย Online S45 Clinic" ที่กรอกมือช้ากว่าจริง
+// 1-3 วันเสมอ · "all" รวมจาก 5 หมวดที่มีข้อมูลสด (ไม่รวม legacy "Inter" ในบัญชี Nose Open 02 ก่อน ส.ค. 2569
+// เหมือน adDaily.json เอง) — คืน null ถ้าเดือนนั้นยังไม่มีข้อมูลสด (เช่นเดือนเก่ากว่าที่ไฟล์เก็บไว้)
+const AD_DAILY_LIVE_CATEGORIES = ["nose_open", "nose_semi", "breast_lipo", "brow_hairline", "inter"];
+function liveDailyForMonth(monthIso, categoryKey) {
+  const monthData = AD_DAILY.months?.[monthIso];
+  if (!monthData) return null;
+  if (categoryKey !== "all") return monthData[categoryKey] || null;
+  const present = AD_DAILY_LIVE_CATEGORIES.filter((c) => monthData[c]);
+  if (present.length === 0) return null;
+  const len = Math.min(...present.map((c) => monthData[c].dailyAds.length));
+  const dailyAds = Array.from({ length: len }, (_, i) => present.reduce((s, c) => s + (monthData[c].dailyAds[i] || 0), 0));
+  const dailyInbox = Array.from({ length: len }, (_, i) => present.reduce((s, c) => s + (monthData[c].dailyInbox[i] || 0), 0));
+  return { dailyAds, dailyInbox };
+}
 function funnelSourceForMonth(monthKey) {
-  return monthKey === "aug" ? FUNNEL_DATA_AUG : monthKey === "jul" ? FUNNEL_DATA_JUL : monthKey === "jun" ? FUNNEL_DATA : null;
+  const base = monthKey === "aug" ? FUNNEL_DATA_AUG : monthKey === "jul" ? FUNNEL_DATA_JUL : monthKey === "jun" ? FUNNEL_DATA : null;
+  if (!base) return null;
+  const monthIso = monthKey === "aug" ? "2026-08" : monthKey === "jul" ? "2026-07" : "2026-06";
+  const merged = {};
+  for (const [key, val] of Object.entries(base)) {
+    const live = liveDailyForMonth(monthIso, key);
+    merged[key] = live ? { ...val, dailyAds: live.dailyAds, dailyInbox: live.dailyInbox } : val;
+  }
+  return merged;
 }
 // ทุกวันที่ (ข้าม 1-3 เดือนได้) ที่ผู้ใช้เลือกจริงบน Filter ด้านบน ที่ทับซ้อนกับ มิ.ย.-ส.ค. 2569 (เดือนที่มีข้อมูล
 // Sales Funnel รายวัน) เรียงตามลำดับเวลา — ใช้แทนการอ้างอิง activeMonthKey เดียว เพื่อให้ช่วงที่ข้ามเดือน (เช่น
