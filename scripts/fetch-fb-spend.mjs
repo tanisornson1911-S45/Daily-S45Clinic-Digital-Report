@@ -36,9 +36,14 @@ if (!FB_ACCESS_TOKEN) {
 // dedicated Inter account instead of tagging individual campaigns inside Nose
 // Open 02. It is therefore EXCLUDED from the nose_open bucket below and its
 // full spend is added to `inter` instead (see INTER_DEDICATED_ACCOUNT_ID).
+// nose_open_freelance (221741759556998, "S45 - | Nose Open | Freelance Nett")
+// added 2026-08-26 — the team flagged it was missing; checked its full
+// campaign list Jun-Aug and none are named "Inter", so it's pure nose_open
+// with no special-casing needed (unlike nose_open_02's legacy campaigns).
 const ACCOUNTS = {
   nose_open_01: { id: "2214227468912072", category: "nose_open" },
   nose_open_02: { id: "1117617719803706", category: "nose_open" },
+  nose_open_freelance: { id: "221741759556998", category: "nose_open" },
   semi_open: { id: "983591777378317", category: "nose_semi" },
   breast: { id: "1948728392195994", category: "breast_lipo" },
   brow_facelift: { id: "225618075", category: "brow_hairline" },
