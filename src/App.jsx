@@ -46,6 +46,7 @@ import {
   Bar,
   ComposedChart,
   Line,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -3266,50 +3267,57 @@ export default function AdsDashboard() {
             </p>
           </div>
 
-          <ResponsiveContainer width="100%" height={320}>
+          {/* กราฟที่ 1: เป้าหมาย Inbox vs Inbox จริง — แยกจากกราฟยอดปิดด้านล่างเพราะสเกลต่างกันมาก
+              (Inbox หลักร้อย ส่วนยอดปิดหลักสิบ) ถ้ารวมแกน Y เดียวกัน เส้นยอดปิดจะแบนติดพื้นจนอ่านไม่ออก */}
+          <ResponsiveContainer width="100%" height={260}>
             <ComposedChart data={inboxChartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d9f2ee" />
               <XAxis dataKey="iso" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(iso) => iso.slice(8, 10)} />
               <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
               <Tooltip
-                formatter={(v, name) => {
-                  const labels = {
-                    target: "เป้าหมาย Inbox",
-                    actual: "Inbox จริง",
-                    consult: "ยอดปิดปรึกษา",
-                    deposit: "ยอดปิดมัดจำ",
-                    or: "จำนวนเคสที่ปิด OR",
-                  };
-                  return [`${fmtTHB(v)} ${name === "or" ? "เคส" : "เคส/ครั้ง"}`, labels[name] || name];
-                }}
+                formatter={(v, name) => [`${fmtTHB(v)} แชท/วัน`, name === "target" ? "เป้าหมาย Inbox" : "Inbox จริง"]}
                 labelFormatter={(iso) => fmtDateTh(iso)}
                 contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 13 }}
               />
               <Legend
-                formatter={(v) =>
-                  ({
-                    target: "เป้าหมาย Inbox",
-                    actual: "Inbox ที่ทำได้จริง",
-                    consult: "ยอดปิดปรึกษา",
-                    deposit: "ยอดปิดมัดจำ",
-                    or: "จำนวนเคสที่ปิด OR",
-                  }[v] || v)
-                }
+                formatter={(v) => (v === "target" ? "เป้าหมาย Inbox" : "Inbox ที่ทำได้จริง")}
                 wrapperStyle={{ fontSize: 12 }}
               />
+              <Area type="monotone" dataKey="actual" stroke="#0d9488" strokeWidth={2.5} fill="#5eead4" fillOpacity={0.28} dot={{ r: 3 }} />
               {inboxDailyTargetPerDay != null && (
-                <Line type="monotone" dataKey="target" stroke="#5eead4" strokeDasharray="5 4" strokeWidth={2} dot={{ r: 3 }} />
-              )}
-              <Line type="monotone" dataKey="actual" stroke="#0d9488" strokeWidth={2.5} dot={{ r: 3 }} />
-              {inboxHasSalesData && (
-                <>
-                  <Line type="monotone" dataKey="consult" stroke="#0891b2" strokeWidth={2} dot={{ r: 2 }} />
-                  <Line type="monotone" dataKey="deposit" stroke="#0e7490" strokeWidth={2} dot={{ r: 2 }} />
-                  <Line type="monotone" dataKey="or" stroke="#115e59" strokeWidth={2} dot={{ r: 2 }} />
-                </>
+                <Line type="monotone" dataKey="target" stroke="#f59e0b" strokeDasharray="5 4" strokeWidth={2} dot={false} />
               )}
             </ComposedChart>
           </ResponsiveContainer>
+
+          {/* กราฟที่ 2: ยอดปิดปรึกษา/ปิดมัดจำ/จำนวนเคสที่ปิด OR — แกน Y ของตัวเอง (สเกล 0-70 ประมาณ) */}
+          {inboxHasSalesData && (
+            <>
+              <h4 className="text-xs font-semibold text-slate-500 mt-5 mb-2">ยอดปิดปรึกษา / ปิดมัดจำ / จำนวนเคสที่ปิด OR รายวัน</h4>
+              <ResponsiveContainer width="100%" height={200}>
+                <ComposedChart data={inboxChartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d9f2ee" />
+                  <XAxis dataKey="iso" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(iso) => iso.slice(8, 10)} />
+                  <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    formatter={(v, name) => {
+                      const labels = { consult: "ยอดปิดปรึกษา", deposit: "ยอดปิดมัดจำ", or: "จำนวนเคสที่ปิด OR" };
+                      return [`${fmtTHB(v)} ${name === "or" ? "เคส" : "เคส/ครั้ง"}`, labels[name] || name];
+                    }}
+                    labelFormatter={(iso) => fmtDateTh(iso)}
+                    contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 13 }}
+                  />
+                  <Legend
+                    formatter={(v) => ({ consult: "ยอดปิดปรึกษา", deposit: "ยอดปิดมัดจำ", or: "จำนวนเคสที่ปิด OR" }[v] || v)}
+                    wrapperStyle={{ fontSize: 12 }}
+                  />
+                  <Line type="monotone" dataKey="consult" stroke="#0891b2" strokeWidth={2} dot={{ r: 2 }} />
+                  <Line type="monotone" dataKey="deposit" stroke="#7c3aed" strokeWidth={2} dot={{ r: 2 }} />
+                  <Line type="monotone" dataKey="or" stroke="#db2777" strokeWidth={2} dot={{ r: 2 }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </>
+          )}
           <p className="text-[11px] text-slate-400 mt-2 mb-5">
             เป้าหมาย Inbox/วัน: Nose Open 120 แชท · Semi Open 35 แชท · ยกคิ้ว 130 แชท · เสริมหน้าอก 25 แชท · Inter 10 แชท (ตัวเลขจริงที่ทีมกำหนด) —
             "รวมทุกหัตถการ" ใช้ผลรวมของทั้ง 5 หัตถการ ({fmtTHB(INBOX_DAILY_TARGET_ALL)} แชท/วัน)
