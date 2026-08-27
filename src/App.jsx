@@ -814,6 +814,26 @@ function sumDailyOverlap(range, monthStart, monthEnd, dailyArr) {
   return sum;
 }
 
+// เดือนที่ 1 (index 0) ของ array รายวันแต่ละเดือนที่มีข้อมูล Sales Funnel (มิ.ย.-ส.ค. 2569)
+const FUNNEL_MONTH_STARTS = { jun: "2026-06-01", jul: "2026-07-01", aug: "2026-08-01" };
+// คืน index (0-based, index 0 = วันที่ 1 ของเดือน) ของ array รายวัน (dailyAds/dailyInbox/ฯลฯ) ที่ทับซ้อนกับ
+// ช่วงวันที่ที่เลือกจริงบน Filter ด้านบน จำกัดเฉพาะเดือนเดียว (monthKey) — ใช้กรอง Sales Funnel Performance
+// และ Inbox & Bad Lead ให้เปลี่ยนตามช่วงวันที่ที่เลือกจริง ไม่ใช่ค้างที่ยอดรวมทั้งเดือนเหมือนเดิม
+function dayIndicesInRange(monthKey, len, range) {
+  const monthStart = FUNNEL_MONTH_STARTS[monthKey];
+  if (!monthStart) return [];
+  const monthEndDay = new Date(Number(monthStart.slice(0, 4)), Number(monthStart.slice(5, 7)), 0).getDate();
+  const monthEnd = `${monthStart.slice(0, 8)}${String(monthEndDay).padStart(2, "0")}`;
+  const overlapStart = range.start > monthStart ? range.start : monthStart;
+  const overlapEnd = range.end < monthEnd ? range.end : monthEnd;
+  if (overlapStart > overlapEnd) return [];
+  const startDay = Number(overlapStart.slice(8, 10));
+  const endDay = Math.min(Number(overlapEnd.slice(8, 10)), len);
+  const idxs = [];
+  for (let d = startDay; d <= endDay; d++) idxs.push(d - 1);
+  return idxs;
+}
+
 // เปอร์เซ็นต์เปลี่ยนแปลงจากช่วงเทียบ (compare) ไปช่วงปัจจุบัน — null ถ้าฐานเป็น 0 (เทียบไม่ได้)
 function pctDelta(current, previous) {
   if (!previous) return null;
@@ -1289,21 +1309,45 @@ export default function AdsDashboard() {
   const funnelMonthLabel =
     activeMonthKey === "aug" ? "สิงหาคม 2569" : activeMonthKey === "jul" ? "กรกฎาคม 2569" : activeMonthKey === "jun" ? "มิถุนายน 2569" : null;
   const funnelMonthShortLabel = activeMonthKey === "aug" ? "ส.ค." : activeMonthKey === "jul" ? "ก.ค." : activeMonthKey === "jun" ? "มิ.ย." : "";
-  const funnel = funnelSource ? funnelSource[funnelFilter] : null;
-  const funnelChartData = funnel
-    ? funnel.dailyAds.map((v, i) => ({
-        day: i + 1,
-        ads: v,
-        inbox: funnel.dailyInbox[i],
-      }))
+  // Sales Funnel Performance (หน้า Ads/โฆษณา) — ยอดยิง Ads/Inbox รวมเฉพาะวันที่ทับซ้อนกับช่วง Filter ที่เลือกจริง
+  // (ไม่ใช่ยอดรวมทั้งเดือนเหมือนเดิม) ส่วนยอดขาย/OR/Basket/Close Rate/%Ads Cost คำนวณสดจาก RAW_TX เฉพาะช่วงที่
+  // เลือก+หัตถการนั้น (นิยาม "เคสปิดแล้ว" = dep>0 ตามมาตรฐานเดียวกับหน้ายอดขาย/หน้าหมอ) — Inter ไม่มีแท็กแยกใน
+  // ไฟล์ธุรกรรม จึงมีให้เฉพาะยอดยิง Ads/Inbox เท่านั้น เหมือนเดิม
+  const funnelSrc = funnelSource ? funnelSource[funnelFilter] : null;
+  const funnelDayIdxs = funnelSrc && activeMonthKey ? dayIndicesInRange(activeMonthKey, funnelSrc.dailyAds.length, dateRange) : [];
+  const funnel = funnelSrc
+    ? (() => {
+        const ads = funnelDayIdxs.reduce((s, i) => s + (funnelSrc.dailyAds[i] || 0), 0);
+        const inbox = funnelDayIdxs.reduce((s, i) => s + (funnelSrc.dailyInbox[i] || 0), 0);
+        let sales = null,
+          orRevenue = null,
+          basket = null,
+          closeRate = null,
+          adsCost = null,
+          adsCostOr = null;
+        if (funnelFilter !== "inter") {
+          const procKey = funnelFilter === "all" ? null : funnelFilter;
+          const rowsInRange = procKey ? txInRange.filter((t) => t.p === procKey) : txInRange.filter((t) => DAILY_CATEGORY_KEYS.includes(t.p));
+          const closedCases = rowsInRange.filter((t) => t.dep > 0);
+          sales = closedCases.reduce((s, t) => s + t.tot, 0);
+          const rowsAll = procKey ? RAW_TX.filter((t) => t.p === procKey) : RAW_TX.filter((t) => DAILY_CATEGORY_KEYS.includes(t.p));
+          const orCases = rowsAll.filter((t) => t.or && t.or >= dateRange.start && t.or <= dateRange.end);
+          orRevenue = orCases.reduce((s, t) => s + t.tot, 0);
+          basket = closedCases.length > 0 ? sales / closedCases.length : null;
+          closeRate = inbox > 0 ? closedCases.length / inbox : null;
+          adsCost = sales > 0 ? ads / sales : null;
+          adsCostOr = orRevenue > 0 ? ads / orRevenue : null;
+        }
+        return { label: funnelSrc.label, ads, inbox, or: orRevenue, sales, basket, closeRate, adsCost, adsCostOr };
+      })()
+    : null;
+  const funnelChartData = funnelSrc
+    ? funnelDayIdxs.map((i) => ({ day: i + 1, ads: funnelSrc.dailyAds[i], inbox: funnelSrc.dailyInbox[i] }))
     : [];
 
-  // ระยะเวลาปิด OR สำหรับ "หน้า Inbox & Bad Lead" — ผูกกับ activeMonthKey (มาจาก Filter วันที่หลัก
-  // ด้านบนสุดโดยตรงแล้ว ไม่มี Dropdown เดือนแยกของหน้า Inbox อีกต่อไป) null ถ้าช่วงที่เลือกไม่อยู่ใน
-  // มิ.ย.-ส.ค. 2569 เลย (ไม่มีข้อมูลให้แสดง)
-  const funnelLeadTime = activeMonthKey
-    ? liveLeadTimeDays(activeMonthKey === "aug" ? "2026-08" : activeMonthKey === "jul" ? "2026-07" : "2026-06")
-    : null;
+  // ระยะเวลาปิด OR สำหรับ "หน้า Inbox & Bad Lead" — ใช้ activeLeadTime ที่คำนวณสดจาก txInRange อยู่แล้ว
+  // (กรองตามช่วงวันที่ Filter หลักด้านบนจริง ไม่ผูกกับ มิ.ย.-ส.ค.เท่านั้น เพราะ RAW_TX มีข้อมูลย้อนไปถึง ม.ค. 2569)
+  const funnelLeadTime = activeLeadTime;
 
   // ยอดขายรวม (deposit/online/sales) ในช่วงวันที่เลือก + ค่าโฆษณา (ประมาณจากยอดรายเดือนจริง เฉลี่ยตามสัดส่วนวันที่ทับซ้อน)
   // แก้บั๊ก: เดิมไม่กรองตาม procFilter ทำให้สลับหัตถการแล้วยอดไม่เปลี่ยนเมื่อช่วงวันที่ไม่ใช่เดือนมิ.ย.เต็มเดือน
@@ -1353,6 +1397,7 @@ export default function AdsDashboard() {
   // การ hardcode ชื่อเดือนไว้ในป้ายจะทำให้เข้าใจผิดว่าระบบหยุดอัปเดตที่เดือนนั้นเดือนเดียว
   const DATE_PRESETS = [
     { key: "today", label: "วันนี้", range: () => ({ start: REAL_TODAY, end: REAL_TODAY }) },
+    { key: "yesterday", label: "เมื่อวาน", range: () => ({ start: isoDaysAgo(1), end: isoDaysAgo(1) }) },
     { key: "7d", label: "7 วันที่ผ่านมา", range: () => ({ start: isoDaysAgo(6), end: REAL_TODAY }) },
     { key: "14d", label: "14 วันที่ผ่านมา", range: () => ({ start: isoDaysAgo(13), end: REAL_TODAY }) },
     { key: "30d", label: "30 วันที่ผ่านมา", range: () => ({ start: isoDaysAgo(29), end: REAL_TODAY }) },
@@ -1532,11 +1577,14 @@ export default function AdsDashboard() {
   const inboxDailyFunnel = funnelSource ? funnelSource[inboxDailyFilter] : null;
   const inboxHasSalesData = inboxDailyFunnel?.dailyConsult != null;
   const inboxDailyTargetPerDay = inboxDailyFilter === "all" ? INBOX_DAILY_TARGET_ALL : INBOX_DAILY_TARGET[inboxDailyFilter] ?? null;
+  // กรองเฉพาะวันที่ทับซ้อนกับช่วง Filter ที่เลือกจริงบนสุด (ไม่ใช่ทั้งเดือนเหมือนเดิม)
+  const inboxDailyIdxs =
+    inboxDailyFunnel && activeMonthKey ? dayIndicesInRange(activeMonthKey, inboxDailyFunnel.dailyInbox.length, dateRange) : [];
   const inboxDailyData = inboxDailyFunnel
-    ? inboxDailyFunnel.dailyInbox.map((actual, i) => ({
+    ? inboxDailyIdxs.map((i) => ({
         day: i + 1,
         target: inboxDailyTargetPerDay,
-        actual,
+        actual: inboxDailyFunnel.dailyInbox[i],
         consult: inboxDailyFunnel.dailyConsult?.[i] ?? null,
         deposit: inboxDailyFunnel.dailyDeposit?.[i] ?? null,
         or: inboxDailyFunnel.dailyOrCases?.[i] ?? null,
@@ -1554,17 +1602,21 @@ export default function AdsDashboard() {
   );
   const daysAboveTarget = inboxDailyTargetPerDay != null ? inboxDailyData.filter((r) => r.actual >= r.target).length : 0;
 
-  // เทียบ Inbox/ปิดปรึกษา/ปิดมัดจำ/OR ของเดือนที่เลือกกับเดือนก่อนหน้าติดกัน (มิ.ย.←ก.ค.←ส.ค.) — ไม่มีข้อมูล
+  // เทียบกับ "ช่วงวันที่เดียวกัน" ของเดือนก่อนหน้าติดกัน (มิ.ย.←ก.ค.←ส.ค.) เช่น เลือก 1-7 ส.ค. จะเทียบกับ 1-7 ก.ค.
+  // ไม่ใช่ยอดรวมทั้งเดือนก่อนหน้าเหมือนเดิม (ไม่งั้นเทียบกันคนละสเกล ตัวเลข % จะไม่มีความหมาย) — ไม่มีข้อมูล
   // ก่อน มิ.ย. 2569 จึงไม่มีเดือนก่อนหน้าให้เทียบตอนเลือกมิ.ย. (null = ไม่แสดงป้าย ไม่ใช่ 0%)
   const prevFunnelSource = activeMonthKey === "aug" ? FUNNEL_DATA_JUL : activeMonthKey === "jul" ? FUNNEL_DATA : null;
+  const prevMonthKey = activeMonthKey === "aug" ? "jul" : activeMonthKey === "jul" ? "jun" : null;
   const prevInboxDailyFunnel = prevFunnelSource ? prevFunnelSource[inboxDailyFilter] : null;
-  const sumDaily = (arr) => (arr ? arr.reduce((s, v) => s + v, 0) : null);
+  const sumDailyAt = (arr, idxs) => (arr ? idxs.reduce((s, i) => s + (arr[i] || 0), 0) : null);
+  const prevInboxDailyIdxs =
+    prevInboxDailyFunnel && prevMonthKey ? inboxDailyIdxs.filter((i) => i < prevInboxDailyFunnel.dailyInbox.length) : [];
   const prevInboxDailyTotals = prevInboxDailyFunnel
     ? {
-        actual: sumDaily(prevInboxDailyFunnel.dailyInbox),
-        consult: sumDaily(prevInboxDailyFunnel.dailyConsult),
-        deposit: sumDaily(prevInboxDailyFunnel.dailyDeposit),
-        or: sumDaily(prevInboxDailyFunnel.dailyOrCases),
+        actual: sumDailyAt(prevInboxDailyFunnel.dailyInbox, prevInboxDailyIdxs),
+        consult: sumDailyAt(prevInboxDailyFunnel.dailyConsult, prevInboxDailyIdxs),
+        deposit: sumDailyAt(prevInboxDailyFunnel.dailyDeposit, prevInboxDailyIdxs),
+        or: sumDailyAt(prevInboxDailyFunnel.dailyOrCases, prevInboxDailyIdxs),
       }
     : null;
   const inboxActualMoM = prevInboxDailyTotals ? pctDelta(inboxDailyTotals.actual, prevInboxDailyTotals.actual) : null;
@@ -2450,8 +2502,7 @@ export default function AdsDashboard() {
           ) : (
           <>
           <p className="text-xs text-slate-400 mb-4">
-            {funnel.label} · ยอดยิง Ads → Inbox{funnel.sales != null ? " → ปิดบิล (มัดจำ+ปรึกษา) → ยอด OR จริง" : ""} · รายวันทั้งเดือน
-            {funnelMonthLabel}
+            {funnel.label} · ยอดยิง Ads → Inbox{funnel.sales != null ? " → ปิดบิล (มัดจำ+ปรึกษา) → ยอด OR จริง" : ""} · {rangeLabel}
           </p>
 
           {/* Funnel metric cards */}
@@ -2999,7 +3050,7 @@ export default function AdsDashboard() {
           ) : (
           <>
           <p className="text-xs text-slate-400 mb-5 ml-10">
-            {inboxDailyFunnel.label} · รายวันทั้งเดือน{funnelMonthLabel} ·{" "}
+            {inboxDailyFunnel.label} · {rangeLabel} ·{" "}
             {inboxDailyTargetPerDay != null
               ? `เป้าหมาย ${fmtTHB(inboxDailyTargetPerDay)} แชท/วัน (ตัวเลขจริงที่ทีมกำหนด)`
               : "หัตถการนี้ยังไม่มีเป้าหมาย Inbox ต่อวันที่กำหนดไว้"}
@@ -3008,16 +3059,16 @@ export default function AdsDashboard() {
           {/* Summary cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
             <div className="bg-slate-50 rounded-xl p-3">
-              <p className="text-[11px] text-slate-500 font-medium mb-0.5">เป้าหมายรวมทั้งเดือน</p>
+              <p className="text-[11px] text-slate-500 font-medium mb-0.5">เป้าหมายรวมตามช่วงที่เลือก</p>
               <p className="text-base font-bold text-slate-700">{inboxDailyTargetPerDay != null ? fmtTHB(inboxDailyTotals.target) : "—"}</p>
             </div>
             <div className="bg-sky-50 rounded-xl p-3">
-              <p className="text-[11px] text-sky-600 font-medium mb-0.5">Inbox จริงรวมทั้งเดือน</p>
+              <p className="text-[11px] text-sky-600 font-medium mb-0.5">Inbox จริงรวมตามช่วงที่เลือก</p>
               <p className="text-base font-bold text-sky-700">{fmtTHB(inboxDailyTotals.actual)}</p>
               <MoMBadge delta={inboxActualMoM} />
             </div>
             <div className="bg-emerald-50 rounded-xl p-3">
-              <p className="text-[11px] text-emerald-600 font-medium mb-0.5">% เทียบเป้าทั้งเดือน</p>
+              <p className="text-[11px] text-emerald-600 font-medium mb-0.5">% เทียบเป้า</p>
               <p className="text-base font-bold text-emerald-700">
                 {inboxDailyTargetPerDay != null && inboxDailyTotals.target > 0
                   ? `${((inboxDailyTotals.actual / inboxDailyTotals.target) * 100).toFixed(0)}%`
@@ -3036,17 +3087,17 @@ export default function AdsDashboard() {
           {inboxHasSalesData ? (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
             <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-3">
-              <p className="text-[11px] text-amber-600 font-medium mb-0.5">ยอดปิดปรึกษา (รวมทั้งเดือน)</p>
+              <p className="text-[11px] text-amber-600 font-medium mb-0.5">ยอดปิดปรึกษา (ตามช่วงที่เลือก)</p>
               <p className="text-xl font-bold text-amber-700">{fmtTHB(inboxDailyTotals.consult)} เคส</p>
               <MoMBadge delta={inboxConsultMoM} />
             </div>
             <div className="rounded-xl border border-violet-100 bg-violet-50/60 p-3">
-              <p className="text-[11px] text-violet-600 font-medium mb-0.5">ยอดปิดมัดจำ (รวมทั้งเดือน)</p>
+              <p className="text-[11px] text-violet-600 font-medium mb-0.5">ยอดปิดมัดจำ (ตามช่วงที่เลือก)</p>
               <p className="text-xl font-bold text-violet-700">{fmtTHB(inboxDailyTotals.deposit)} เคส</p>
               <MoMBadge delta={inboxDepositMoM} />
             </div>
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
-              <p className="text-[11px] text-emerald-600 font-medium mb-0.5">จำนวนเคสที่ปิด OR (รวมทั้งเดือน)</p>
+              <p className="text-[11px] text-emerald-600 font-medium mb-0.5">จำนวนเคสที่ปิด OR (ตามช่วงที่เลือก)</p>
               <p className="text-xl font-bold text-emerald-700">{fmtTHB(inboxDailyTotals.or)} เคส</p>
               <MoMBadge delta={inboxOrMoM} />
             </div>
@@ -3062,7 +3113,7 @@ export default function AdsDashboard() {
             <div className="flex items-center gap-2 mb-3">
               <Clock size={14} className="text-cyan-600" />
               <h3 className="text-sm font-semibold text-slate-700">
-                ระยะเวลาที่ใช้ปิด OR (จากวันที่ทัก → วันผ่าตัดจริง) — {funnelMonthLabel}
+                ระยะเวลาที่ใช้ปิด OR (จากวันที่ทัก → วันผ่าตัดจริง) — {rangeLabel}
               </h3>
             </div>
             {!funnelLeadTime ? (
@@ -3210,7 +3261,7 @@ export default function AdsDashboard() {
             <div className="flex items-center gap-2 mb-3">
               <ClipboardCheck size={14} className="text-emerald-600" />
               <h3 className="text-sm font-semibold text-slate-700">
-                ปิดปรึกษา / ปิดมัดจำ แยกตามหัตถการ (เทียบ Inbox) — {funnelMonthLabel}
+                ปิดปรึกษา / ปิดมัดจำ แยกตามหัตถการ (เทียบ Inbox) — {funnelMonthLabel} (ยอดรวมทั้งเดือน)
               </h3>
             </div>
 
@@ -3304,12 +3355,11 @@ export default function AdsDashboard() {
                 </tbody>
               </table>
             </div>
-            {(activeMonthKey === "jul" || activeMonthKey === "aug") && (
-              <p className="text-[11px] text-slate-400 mt-2">
-                Inter ยังไม่มีข้อมูลปิดปรึกษา/ปิดมัดจำของเดือนนี้ (ไฟล์ธุรกรรมไม่ได้แท็ก Inter แยกเป็นหัตถการของตัวเอง) —
-                "รวมทุกหัตถการ" ด้านบนจึงรวมเฉพาะ 4 หัตถการที่มีข้อมูลจริงเท่านั้น
-              </p>
-            )}
+            <p className="text-[11px] text-slate-400 mt-2">
+              ตารางนี้เป็นยอดรวมทั้งเดือน{funnelMonthLabel} ไม่แยกตามวันที่เลือกด้านบน เพราะไฟล์ต้นฉบับไม่ได้บันทึกยอดปิดปรึกษา/ปิดมัดจำเป็นรายวัน
+              (ตัวเลขอื่นในหน้านี้กรองตามช่วงวันที่ที่เลือกจริงแล้ว) · Inter ยังไม่มีข้อมูลปิดปรึกษา/ปิดมัดจำ (ไฟล์ธุรกรรมไม่ได้แท็ก Inter แยกเป็นหัตถการของตัวเอง) —
+              "รวมทุกหัตถการ" ด้านบนจึงรวมเฉพาะ 4 หัตถการที่มีข้อมูลจริงเท่านั้น
+            </p>
           </div>
             );
           })()}
