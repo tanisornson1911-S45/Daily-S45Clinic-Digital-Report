@@ -1,7 +1,9 @@
 name: Update dashboard ad-spend data
 
-# ดึงยอด ad spend จริงจาก Facebook Marketing API แล้ว commit ทับ
-# src/data/adSpend.json อัตโนมัติ ถ้าข้อมูลเปลี่ยน — Vercel จะ redeploy เอง
+# ดึงยอด ad spend จริงจาก Facebook Marketing API แล้ว commit ทับ src/data/adSpend.json
+# (ยอดรวมรายเดือนต่อหมวด) และ src/data/adDaily.json (ยอดยิง Ads + Inbox/Messenger conversation
+# started รายวันต่อหมวด — ใช้แทนไฟล์ Excel "ยอดขาย Online S45 Clinic" ที่กรอกมือช้ากว่าจริง 1-3 วัน
+# ในหน้า Ads/โฆษณา และ Inbox & Bad Lead) อัตโนมัติ ถ้าข้อมูลเปลี่ยน — Vercel จะ redeploy เอง
 # เมื่อมี commit ใหม่บน branch main
 #
 # ต้องตั้ง repo secret ชื่อ FB_ACCESS_TOKEN (System User token, สิทธิ์ ads_read)
@@ -28,19 +30,24 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Fetch latest ad spend
+      - name: Fetch latest ad spend (monthly totals)
         env:
           FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
         run: node scripts/fetch-fb-spend.mjs
+
+      - name: Fetch latest ad spend + Inbox (daily)
+        env:
+          FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
+        run: node scripts/fetch-fb-daily.mjs
 
       - name: Commit & push if data changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- src/data/adSpend.json; then
-            echo "No change in adSpend.json — nothing to commit."
+          git add src/data/adSpend.json src/data/adDaily.json
+          if git diff --cached --quiet -- src/data/adSpend.json src/data/adDaily.json; then
+            echo "No change — nothing to commit."
           else
-            git add src/data/adSpend.json
-            git commit -m "chore: update ad-spend data (automated)"
+            git commit -m "chore: update ad-spend + daily Ads/Inbox data (automated)"
             git push origin HEAD:main
           fi
