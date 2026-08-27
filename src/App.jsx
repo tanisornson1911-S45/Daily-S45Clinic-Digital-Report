@@ -308,8 +308,17 @@ const DOCTOR_TOTAL = DOCTOR_PROC.reduce(
 // deposit (ยอดมัดจำ) = Online Price + Medical check up Etc. (ไม่รวม Top up)
 // total (ยอด OR / Total) = คอลัมน์ Total ในไฟล์ต้นฉบับ
 // ============================================================
-const INTER_MONTH_LABELS = { jun26: "มิถุนายน 2569", jul26: "กรกฎาคม 2569" };
-const INTER_MONTH_OPTIONS = Object.entries(INTER_MONTH_LABELS);
+// เดือนที่แสดงผลตอนนี้ผูกกับ Filter วันที่หลักของหน้า (ดู interMonthKey/interMonthDataKey ใน component)
+// ไม่มี Dropdown เดือนแยกอีกต่อไป — มีข้อมูลจริงแค่ มิ.ย./ก.ค. 2569 เท่านั้น (INTER_BY_DOCTOR_MONTH ด้านล่าง)
+const INTER_PROC_LABELS = {
+  nose_open: "Nose Open",
+  breast: "Breast",
+  endotine: "Endotine",
+  etc: "ETC. (ดูดไขมันหน้า/ตัดกระพุ้งแก้ม)",
+  brow_lift: "Brow Lift",
+  lipo_face: "Lipo (Face)",
+};
+const INTER_PROC_OPTIONS = [["all", "ทุกหัตถการ"], ...Object.entries(INTER_PROC_LABELS)];
 const INTER_DOCTOR_LABELS = {
   all: "ทุกคน (รวม)",
   norn: "หมอ NORN",
@@ -353,22 +362,6 @@ const INTER_BY_DOCTOR_MONTH = {
     ped: [],
     terng: [],
   },
-};
-// ก.ค. 2026 — จากไฟล์ Inter_S45_2026 (Sale part July) ที่อัปเดต ณ 10 ส.ค. 2026 (ถึงวันที่ 29/7)
-// deposit = Online price + Medical check up Etc. (ไม่รวม Top up) ตามสูตรเดียวกับมิ.ย. · total = คอลัมน์ Total ในไฟล์ต้นฉบับ
-// "OPEN RHINO" -> nose_open, "Lipo (Face)" -> etc (ดูดไขมันหน้า/ตัดกระพุ้งแก้ม) ตามหมวดเดียวกับมิ.ย.
-const INTER_BY_DOCTOR_JUL = {
-  all: [
-    { key: "nose_open", label: "Nose Open", cases: 6, deposit: 3530840, total: 4086820 },
-    { key: "etc", label: "ETC. (ดูดไขมันหน้า/ตัดกระพุ้งแก้ม)", cases: 1, deposit: 4590, total: 150060 },
-  ],
-  norn: [],
-  boy: [],
-  pek: [{ key: "etc", label: "ETC. (ดูดไขมันหน้า/ตัดกระพุ้งแก้ม)", cases: 1, deposit: 4590, total: 150060 }],
-  ty: [{ key: "nose_open", label: "Nose Open", cases: 5, deposit: 2983150, total: 3473150 }],
-  big: [{ key: "nose_open", label: "Nose Open", cases: 1, deposit: 547690, total: 613670 }],
-  ped: [],
-  terng: [],
 };
 
 // ============================================================
@@ -457,16 +450,9 @@ const LOA_CHANNEL_OPTIONS = [
   ["aftercare", "Line OA Aftercare"],
 ];
 // หมายเหตุ: ช่องทาง "ปกติ" มีข้อมูลงบ/โควตาคงเหลือครบเฉพาะ มิ.ย.-ก.ค. 2569 (เดือนอื่นในชีตต้นฉบับไม่มี
-// แถวคงเหลือให้) ส่วนช่องทาง "Aftercare" มีข้อมูลแค่ ก.ค.-ส.ค. 2569 (ไฟล์ยังไม่มีเดือนอื่น) — Dropdown
-// ด้านล่างจึงต่างกันตามช่องทางที่เลือก ดู loaMonthOptionsForChannel ใน component
-const LOA_MONTH_OPTIONS = [
-  ["jul", "กรกฎาคม 2569"],
-  ["jun", "มิถุนายน 2569"],
-];
-const LOA_AFTERCARE_MONTH_OPTIONS = [
-  ["aug", "สิงหาคม 2569"],
-  ["jul", "กรกฎาคม 2569"],
-];
+// แถวคงเหลือให้) ส่วนช่องทาง "Aftercare" มีข้อมูลแค่ ก.ค.-ส.ค. 2569 (ไฟล์ยังไม่มีเดือนอื่น) — เดือนที่ใช้
+// แสดงผลตอนนี้ผูกกับ Filter วันที่หลักของหน้า Ads โดยตรง (ดู loaAvailableMonths/loaMonthKey ใน component)
+// ไม่มี Dropdown เดือนแยกอีกต่อไป
 
 // ============================================================
 // สัดส่วนงบโฆษณาแยกตามช่องทาง (ชีต Budget Allocate July26, แถว Total บรรทัด 39) — ใช้สรุปว่าช่องทางไหนแทบไม่ได้ใช้งบ
@@ -1194,7 +1180,6 @@ export default function AdsDashboard() {
   const [funnelFilter, setFunnelFilter] = useState("all");
   const [funnelMonthFilter, setFunnelMonthFilter] = useState("jul");
   const [loaChannel, setLoaChannel] = useState("normal");
-  const [loaMonthFilter, setLoaMonthFilter] = useState("jul");
   const [otherChannelFilter, setOtherChannelFilter] = useState("line");
   const [inboxDailyFilter, setInboxDailyFilter] = useState("all");
   const [budgetBoostPct, setBudgetBoostPct] = useState(20);
@@ -1202,7 +1187,7 @@ export default function AdsDashboard() {
   const [growthTab, setGrowthTab] = useState("budget"); // "budget" | "staff"
   const [heroCaseFilter, setHeroCaseFilter] = useState("doctor_tee");
   const [interDoctorFilter, setInterDoctorFilter] = useState("all");
-  const [interMonthFilter, setInterMonthFilter] = useState("jul");
+  const [interProcFilter, setInterProcFilter] = useState("all");
   const [dateRange, setDateRange] = useState({ start: "2026-06-01", end: "2026-06-30" });
   // ค่าเริ่มต้นเปิด Compare ไว้เลย เทียบมิถุนายนกับพฤษภาคมเต็มเดือน (ไม่ใช้ previousPeriodRange เพราะพ.ค. มี 31 วัน
   // ยาวกว่ามิ.ย. 1 วัน จะเลื่อนไปเริ่ม 2 พ.ค. แทนที่จะเป็นทั้งเดือน) — ผู้ใช้ยังปรับช่วงเทียบเองได้ตามปกติจาก Date Picker
@@ -1325,22 +1310,19 @@ export default function AdsDashboard() {
   const rangeLabel = dateRange.start === dateRange.end ? fmtDateTh(dateRange.start) : `${fmtDateTh(dateRange.start)} – ${fmtDateTh(dateRange.end)}`;
 
   // ---- วันนี้แบบเรียลไทม์: อ่านจากนาฬิกาเครื่องจริง (new Date()) ทุกครั้งที่ render แทนการล็อกวันที่ไว้ตายตัว ----
-  // MAX_DATA_DATE = วันสุดท้ายที่มีข้อมูลจริงอยู่ในไฟล์ (MONTHLY_DATA เดือน ส.ค. 2026 ถึงวันที่นี้เท่านั้น)
-  // ถ้าวันนี้จริงยังไม่เลยวันที่มีข้อมูล ใช้วันนี้จริงได้เลย ถ้าเลยไปแล้ว (ยังไม่ได้อัปเดตข้อมูลใหม่) จะ cap ไว้ที่ข้อมูลล่าสุดที่มี กันหน้าจอว่างเปล่า
-  const MAX_DATA_DATE = "2026-08-25";
+  // ใช้วันนี้จริงเสมอสำหรับ preset ต่างๆ (เช่น "เดือนนี้" ต้องขึ้นถึงวันที่จริงวันนี้ เช่น 27 ก็คือ 27
+  // ต่อให้ไฟล์ข้อมูลยังไม่มีของวันนั้นเข้ามาก็ตาม) — ไม่ cap ไว้ที่ "วันที่มีข้อมูลล่าสุด" อีกต่อไป
   const toIsoDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const REAL_TODAY = toIsoDate(new Date());
-  const todayAnchor = REAL_TODAY < MAX_DATA_DATE ? REAL_TODAY : MAX_DATA_DATE;
-  const isDataStale = REAL_TODAY > MAX_DATA_DATE;
 
   const isoDaysAgo = (n) => {
-    const d = new Date(`${todayAnchor}T00:00:00Z`);
+    const d = new Date(`${REAL_TODAY}T00:00:00Z`);
     d.setUTCDate(d.getUTCDate() - n);
     return d.toISOString().slice(0, 10);
   };
-  const thisMonthStart = `${todayAnchor.slice(0, 7)}-01`;
-  const thisMonthNum = Number(todayAnchor.slice(5, 7));
-  const thisYearNum = Number(todayAnchor.slice(0, 4));
+  const thisMonthStart = `${REAL_TODAY.slice(0, 7)}-01`;
+  const thisMonthNum = Number(REAL_TODAY.slice(5, 7));
+  const thisYearNum = Number(REAL_TODAY.slice(0, 4));
   const lastMonthNum = thisMonthNum === 1 ? 12 : thisMonthNum - 1;
   const lastMonthYear = thisMonthNum === 1 ? thisYearNum - 1 : thisYearNum;
   const lastMonthStart = `${lastMonthYear}-${String(lastMonthNum).padStart(2, "0")}-01`;
@@ -1349,15 +1331,15 @@ export default function AdsDashboard() {
   // ไม่ใส่ชื่อย่อเดือนในป้าย "เดือนนี้"/"เดือนที่แล้ว" เพราะระบบนี้ใช้งานต่อเนื่องไปเรื่อยๆ ทุกเดือน
   // การ hardcode ชื่อเดือนไว้ในป้ายจะทำให้เข้าใจผิดว่าระบบหยุดอัปเดตที่เดือนนั้นเดือนเดียว
   const DATE_PRESETS = [
-    { key: "today", label: "วันนี้", range: () => ({ start: todayAnchor, end: todayAnchor }) },
-    { key: "7d", label: "7 วันที่ผ่านมา", range: () => ({ start: isoDaysAgo(6), end: todayAnchor }) },
-    { key: "14d", label: "14 วันที่ผ่านมา", range: () => ({ start: isoDaysAgo(13), end: todayAnchor }) },
-    { key: "30d", label: "30 วันที่ผ่านมา", range: () => ({ start: isoDaysAgo(29), end: todayAnchor }) },
-    { key: "thismonth", label: "เดือนนี้", range: () => ({ start: thisMonthStart, end: todayAnchor }) },
+    { key: "today", label: "วันนี้", range: () => ({ start: REAL_TODAY, end: REAL_TODAY }) },
+    { key: "7d", label: "7 วันที่ผ่านมา", range: () => ({ start: isoDaysAgo(6), end: REAL_TODAY }) },
+    { key: "14d", label: "14 วันที่ผ่านมา", range: () => ({ start: isoDaysAgo(13), end: REAL_TODAY }) },
+    { key: "30d", label: "30 วันที่ผ่านมา", range: () => ({ start: isoDaysAgo(29), end: REAL_TODAY }) },
+    { key: "thismonth", label: "เดือนนี้", range: () => ({ start: thisMonthStart, end: REAL_TODAY }) },
     { key: "lastmonth", label: "เดือนที่แล้ว", range: () => ({ start: lastMonthStart, end: lastMonthEnd }) },
     { key: "may", label: "พฤษภาคม 2569", range: () => ({ start: "2026-05-01", end: "2026-05-31" }) },
     { key: "q2", label: "ไตรมาส เม.ย.–มิ.ย. 2569", range: () => ({ start: "2026-04-01", end: "2026-06-30" }) },
-    { key: "ytd", label: "ตั้งแต่ต้นปี 2569", range: () => ({ start: "2026-01-01", end: todayAnchor }) },
+    { key: "ytd", label: "ตั้งแต่ต้นปี 2569", range: () => ({ start: "2026-01-01", end: REAL_TODAY }) },
   ];
 
 
@@ -1484,12 +1466,26 @@ export default function AdsDashboard() {
   const funnelMonthLabel =
     funnelMonthFilter === "aug" ? "สิงหาคม 2569" : funnelMonthFilter === "jul" ? "กรกฎาคม 2569" : "มิถุนายน 2569";
   const funnelMonthShortLabel = funnelMonthFilter === "aug" ? "ส.ค." : funnelMonthFilter === "jul" ? "ก.ค." : "มิ.ย.";
-  const funnel = funnelSource[funnelFilter];
-  const funnelChartData = funnel.dailyAds.map((v, i) => ({
-    day: i + 1,
-    ads: v,
-    inbox: funnel.dailyInbox[i],
-  }));
+  // หน้า Ads/โฆษณา — Sales Funnel Performance ผูกกับ Filter วันที่หลักด้านบนโดยตรง ไม่มี Dropdown
+  // เดือนแยกต่างหากอีกต่อไป (ต่างจาก funnelSource/funnelMonthFilter ด้านบนซึ่งยังใช้กับ Dropdown
+  // เดือนของหน้า Inbox & Bad Lead อยู่) — เลือกเดือนจากปลายช่วงวันที่ก่อน ถ้าปลายไม่อยู่ใน 3 เดือนที่มี
+  // ข้อมูล (มิ.ย.-ส.ค. 2569) ลองต้นช่วงแทน ถ้ายังไม่เจอถือว่าไม่มีข้อมูลสำหรับช่วงที่เลือก
+  const monthKeyFromRange = (range) => {
+    const key = (iso) => (iso.startsWith("2026-06") ? "jun" : iso.startsWith("2026-07") ? "jul" : iso.startsWith("2026-08") ? "aug" : null);
+    return key(range.end) || key(range.start);
+  };
+  const adsMonthKey = monthKeyFromRange(dateRange);
+  const adsFunnelSource = adsMonthKey === "aug" ? FUNNEL_DATA_AUG : adsMonthKey === "jul" ? FUNNEL_DATA_JUL : adsMonthKey === "jun" ? FUNNEL_DATA : null;
+  const adsFunnelMonthLabel = adsMonthKey === "aug" ? "สิงหาคม 2569" : adsMonthKey === "jul" ? "กรกฎาคม 2569" : adsMonthKey === "jun" ? "มิถุนายน 2569" : null;
+  const adsFunnelMonthShort = adsMonthKey === "aug" ? "ส.ค." : adsMonthKey === "jul" ? "ก.ค." : adsMonthKey === "jun" ? "มิ.ย." : "";
+  const funnel = adsFunnelSource ? adsFunnelSource[funnelFilter] : null;
+  const funnelChartData = funnel
+    ? funnel.dailyAds.map((v, i) => ({
+        day: i + 1,
+        ads: v,
+        inbox: funnel.dailyInbox[i],
+      }))
+    : [];
 
   const otherChannelOptions = Object.entries(OTHER_CHANNEL_META).map(([k, v]) => [k, v.label]);
   const otherChannelRows = OTHER_CHANNEL_DATA[otherChannelFilter];
@@ -1531,7 +1527,12 @@ export default function AdsDashboard() {
   const INBOX_DAILY_TARGET_ALL = Object.values(INBOX_DAILY_TARGET).reduce((s, v) => s + v, 0); // รวมทุกหัตถการ รวม Inter แล้ว
   const inboxDailyOptions = Object.entries(FUNNEL_DATA).map(([k, v]) => [k, v.label]);
   const heroCaseOptions = Object.entries(DOCTOR_HERO_CASES).map(([k, v]) => [k, v.label]);
-  const interDoctorRows = (interMonthFilter === "jul" ? INTER_BY_DOCTOR_JUL : INTER_BY_DOCTOR)[interDoctorFilter] || [];
+  // Inter แยกตามหมอ — ผูกกับ Filter วันที่หลักด้านบน (adsMonthKey) แทน Dropdown เดือนแยกเดิม (มีข้อมูลแค่
+  // มิ.ย./ก.ค. 2569 เท่านั้น) · interProcFilter กรองตารางที่ปกติแสดงทุกหัตถการของหมอคนนั้นให้เหลือหัตถการเดียว
+  const interMonthKey = adsMonthKey === "jun" || adsMonthKey === "jul" ? adsMonthKey : null;
+  const interMonthDataKey = interMonthKey === "jun" ? "jun26" : interMonthKey === "jul" ? "jul26" : null;
+  const interDoctorRowsAll = interMonthDataKey ? INTER_BY_DOCTOR_MONTH[interMonthDataKey]?.[interDoctorFilter] || [] : [];
+  const interDoctorRows = interProcFilter === "all" ? interDoctorRowsAll : interDoctorRowsAll.filter((r) => r.key === interProcFilter);
   const interDoctorTotal = interDoctorRows.reduce(
     (acc, r) => ({ cases: acc.cases + r.cases, deposit: acc.deposit + r.deposit, total: acc.total + r.total }),
     { cases: 0, deposit: 0, total: 0 }
@@ -1743,50 +1744,53 @@ export default function AdsDashboard() {
 
   // ---- เลือกช่องทาง/เดือน LOA สำหรับการ์ด Broadcast บนหน้า Ads (แยกจาก loaTotal/LOA_JUNE ด้านบนซึ่งใช้เฉพาะสรุปมิถุนายนบนหน้าภาพรวม) ----
   const loaChannelMeta = LOA_CHANNEL_META[loaChannel];
-  const loaMonthOptionsForChannel = loaChannel === "aftercare" ? LOA_AFTERCARE_MONTH_OPTIONS : LOA_MONTH_OPTIONS;
+  // เดือนที่มีข้อมูล LOA จริงต่างกันตามช่องทาง — ปกติมีแค่ มิ.ย./ก.ค. 2569, Aftercare มีแค่ ก.ค./ส.ค. 2569
+  // ผูกกับ Filter วันที่หลักด้านบนโดยตรง (adsMonthKey จากด้านบน) ไม่มี Dropdown เดือนแยกอีกต่อไป
+  const loaAvailableMonths = loaChannel === "aftercare" ? ["jul", "aug"] : ["jun", "jul"];
+  const loaMonthKey = loaAvailableMonths.includes(adsMonthKey) ? adsMonthKey : null;
   const loaSelSource =
-    loaChannel === "aftercare"
-      ? loaMonthFilter === "aug"
-        ? LOA_AFTERCARE_AUG
-        : LOA_AFTERCARE_JUL
-      : loaMonthFilter === "jun"
-        ? LOA_JUNE
-        : LOA_JUL_NORMAL;
-  const loaSelTotal = loaSelSource.reduce(
-    (acc, r) => ({ budgetUsed: acc.budgetUsed + r.budgetUsed, budgetLeft: acc.budgetLeft + r.budgetLeft, quotaLeft: acc.quotaLeft + r.quotaLeft }),
-    { budgetUsed: 0, budgetLeft: 0, quotaLeft: 0 }
-  );
-  const loaSelWithTimesUsed = loaSelSource.map((r) => ({ ...r, timesUsed: r.broadcastReach / loaChannelMeta.peoplePerBroadcast }));
+    loaMonthKey == null
+      ? null
+      : loaChannel === "aftercare"
+        ? loaMonthKey === "aug"
+          ? LOA_AFTERCARE_AUG
+          : LOA_AFTERCARE_JUL
+        : loaMonthKey === "jun"
+          ? LOA_JUNE
+          : LOA_JUL_NORMAL;
+  const loaSelTotal = loaSelSource
+    ? loaSelSource.reduce(
+        (acc, r) => ({ budgetUsed: acc.budgetUsed + r.budgetUsed, budgetLeft: acc.budgetLeft + r.budgetLeft, quotaLeft: acc.quotaLeft + r.quotaLeft }),
+        { budgetUsed: 0, budgetLeft: 0, quotaLeft: 0 }
+      )
+    : null;
+  const loaSelWithTimesUsed = loaSelSource ? loaSelSource.map((r) => ({ ...r, timesUsed: r.broadcastReach / loaChannelMeta.peoplePerBroadcast })) : [];
   const loaSelByUsedDesc = [...loaSelWithTimesUsed].sort((a, b) => b.budgetUsed - a.budgetUsed);
-  const loaSelMostUsed = loaSelByUsedDesc[0];
-  const loaSelMostLeft = [...loaSelSource].sort((a, b) => b.budgetLeft - a.budgetLeft)[0];
-  const loaSelMostUrgent = [...loaSelSource].sort((a, b) => a.timesLeft - b.timesLeft)[0];
-  const maxLoaSelBudget = Math.max(...loaSelSource.map((r) => r.budgetUsed + r.budgetLeft));
+  const loaSelMostUsed = loaSelByUsedDesc[0] || null;
+  const loaSelMostLeft = loaSelSource ? [...loaSelSource].sort((a, b) => b.budgetLeft - a.budgetLeft)[0] : null;
+  const loaSelMostUrgent = loaSelSource ? [...loaSelSource].sort((a, b) => a.timesLeft - b.timesLeft)[0] : null;
+  const maxLoaSelBudget = loaSelSource ? Math.max(...loaSelSource.map((r) => r.budgetUsed + r.budgetLeft)) : 0;
   const loaSelCountCompare = loaSelSource
-    .map((r) => {
-      const used = Math.round(r.broadcastReach / loaChannelMeta.peoplePerBroadcast);
-      const left = Math.round(r.timesLeft);
-      return { key: r.key, label: r.label, used, left, total: used + left };
-    })
-    .sort((a, b) => b.total - a.total);
+    ? loaSelSource
+        .map((r) => {
+          const used = Math.round(r.broadcastReach / loaChannelMeta.peoplePerBroadcast);
+          const left = Math.round(r.timesLeft);
+          return { key: r.key, label: r.label, used, left, total: used + left };
+        })
+        .sort((a, b) => b.total - a.total)
+    : [];
   const loaSelCountTotals = loaSelCountCompare.reduce(
     (acc, r) => ({ used: acc.used + r.used, left: acc.left + r.left, total: acc.total + r.total }),
     { used: 0, left: 0, total: 0 }
   );
-  const maxLoaSelCountTotal = Math.max(...loaSelCountCompare.map((r) => r.total));
+  const maxLoaSelCountTotal = Math.max(0, ...loaSelCountCompare.map((r) => r.total));
   const loaSelMostUsedPctRow = [...loaSelCountCompare].filter((r) => r.total > 0).sort((a, b) => b.used / b.total - a.used / a.total)[0];
-  const loaSelMonthLabel =
-    loaChannel === "aftercare"
-      ? loaMonthFilter === "aug"
-        ? "สิงหาคม 2569"
-        : "กรกฎาคม 2569"
-      : loaMonthFilter === "jun"
-        ? "มิถุนายน 2569"
-        : "กรกฎาคม 2569";
-  const loaSelSheetNote =
-    loaChannel === "aftercare"
-      ? `ไฟล์ "S45 - ยอดบลอดแคส LINE OA After Care.xlsx" ชีต "LOA- ${loaMonthFilter === "aug" ? "สิงหาคม" : "กรกฎาคม"}" `
-      : `ไฟล์ "S45 - ยอดบลอดแคส LINE OA After Care.xlsx" ชีต "LOA- ${loaMonthFilter === "jun" ? "มิถุนายน" : "กรกฎาคม"}" `;
+  const loaSelMonthLabel = loaMonthKey === "aug" ? "สิงหาคม 2569" : loaMonthKey === "jul" ? "กรกฎาคม 2569" : loaMonthKey === "jun" ? "มิถุนายน 2569" : null;
+  const loaSelSheetNote = loaMonthKey
+    ? `ไฟล์ "S45 - ยอดบลอดแคส LINE OA After Care.xlsx" ชีต "LOA- ${
+        loaMonthKey === "aug" ? "สิงหาคม" : loaMonthKey === "jul" ? "กรกฎาคม" : "มิถุนายน"
+      }" `
+    : "";
 
   const channelMixSorted = [...CHANNEL_MIX].sort((a, b) => b.budget - a.budget);
   const maxChannelBudget = Math.max(...CHANNEL_MIX.map((c) => c.budget));
@@ -2345,7 +2349,7 @@ export default function AdsDashboard() {
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
             <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <p>
-              เมตริกด้านบน: ยอดขาย (มัดจำ/Online/Total Price) เป็นยอดรวมทุกช่องทาง ส่วนค่าโฆษณา (Spend) ในชีต Budget Allocate เป็นของ Facebook เท่านั้น · Facebook breakdown และสรุปเคสมัดจำแยกตามหมอ มาจากไฟล์ธุรกรรมจริง (Data_S45_Clinic) กรองช่วง 1–31 ก.ค. 2026
+              เมตริกด้านบน: ยอดขาย (มัดจำ/Online/Total Price) เป็นยอดรวมทุกช่องทาง ส่วนค่าโฆษณา (Spend) ในชีต Budget Allocate เป็นของ Facebook เท่านั้น · Facebook breakdown และสรุปเคสมัดจำแยกตามหมอ มาจากไฟล์ธุรกรรมจริง (Data_S45_Clinic) กรองตามช่วงวันที่ที่เลือกด้านบน ({rangeLabel})
             </p>
           </div>
         </div>
@@ -2362,12 +2366,13 @@ export default function AdsDashboard() {
               <h2 className="text-sm font-semibold text-slate-700">Inter แยกตามหมอ + หัตถการ (เคสจริง)</h2>
             </div>
             <div className="flex items-center gap-2">
-              <Select icon={Calendar} value={interMonthFilter} onChange={setInterMonthFilter} options={INTER_MONTH_OPTIONS} />
+              <Select icon={Stethoscope} value={interProcFilter} onChange={setInterProcFilter} options={INTER_PROC_OPTIONS} />
               <Select icon={UserCircle2} value={interDoctorFilter} onChange={setInterDoctorFilter} options={INTER_DOCTOR_OPTIONS} />
             </div>
           </div>
           <p className="text-xs text-slate-400 mb-4 ml-10">
-            จากไฟล์ Inter Sale เดือน{interMonthFilter === "jul" ? "กรกฎาคม (ถึง 29/7) 2569" : "มิถุนายน 2569"} · {INTER_DOCTOR_LABELS[interDoctorFilter]} · รวม {interDoctorTotal.cases} เคส
+            จากไฟล์ Inter Sale เดือน{interMonthKey === "jul" ? "กรกฎาคม (ถึง 29/7) 2569" : interMonthKey === "jun" ? "มิถุนายน 2569" : "— ไม่มีข้อมูลสำหรับช่วงวันที่นี้"}{" "}
+            · {INTER_DOCTOR_LABELS[interDoctorFilter]} · รวม {interDoctorTotal.cases} เคส
           </p>
 
           <div className="grid grid-cols-3 gap-3 mb-5">
@@ -2386,7 +2391,11 @@ export default function AdsDashboard() {
           </div>
 
           {interDoctorRows.length === 0 ? (
-            <p className="text-sm text-slate-400 py-4 text-center">ไม่มีเคสของหมอคนนี้ในเดือน{interMonthFilter === "jul" ? "กรกฎาคม" : "มิถุนายน"}</p>
+            <p className="text-sm text-slate-400 py-4 text-center">
+              {interMonthKey == null
+                ? "ไม่มีข้อมูล Inter สำหรับช่วงวันที่ที่เลือก (มีข้อมูลเฉพาะ มิ.ย.–ก.ค. 2569) — เปลี่ยนช่วงวันที่ด้านบนเพื่อดูข้อมูล"
+                : "ไม่มีเคสของหมอคนนี้ (ตามหัตถการที่เลือก) ในเดือนนี้"}
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -2437,13 +2446,18 @@ export default function AdsDashboard() {
               <h2 className="text-sm font-semibold text-slate-700">Sales Funnel Performance</h2>
             </div>
             <div className="flex items-center gap-2">
-              <Select icon={Calendar} value={funnelMonthFilter} onChange={setFunnelMonthFilter} options={FUNNEL_MONTH_OPTIONS} />
               <Select icon={Stethoscope} value={funnelFilter} onChange={setFunnelFilter} options={funnelOptions} />
             </div>
           </div>
+          {!funnel ? (
+            <p className="text-sm text-slate-400 py-6 text-center">
+              ไม่มีข้อมูล Sales Funnel สำหรับช่วงวันที่ที่เลือก (มีข้อมูลรายวันเฉพาะ มิ.ย.–ส.ค. 2569 เท่านั้น) — เปลี่ยนช่วงวันที่ด้านบนเพื่อดูข้อมูล
+            </p>
+          ) : (
+          <>
           <p className="text-xs text-slate-400 mb-4">
             {funnel.label} · ยอดยิง Ads → Inbox{funnel.sales != null ? " → ปิดบิล (มัดจำ+ปรึกษา) → ยอด OR จริง" : ""} · รายวันทั้งเดือน
-            {funnelMonthLabel}
+            {adsFunnelMonthLabel}
           </p>
 
           {/* Funnel metric cards */}
@@ -2517,7 +2531,7 @@ export default function AdsDashboard() {
               <YAxis yAxisId="inbox" orientation="right" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
               <Tooltip
                 formatter={(v, name) => (name === "ads" ? `฿${fmtTHB(v)}` : `${v} inbox`)}
-                labelFormatter={(d) => `วันที่ ${d} มิ.ย.`}
+                labelFormatter={(d) => `วันที่ ${d} ${adsFunnelMonthShort}`}
                 contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 13 }}
               />
               <Legend formatter={(v) => (v === "ads" ? "ยอดยิง Ads" : "Inbox")} wrapperStyle={{ fontSize: 12 }} />
@@ -2530,13 +2544,15 @@ export default function AdsDashboard() {
             <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <p>
               ข้อมูลชุดนี้มาจากไฟล์ "ยอดขาย Online S45 Clinic" ชีตเดือน
-              {funnelMonthFilter === "aug"
+              {adsMonthKey === "aug"
                 ? "สิงหาคม 2569 (มีเฉพาะยอดยิง Ads กับ Inbox รายวันจากไฟล์นี้ตรงๆ ส่วนยอดขาย/OR แยกรายวันคำนวณจากไฟล์ธุรกรรม Data S45 Clinic แทน)"
-                : funnelMonthFilter === "jul"
+                : adsMonthKey === "jul"
                   ? "กรกฎาคม 2026 (มีเฉพาะยอดยิง Ads กับ Inbox รายวัน ยังไม่มียอดขาย/OR แยกรายวันในไฟล์นี้)"
                   : "มิถุนายน 2569 เท่านั้น · \"ยอดขาย (มัดจำ+ปรึกษา)\" คือมูลค่าบิลที่ปิดได้ (ไม่เท่ากับยอด OR ซึ่งเป็นรายรับจากการผ่าตัดจริง)"}
             </p>
           </div>
+          </>
+          )}
         </div>
 )}
 
@@ -2548,25 +2564,24 @@ export default function AdsDashboard() {
               <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
                 <Megaphone size={16} />
               </div>
-              <h2 className="text-sm font-semibold text-slate-700">ค่าใช้จ่าย LINE OA Broadcast — {loaChannelMeta.label} {loaSelMonthLabel}</h2>
+              <h2 className="text-sm font-semibold text-slate-700">
+                ค่าใช้จ่าย LINE OA Broadcast — {loaChannelMeta.label} {loaSelMonthLabel || "(ไม่มีข้อมูลสำหรับช่วงวันที่นี้)"}
+              </h2>
             </div>
             <div className="flex items-center gap-2">
-              <Select
-                icon={Megaphone}
-                value={loaChannel}
-                onChange={(v) => {
-                  setLoaChannel(v);
-                  setLoaMonthFilter("jul"); // "jul" มีข้อมูลอยู่ในทั้ง 2 ชุด option จึงสลับช่องทางได้โดยไม่ค้างค่าที่ไม่มีจริง
-                }}
-                options={LOA_CHANNEL_OPTIONS}
-              />
-              <Select icon={Calendar} value={loaMonthFilter} onChange={setLoaMonthFilter} options={loaMonthOptionsForChannel} />
+              <Select icon={Megaphone} value={loaChannel} onChange={setLoaChannel} options={LOA_CHANNEL_OPTIONS} />
             </div>
           </div>
           <p className="text-xs text-slate-400 mb-4 ml-10">
             งบ Broadcast ทั้งเดือน ฿{fmtTHB(loaChannelMeta.monthlyBudget)} · โควตาส่ง {fmtTHB(loaChannelMeta.monthlyQuota)} ครั้ง/คน แยกตามหัตถการ
           </p>
-
+          {!loaSelSource ? (
+            <p className="text-sm text-slate-400 py-6 text-center">
+              ไม่มีข้อมูล LOA Broadcast ({loaChannelMeta.label}) สำหรับช่วงวันที่ที่เลือก
+              (มีข้อมูลเฉพาะ {loaChannel === "aftercare" ? "ก.ค.–ส.ค. 2569" : "มิ.ย.–ก.ค. 2569"}) — เปลี่ยนช่วงวันที่ด้านบนเพื่อดูข้อมูล
+            </p>
+          ) : (
+          <>
           {/* Overview cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
             <div className="bg-amber-50 rounded-xl p-3">
@@ -2687,6 +2702,8 @@ export default function AdsDashboard() {
               {fmtTHB(loaSelTotal.budgetUsed + loaSelTotal.budgetLeft)} ต่างจากงบตั้งไว้ ฿{fmtTHB(loaChannelMeta.monthlyBudget)} เล็กน้อยตามชีตต้นฉบับ)
             </p>
           </div>
+          </>
+          )}
         </div>
 )}
 
@@ -2698,25 +2715,24 @@ export default function AdsDashboard() {
               <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
                 <Megaphone size={16} />
               </div>
-              <h2 className="text-sm font-semibold text-slate-700">จำนวนครั้งการ Broadcast แยกตามหัตถการ — {loaChannelMeta.label} {loaSelMonthLabel}</h2>
+              <h2 className="text-sm font-semibold text-slate-700">
+                จำนวนครั้งการ Broadcast แยกตามหัตถการ — {loaChannelMeta.label} {loaSelMonthLabel || "(ไม่มีข้อมูลสำหรับช่วงวันที่นี้)"}
+              </h2>
             </div>
             <div className="flex items-center gap-2">
-              <Select
-                icon={Megaphone}
-                value={loaChannel}
-                onChange={(v) => {
-                  setLoaChannel(v);
-                  setLoaMonthFilter("jul"); // "jul" มีข้อมูลอยู่ในทั้ง 2 ชุด option จึงสลับช่องทางได้โดยไม่ค้างค่าที่ไม่มีจริง
-                }}
-                options={LOA_CHANNEL_OPTIONS}
-              />
-              <Select icon={Calendar} value={loaMonthFilter} onChange={setLoaMonthFilter} options={loaMonthOptionsForChannel} />
+              <Select icon={Megaphone} value={loaChannel} onChange={setLoaChannel} options={LOA_CHANNEL_OPTIONS} />
             </div>
           </div>
           <p className="text-xs text-slate-400 mb-5 ml-10">
             เทียบจำนวนครั้งที่ "ใช้จริงไปแล้ว" กับ "ทำได้ทั้งหมด" (ใช้จริง + เหลือ) ต่อหัตถการ · หน่วย: ครั้ง
           </p>
-
+          {!loaSelSource ? (
+            <p className="text-sm text-slate-400 py-6 text-center">
+              ไม่มีข้อมูล LOA Broadcast ({loaChannelMeta.label}) สำหรับช่วงวันที่ที่เลือก
+              (มีข้อมูลเฉพาะ {loaChannel === "aftercare" ? "ก.ค.–ส.ค. 2569" : "มิ.ย.–ก.ค. 2569"}) — เปลี่ยนช่วงวันที่ด้านบนเพื่อดูข้อมูล
+            </p>
+          ) : (
+          <>
           {/* Overview cards */}
           <div className="grid grid-cols-3 gap-3 mb-5">
             <div className="bg-indigo-50 rounded-xl p-3 text-center">
@@ -2805,6 +2821,8 @@ export default function AdsDashboard() {
                 ` · ${loaSelMostUsedPctRow.label} ใช้ไปแล้ว ${loaSelMostUsedPctRow.used}/${loaSelMostUsedPctRow.total} ครั้ง (${((loaSelMostUsedPctRow.used / loaSelMostUsedPctRow.total) * 100).toFixed(0)}%) คือหัตถการที่ใช้โควตาไปมากที่สุด`}
             </p>
           </div>
+          </>
+          )}
         </div>
 )}
 
