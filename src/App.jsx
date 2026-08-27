@@ -1734,6 +1734,44 @@ export default function AdsDashboard() {
   const inboxDepositMoM = prevInboxDailyTotals ? pctDelta(inboxDailyTotals.deposit, prevInboxDailyTotals.deposit) : null;
   const inboxOrMoM = prevInboxDailyTotals ? pctDelta(inboxDailyTotals.or, prevInboxDailyTotals.or) : null;
 
+  // "ปิดปรึกษา/ปิดมัดจำ แยกตามหัตถการ (เทียบ Inbox)" — คำนวณสดตามช่วงวันที่ที่เลือกจริงแล้ว (เดิมเป็นยอดรวมทั้งเดือน
+  // เพราะไม่มีข้อมูล Inbox รายวันจริง ตอนนี้มีแล้วจาก adDaily.json) · เคสปิดแล้ว = dep>0 ตามมาตรฐานเดียวกับที่ใช้
+  // ทั้งแอป (activeDoctors/activeFbSurgery/Sales Funnel Performance) · "ปิดปรึกษา" กว้างกว่า "ปิดมัดจำ" เล็กน้อย
+  // เพราะรวมเคสที่มีชื่อ Sale Consult กำกับด้วย (RAW_TX แทบทุกแถวมีอยู่แล้ว จึงใกล้เคียงกับปิดมัดจำมาก)
+  const closeTableDates = datesInRangeAcrossFunnelMonths(dateRange);
+  const closeTableInboxByProc = {};
+  DAILY_CATEGORY_KEYS.forEach((k) => {
+    closeTableInboxByProc[k] = closeTableDates.reduce((sum, { monthKey, day }) => {
+      const src = funnelSourceForMonth(monthKey)?.[k];
+      return sum + (src && day <= src.dailyInbox.length ? src.dailyInbox[day - 1] : 0);
+    }, 0);
+  });
+  const closeCountsLive = (() => {
+    const calc = (rows) => {
+      const depositRows = rows.filter((t) => t.dep > 0);
+      return {
+        consult: rows.length,
+        deposit: depositRows.length,
+        consultValue: rows.reduce((s, t) => s + t.tot, 0),
+        depositValue: depositRows.reduce((s, t) => s + t.tot, 0),
+      };
+    };
+    const result = {};
+    DAILY_CATEGORY_KEYS.forEach((k) => {
+      result[k] = calc(txInRange.filter((t) => t.p === k));
+    });
+    result.all = calc(txInRange.filter((t) => DAILY_CATEGORY_KEYS.includes(t.p)));
+    return result;
+  })();
+  const closeTableAllInbox = DAILY_CATEGORY_KEYS.reduce((s, k) => s + closeTableInboxByProc[k], 0);
+  const closeTableLabelFor = (procKey) => {
+    for (const { monthKey } of closeTableDates) {
+      const src = funnelSourceForMonth(monthKey)?.[procKey];
+      if (src) return src.label.replace(/\s*\(.*\)/, "");
+    }
+    return procKey === "inter" ? "Inter" : procKey;
+  };
+
   // ทีม Online: 5 คน ตอบทุกหัตถการหลัก + 1 คน ตอบเฉพาะ Inter
   const ONLINE_TEAM_MAIN = 5;
   const ONLINE_TEAM_INTER = 1;
@@ -3376,45 +3414,34 @@ export default function AdsDashboard() {
             </p>
           </div>
 
-          {/* ปิดปรึกษา / ปิดมัดจำ แยกตามหัตถการ เทียบ Inbox */}
-          {!funnelSource ? (
+          {/* ปิดปรึกษา / ปิดมัดจำ แยกตามหัตถการ เทียบ Inbox — คำนวณสดตามช่วงวันที่ที่เลือกแล้ว (ทั้ง Inbox และปิดปรึกษา/มัดจำ) */}
+          {closeTableDates.length === 0 ? (
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 mb-5">
               <p className="text-sm text-slate-400 py-2 text-center">
-                ไม่มีข้อมูลปิดปรึกษา/ปิดมัดจำสำหรับช่วงวันที่ที่เลือก (มีข้อมูลเฉพาะ มิ.ย.–ส.ค. 2569 เท่านั้น)
+                ไม่มีข้อมูลปิดปรึกษา/ปิดมัดจำสำหรับช่วงวันที่ที่เลือก (มีข้อมูล Inbox รายวันเฉพาะ มิ.ย.–ส.ค. 2569 เท่านั้น)
               </p>
             </div>
-          ) : (() => {
-            const closeCounts =
-              activeMonthKey === "aug" ? FUNNEL_CLOSE_COUNTS_AUG : activeMonthKey === "jul" ? FUNNEL_CLOSE_COUNTS_JUL : FUNNEL_CLOSE_COUNTS;
-            // ก.ค./ส.ค.: closeCounts.all รวมแค่ 4 หัตถการที่มีข้อมูล (ไม่รวม inter) — ตัวหาร Inbox ของแถวรวมต้องตัด inter ออกด้วย
-            // เพื่อให้ % สอดคล้องกับตัวตั้ง ไม่งั้น % จะต่ำเกินจริงเพราะหารด้วย Inbox ที่รวม inter (ซึ่งไม่มีใน closeCounts.all)
-            const allInboxForClose =
-              activeMonthKey === "jul" || activeMonthKey === "aug"
-                ? funnelSource.nose_open.inbox + funnelSource.nose_semi.inbox + funnelSource.breast_lipo.inbox + funnelSource.brow_hairline.inbox
-                : funnelSource.all.inbox;
-            return (
+          ) : (
           <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 mb-5">
             <div className="flex items-center gap-2 mb-3">
               <ClipboardCheck size={14} className="text-emerald-600" />
-              <h3 className="text-sm font-semibold text-slate-700">
-                ปิดปรึกษา / ปิดมัดจำ แยกตามหัตถการ (เทียบ Inbox) — {funnelMonthLabel} (ยอดรวมทั้งเดือน)
-              </h3>
+              <h3 className="text-sm font-semibold text-slate-700">ปิดปรึกษา / ปิดมัดจำ แยกตามหัตถการ (เทียบ Inbox) — {rangeLabel}</h3>
             </div>
 
             {/* ยอดรวมเป็นบาท ทุกหัตถการ */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
               <div className="bg-white rounded-lg p-3 border border-emerald-100">
                 <p className="text-[11px] text-slate-500 font-medium mb-0.5">ยอดปิดปรึกษา รวมทุกหัตถการ</p>
-                <p className="text-lg font-bold text-emerald-700">฿{fmtTHB(closeCounts.all.consultValue)}</p>
+                <p className="text-lg font-bold text-emerald-700">฿{fmtTHB(closeCountsLive.all.consultValue)}</p>
               </div>
               <div className="bg-white rounded-lg p-3 border border-emerald-100">
                 <p className="text-[11px] text-slate-500 font-medium mb-0.5">ยอดปิดมัดจำ รวมทุกหัตถการ</p>
-                <p className="text-lg font-bold text-emerald-700">฿{fmtTHB(closeCounts.all.depositValue)}</p>
+                <p className="text-lg font-bold text-emerald-700">฿{fmtTHB(closeCountsLive.all.depositValue)}</p>
               </div>
               <div className="bg-emerald-100/60 rounded-lg p-3 border border-emerald-200 col-span-2 sm:col-span-1">
                 <p className="text-[11px] text-emerald-700 font-medium mb-0.5">รวมทั้งสองอย่าง</p>
                 <p className="text-lg font-bold text-emerald-800">
-                  ฿{fmtTHB(closeCounts.all.consultValue + closeCounts.all.depositValue)}
+                  ฿{fmtTHB(closeCountsLive.all.consultValue + closeCountsLive.all.depositValue)}
                 </p>
               </div>
             </div>
@@ -3432,73 +3459,72 @@ export default function AdsDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(funnelSource)
-                    .filter(([k]) => k !== "all")
-                    .map(([k, v]) => {
-                      const c = closeCounts[k];
-                      return (
-                        <tr key={k} className="border-b border-slate-50 last:border-0">
-                          <td className="py-2 text-slate-600">{v.label.replace(/\s*\(.*\)/, "")}</td>
-                          <td className="py-2 text-right text-slate-500">{fmtTHB(v.inbox)}</td>
-                          {!c ? (
-                            <>
-                              <td className="py-2 text-right text-slate-400" colSpan={2}>
-                                ไม่มีข้อมูล
-                              </td>
-                              <td className="py-2 text-right text-slate-400" colSpan={2}>
-                                ไม่มีข้อมูล
-                              </td>
-                            </>
-                          ) : (
-                            <>
-                              <td className="py-2 text-right">
-                                <p className="font-semibold text-slate-700">{c.consult}</p>
-                                <p className="text-[11px] text-slate-400">฿{fmtTHB(c.consultValue)}</p>
-                              </td>
-                              <td className="py-2 text-right text-emerald-600 font-semibold">
-                                {v.inbox > 0 ? ((c.consult / v.inbox) * 100).toFixed(2) : "0.00"}%
-                              </td>
-                              <td className="py-2 text-right">
-                                <p className="font-semibold text-slate-700">{c.deposit}</p>
-                                <p className="text-[11px] text-slate-400">฿{fmtTHB(c.depositValue)}</p>
-                              </td>
-                              <td className="py-2 text-right text-emerald-600 font-semibold">
-                                {v.inbox > 0 ? ((c.deposit / v.inbox) * 100).toFixed(2) : "0.00"}%
-                              </td>
-                            </>
-                          )}
-                        </tr>
-                      );
-                    })}
+                  {[...DAILY_CATEGORY_KEYS, "inter"].map((k) => {
+                    const c = closeCountsLive[k];
+                    const inboxForRow = k === "inter" ? null : closeTableInboxByProc[k];
+                    const label = closeTableLabelFor(k);
+                    return (
+                      <tr key={k} className="border-b border-slate-50 last:border-0">
+                        <td className="py-2 text-slate-600">{label}</td>
+                        <td className="py-2 text-right text-slate-500">{inboxForRow != null ? fmtTHB(inboxForRow) : "—"}</td>
+                        {!c ? (
+                          <>
+                            <td className="py-2 text-right text-slate-400" colSpan={2}>
+                              ไม่มีข้อมูล
+                            </td>
+                            <td className="py-2 text-right text-slate-400" colSpan={2}>
+                              ไม่มีข้อมูล
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="py-2 text-right">
+                              <p className="font-semibold text-slate-700">{c.consult}</p>
+                              <p className="text-[11px] text-slate-400">฿{fmtTHB(c.consultValue)}</p>
+                            </td>
+                            <td className="py-2 text-right text-emerald-600 font-semibold">
+                              {inboxForRow > 0 ? ((c.consult / inboxForRow) * 100).toFixed(2) : "0.00"}%
+                            </td>
+                            <td className="py-2 text-right">
+                              <p className="font-semibold text-slate-700">{c.deposit}</p>
+                              <p className="text-[11px] text-slate-400">฿{fmtTHB(c.depositValue)}</p>
+                            </td>
+                            <td className="py-2 text-right text-emerald-600 font-semibold">
+                              {inboxForRow > 0 ? ((c.deposit / inboxForRow) * 100).toFixed(2) : "0.00"}%
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    );
+                  })}
                   <tr className="border-t border-slate-200">
                     <td className="py-2 font-semibold text-slate-700">รวมทุกหัตถการ</td>
-                    <td className="py-2 text-right font-semibold text-slate-700">{fmtTHB(allInboxForClose)}</td>
+                    <td className="py-2 text-right font-semibold text-slate-700">{fmtTHB(closeTableAllInbox)}</td>
                     <td className="py-2 text-right">
-                      <p className="font-semibold text-slate-700">{closeCounts.all.consult}</p>
-                      <p className="text-[11px] text-slate-400">฿{fmtTHB(closeCounts.all.consultValue)}</p>
+                      <p className="font-semibold text-slate-700">{closeCountsLive.all.consult}</p>
+                      <p className="text-[11px] text-slate-400">฿{fmtTHB(closeCountsLive.all.consultValue)}</p>
                     </td>
                     <td className="py-2 text-right font-semibold text-emerald-600">
-                      {((closeCounts.all.consult / allInboxForClose) * 100).toFixed(2)}%
+                      {closeTableAllInbox > 0 ? ((closeCountsLive.all.consult / closeTableAllInbox) * 100).toFixed(2) : "0.00"}%
                     </td>
                     <td className="py-2 text-right">
-                      <p className="font-semibold text-slate-700">{closeCounts.all.deposit}</p>
-                      <p className="text-[11px] text-slate-400">฿{fmtTHB(closeCounts.all.depositValue)}</p>
+                      <p className="font-semibold text-slate-700">{closeCountsLive.all.deposit}</p>
+                      <p className="text-[11px] text-slate-400">฿{fmtTHB(closeCountsLive.all.depositValue)}</p>
                     </td>
                     <td className="py-2 text-right font-semibold text-emerald-600">
-                      {((closeCounts.all.deposit / allInboxForClose) * 100).toFixed(2)}%
+                      {closeTableAllInbox > 0 ? ((closeCountsLive.all.deposit / closeTableAllInbox) * 100).toFixed(2) : "0.00"}%
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
             <p className="text-[11px] text-slate-400 mt-2">
-              ตารางนี้เป็นยอดรวมทั้งเดือน{funnelMonthLabel} ไม่แยกตามวันที่เลือกด้านบน เพราะไฟล์ต้นฉบับไม่ได้บันทึกยอดปิดปรึกษา/ปิดมัดจำเป็นรายวัน
-              (ตัวเลขอื่นในหน้านี้กรองตามช่วงวันที่ที่เลือกจริงแล้ว) · Inter ยังไม่มีข้อมูลปิดปรึกษา/ปิดมัดจำ (ไฟล์ธุรกรรมไม่ได้แท็ก Inter แยกเป็นหัตถการของตัวเอง) —
+              กรองตามช่วงวันที่ที่เลือกจริงแล้วทั้งตาราง (Inbox จาก Facebook API จริง · ปิดปรึกษา/ปิดมัดจำคำนวณสดจากไฟล์ธุรกรรม Data_S45_Clinic
+              เฉพาะเคสที่ "Date" อยู่ในช่วงที่เลือก) · Inter ยังไม่มีข้อมูลปิดปรึกษา/ปิดมัดจำ (ไฟล์ธุรกรรมไม่ได้แท็ก Inter แยกเป็นหัตถการของตัวเอง) —
               "รวมทุกหัตถการ" ด้านบนจึงรวมเฉพาะ 4 หัตถการที่มีข้อมูลจริงเท่านั้น
             </p>
           </div>
-            );
-          })()}
+          )}
 
           {/* Option การกระตุ้นยอดขาย */}
           <div className="rounded-xl border border-violet-100 bg-violet-50/40 p-4 mb-5">
