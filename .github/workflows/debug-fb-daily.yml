@@ -1,0 +1,25 @@
+name: DEBUG - fb daily fetch test (temporary)
+
+# ชั่วคราว — ทดสอบ scripts/fetch-fb-daily.mjs ก่อนเอาไปต่อ automation จริง
+# ลบ workflow นี้ทิ้งหลังตรวจสอบเสร็จ
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Run fetch-fb-daily.mjs
+        env:
+          FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
+        run: node scripts/fetch-fb-daily.mjs
+      - name: Show output file
+        run: cat src/data/adDaily.json
