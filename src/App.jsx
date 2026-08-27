@@ -1178,7 +1178,6 @@ export default function AdsDashboard() {
   const [doctorProcFilter, setDoctorProcFilter] = useState("all");
   const [doctorNameFilter, setDoctorNameFilter] = useState("all");
   const [funnelFilter, setFunnelFilter] = useState("all");
-  const [funnelMonthFilter, setFunnelMonthFilter] = useState("jul");
   const [loaChannel, setLoaChannel] = useState("normal");
   const [otherChannelFilter, setOtherChannelFilter] = useState("line");
   const [inboxDailyFilter, setInboxDailyFilter] = useState("all");
@@ -1277,12 +1276,34 @@ export default function AdsDashboard() {
     return result;
   })();
 
-  // ระยะเวลาปิด OR สำหรับ "หน้า Inbox & Bad Lead" — ต้องผูกกับ funnelMonthFilter (มิ.ย./ก.ค. เลือกจาก
-  // dropdown บนหัวข้อ Inbox) ไม่ใช่ dateRange ของตัวเลือกวันที่หลักด้านบนสุด (คนละตัวกัน — ก่อนหน้านี้หน้านี้
-  // ใช้ activeLeadTime ซึ่งอิงตาม dateRange ทำให้ตัวเลขไม่ตรงกับหัตถการ/เดือนที่เลือกในหน้า Inbox เอง)
-  const funnelLeadTime = liveLeadTimeDays(
-    funnelMonthFilter === "aug" ? "2026-08" : funnelMonthFilter === "jul" ? "2026-07" : "2026-06"
-  );
+  // เดือนที่ใช้แสดงผลทั้งหน้า Ads/โฆษณา และหน้า Inbox & Bad Lead มาจาก Filter วันที่หลักด้านบนโดยตรง
+  // ไม่มี Dropdown เดือนแยกของแต่ละหน้าอีกต่อไป — เลือกเดือนจากปลายช่วงวันที่ก่อน ถ้าปลายไม่อยู่ใน 3
+  // เดือนที่มีข้อมูล (มิ.ย.-ส.ค. 2569) ลองต้นช่วงแทน ถ้ายังไม่เจอถือว่าไม่มีข้อมูลสำหรับช่วงที่เลือก
+  const monthKeyFromRange = (range) => {
+    const key = (iso) => (iso.startsWith("2026-06") ? "jun" : iso.startsWith("2026-07") ? "jul" : iso.startsWith("2026-08") ? "aug" : null);
+    return key(range.end) || key(range.start);
+  };
+  const activeMonthKey = monthKeyFromRange(dateRange);
+  const funnelSource =
+    activeMonthKey === "aug" ? FUNNEL_DATA_AUG : activeMonthKey === "jul" ? FUNNEL_DATA_JUL : activeMonthKey === "jun" ? FUNNEL_DATA : null;
+  const funnelMonthLabel =
+    activeMonthKey === "aug" ? "สิงหาคม 2569" : activeMonthKey === "jul" ? "กรกฎาคม 2569" : activeMonthKey === "jun" ? "มิถุนายน 2569" : null;
+  const funnelMonthShortLabel = activeMonthKey === "aug" ? "ส.ค." : activeMonthKey === "jul" ? "ก.ค." : activeMonthKey === "jun" ? "มิ.ย." : "";
+  const funnel = funnelSource ? funnelSource[funnelFilter] : null;
+  const funnelChartData = funnel
+    ? funnel.dailyAds.map((v, i) => ({
+        day: i + 1,
+        ads: v,
+        inbox: funnel.dailyInbox[i],
+      }))
+    : [];
+
+  // ระยะเวลาปิด OR สำหรับ "หน้า Inbox & Bad Lead" — ผูกกับ activeMonthKey (มาจาก Filter วันที่หลัก
+  // ด้านบนสุดโดยตรงแล้ว ไม่มี Dropdown เดือนแยกของหน้า Inbox อีกต่อไป) null ถ้าช่วงที่เลือกไม่อยู่ใน
+  // มิ.ย.-ส.ค. 2569 เลย (ไม่มีข้อมูลให้แสดง)
+  const funnelLeadTime = activeMonthKey
+    ? liveLeadTimeDays(activeMonthKey === "aug" ? "2026-08" : activeMonthKey === "jul" ? "2026-07" : "2026-06")
+    : null;
 
   // ยอดขายรวม (deposit/online/sales) ในช่วงวันที่เลือก + ค่าโฆษณา (ประมาณจากยอดรายเดือนจริง เฉลี่ยตามสัดส่วนวันที่ทับซ้อน)
   // แก้บั๊ก: เดิมไม่กรองตาม procFilter ทำให้สลับหัตถการแล้วยอดไม่เปลี่ยนเมื่อช่วงวันที่ไม่ใช่เดือนมิ.ย.เต็มเดือน
@@ -1457,36 +1478,6 @@ export default function AdsDashboard() {
   const maxDeposit = Math.max(...sortedDoctors.map((d) => d.deposit), 1);
 
   const funnelOptions = Object.entries(FUNNEL_DATA).map(([k, v]) => [k, v.label]);
-  const FUNNEL_MONTH_OPTIONS = [
-    ["aug", "สิงหาคม 2569"],
-    ["jul", "กรกฎาคม 2569"],
-    ["jun", "มิถุนายน 2569"],
-  ];
-  const funnelSource = funnelMonthFilter === "aug" ? FUNNEL_DATA_AUG : funnelMonthFilter === "jul" ? FUNNEL_DATA_JUL : FUNNEL_DATA;
-  const funnelMonthLabel =
-    funnelMonthFilter === "aug" ? "สิงหาคม 2569" : funnelMonthFilter === "jul" ? "กรกฎาคม 2569" : "มิถุนายน 2569";
-  const funnelMonthShortLabel = funnelMonthFilter === "aug" ? "ส.ค." : funnelMonthFilter === "jul" ? "ก.ค." : "มิ.ย.";
-  // หน้า Ads/โฆษณา — Sales Funnel Performance ผูกกับ Filter วันที่หลักด้านบนโดยตรง ไม่มี Dropdown
-  // เดือนแยกต่างหากอีกต่อไป (ต่างจาก funnelSource/funnelMonthFilter ด้านบนซึ่งยังใช้กับ Dropdown
-  // เดือนของหน้า Inbox & Bad Lead อยู่) — เลือกเดือนจากปลายช่วงวันที่ก่อน ถ้าปลายไม่อยู่ใน 3 เดือนที่มี
-  // ข้อมูล (มิ.ย.-ส.ค. 2569) ลองต้นช่วงแทน ถ้ายังไม่เจอถือว่าไม่มีข้อมูลสำหรับช่วงที่เลือก
-  const monthKeyFromRange = (range) => {
-    const key = (iso) => (iso.startsWith("2026-06") ? "jun" : iso.startsWith("2026-07") ? "jul" : iso.startsWith("2026-08") ? "aug" : null);
-    return key(range.end) || key(range.start);
-  };
-  const adsMonthKey = monthKeyFromRange(dateRange);
-  const adsFunnelSource = adsMonthKey === "aug" ? FUNNEL_DATA_AUG : adsMonthKey === "jul" ? FUNNEL_DATA_JUL : adsMonthKey === "jun" ? FUNNEL_DATA : null;
-  const adsFunnelMonthLabel = adsMonthKey === "aug" ? "สิงหาคม 2569" : adsMonthKey === "jul" ? "กรกฎาคม 2569" : adsMonthKey === "jun" ? "มิถุนายน 2569" : null;
-  const adsFunnelMonthShort = adsMonthKey === "aug" ? "ส.ค." : adsMonthKey === "jul" ? "ก.ค." : adsMonthKey === "jun" ? "มิ.ย." : "";
-  const funnel = adsFunnelSource ? adsFunnelSource[funnelFilter] : null;
-  const funnelChartData = funnel
-    ? funnel.dailyAds.map((v, i) => ({
-        day: i + 1,
-        ads: v,
-        inbox: funnel.dailyInbox[i],
-      }))
-    : [];
-
   const otherChannelOptions = Object.entries(OTHER_CHANNEL_META).map(([k, v]) => [k, v.label]);
   const otherChannelRows = OTHER_CHANNEL_DATA[otherChannelFilter];
 
@@ -1527,9 +1518,9 @@ export default function AdsDashboard() {
   const INBOX_DAILY_TARGET_ALL = Object.values(INBOX_DAILY_TARGET).reduce((s, v) => s + v, 0); // รวมทุกหัตถการ รวม Inter แล้ว
   const inboxDailyOptions = Object.entries(FUNNEL_DATA).map(([k, v]) => [k, v.label]);
   const heroCaseOptions = Object.entries(DOCTOR_HERO_CASES).map(([k, v]) => [k, v.label]);
-  // Inter แยกตามหมอ — ผูกกับ Filter วันที่หลักด้านบน (adsMonthKey) แทน Dropdown เดือนแยกเดิม (มีข้อมูลแค่
+  // Inter แยกตามหมอ — ผูกกับ Filter วันที่หลักด้านบน (activeMonthKey) แทน Dropdown เดือนแยกเดิม (มีข้อมูลแค่
   // มิ.ย./ก.ค. 2569 เท่านั้น) · interProcFilter กรองตารางที่ปกติแสดงทุกหัตถการของหมอคนนั้นให้เหลือหัตถการเดียว
-  const interMonthKey = adsMonthKey === "jun" || adsMonthKey === "jul" ? adsMonthKey : null;
+  const interMonthKey = activeMonthKey === "jun" || activeMonthKey === "jul" ? activeMonthKey : null;
   const interMonthDataKey = interMonthKey === "jun" ? "jun26" : interMonthKey === "jul" ? "jul26" : null;
   const interDoctorRowsAll = interMonthDataKey ? INTER_BY_DOCTOR_MONTH[interMonthDataKey]?.[interDoctorFilter] || [] : [];
   const interDoctorRows = interProcFilter === "all" ? interDoctorRowsAll : interDoctorRowsAll.filter((r) => r.key === interProcFilter);
@@ -1538,17 +1529,19 @@ export default function AdsDashboard() {
     { cases: 0, deposit: 0, total: 0 }
   );
   const selectedHeroDoctor = DOCTOR_HERO_CASES[heroCaseFilter];
-  const inboxDailyFunnel = funnelSource[inboxDailyFilter];
-  const inboxHasSalesData = inboxDailyFunnel.dailyConsult != null;
+  const inboxDailyFunnel = funnelSource ? funnelSource[inboxDailyFilter] : null;
+  const inboxHasSalesData = inboxDailyFunnel?.dailyConsult != null;
   const inboxDailyTargetPerDay = inboxDailyFilter === "all" ? INBOX_DAILY_TARGET_ALL : INBOX_DAILY_TARGET[inboxDailyFilter] ?? null;
-  const inboxDailyData = inboxDailyFunnel.dailyInbox.map((actual, i) => ({
-    day: i + 1,
-    target: inboxDailyTargetPerDay,
-    actual,
-    consult: inboxDailyFunnel.dailyConsult?.[i] ?? null,
-    deposit: inboxDailyFunnel.dailyDeposit?.[i] ?? null,
-    or: inboxDailyFunnel.dailyOrCases?.[i] ?? null,
-  }));
+  const inboxDailyData = inboxDailyFunnel
+    ? inboxDailyFunnel.dailyInbox.map((actual, i) => ({
+        day: i + 1,
+        target: inboxDailyTargetPerDay,
+        actual,
+        consult: inboxDailyFunnel.dailyConsult?.[i] ?? null,
+        deposit: inboxDailyFunnel.dailyDeposit?.[i] ?? null,
+        or: inboxDailyFunnel.dailyOrCases?.[i] ?? null,
+      }))
+    : [];
   const inboxDailyTotals = inboxDailyData.reduce(
     (acc, r) => ({
       target: acc.target + (r.target ?? 0),
@@ -1563,7 +1556,7 @@ export default function AdsDashboard() {
 
   // เทียบ Inbox/ปิดปรึกษา/ปิดมัดจำ/OR ของเดือนที่เลือกกับเดือนก่อนหน้าติดกัน (มิ.ย.←ก.ค.←ส.ค.) — ไม่มีข้อมูล
   // ก่อน มิ.ย. 2569 จึงไม่มีเดือนก่อนหน้าให้เทียบตอนเลือกมิ.ย. (null = ไม่แสดงป้าย ไม่ใช่ 0%)
-  const prevFunnelSource = funnelMonthFilter === "aug" ? FUNNEL_DATA_JUL : funnelMonthFilter === "jul" ? FUNNEL_DATA : null;
+  const prevFunnelSource = activeMonthKey === "aug" ? FUNNEL_DATA_JUL : activeMonthKey === "jul" ? FUNNEL_DATA : null;
   const prevInboxDailyFunnel = prevFunnelSource ? prevFunnelSource[inboxDailyFilter] : null;
   const sumDaily = (arr) => (arr ? arr.reduce((s, v) => s + v, 0) : null);
   const prevInboxDailyTotals = prevInboxDailyFunnel
@@ -1745,9 +1738,9 @@ export default function AdsDashboard() {
   // ---- เลือกช่องทาง/เดือน LOA สำหรับการ์ด Broadcast บนหน้า Ads (แยกจาก loaTotal/LOA_JUNE ด้านบนซึ่งใช้เฉพาะสรุปมิถุนายนบนหน้าภาพรวม) ----
   const loaChannelMeta = LOA_CHANNEL_META[loaChannel];
   // เดือนที่มีข้อมูล LOA จริงต่างกันตามช่องทาง — ปกติมีแค่ มิ.ย./ก.ค. 2569, Aftercare มีแค่ ก.ค./ส.ค. 2569
-  // ผูกกับ Filter วันที่หลักด้านบนโดยตรง (adsMonthKey จากด้านบน) ไม่มี Dropdown เดือนแยกอีกต่อไป
+  // ผูกกับ Filter วันที่หลักด้านบนโดยตรง (activeMonthKey จากด้านบน) ไม่มี Dropdown เดือนแยกอีกต่อไป
   const loaAvailableMonths = loaChannel === "aftercare" ? ["jul", "aug"] : ["jun", "jul"];
-  const loaMonthKey = loaAvailableMonths.includes(adsMonthKey) ? adsMonthKey : null;
+  const loaMonthKey = loaAvailableMonths.includes(activeMonthKey) ? activeMonthKey : null;
   const loaSelSource =
     loaMonthKey == null
       ? null
@@ -2081,6 +2074,89 @@ export default function AdsDashboard() {
         </div>
 )}
 
+        {/* ---- Inter แยกตามหมอ + หัตถการ (เคสจริง) ---- */}
+{activePage === "sales" && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <Users size={16} />
+              </div>
+              <h2 className="text-sm font-semibold text-slate-700">Inter แยกตามหมอ + หัตถการ (เคสจริง)</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select icon={Stethoscope} value={interProcFilter} onChange={setInterProcFilter} options={INTER_PROC_OPTIONS} />
+              <Select icon={UserCircle2} value={interDoctorFilter} onChange={setInterDoctorFilter} options={INTER_DOCTOR_OPTIONS} />
+            </div>
+          </div>
+          <p className="text-xs text-slate-400 mb-4 ml-10">
+            จากไฟล์ Inter Sale เดือน{interMonthKey === "jul" ? "กรกฎาคม (ถึง 29/7) 2569" : interMonthKey === "jun" ? "มิถุนายน 2569" : "— ไม่มีข้อมูลสำหรับช่วงวันที่นี้"}{" "}
+            · {INTER_DOCTOR_LABELS[interDoctorFilter]} · รวม {interDoctorTotal.cases} เคส
+          </p>
+
+          <div className="grid grid-cols-3 gap-3 mb-5">
+            <div className="bg-indigo-50 rounded-xl p-3">
+              <p className="text-[11px] text-indigo-600 font-medium mb-0.5">จำนวนเคส</p>
+              <p className="text-lg font-bold text-indigo-700">{interDoctorTotal.cases} เคส</p>
+            </div>
+            <div className="bg-amber-50 rounded-xl p-3">
+              <p className="text-[11px] text-amber-600 font-medium mb-0.5">ยอดมัดจำ (Online + Medical check up)</p>
+              <p className="text-lg font-bold text-amber-700">฿{fmtTHB(interDoctorTotal.deposit)}</p>
+            </div>
+            <div className="bg-emerald-50 rounded-xl p-3">
+              <p className="text-[11px] text-emerald-600 font-medium mb-0.5">ยอด OR (Total)</p>
+              <p className="text-lg font-bold text-emerald-700">฿{fmtTHB(interDoctorTotal.total)}</p>
+            </div>
+          </div>
+
+          {interDoctorRows.length === 0 ? (
+            <p className="text-sm text-slate-400 py-4 text-center">
+              {interMonthKey == null
+                ? "ไม่มีข้อมูล Inter สำหรับช่วงวันที่ที่เลือก (มีข้อมูลเฉพาะ มิ.ย.–ก.ค. 2569) — เปลี่ยนช่วงวันที่ด้านบนเพื่อดูข้อมูล"
+                : "ไม่มีเคสของหมอคนนี้ (ตามหัตถการที่เลือก) ในเดือนนี้"}
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-[11px] text-slate-400 border-b border-slate-100">
+                    <th className="pb-2 font-medium">หัตถการ</th>
+                    <th className="pb-2 font-medium text-right">เคส</th>
+                    <th className="pb-2 font-medium text-right">ยอดมัดจำ</th>
+                    <th className="pb-2 font-medium text-right">ยอด OR (Total)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {interDoctorRows.map((r) => (
+                    <tr key={r.key} className="border-b border-slate-50 last:border-0">
+                      <td className="py-2 text-slate-600">{r.label}</td>
+                      <td className="py-2 text-right text-slate-500">{r.cases}</td>
+                      <td className="py-2 text-right text-slate-600">฿{fmtTHB(r.deposit)}</td>
+                      <td className="py-2 text-right font-semibold text-slate-700">฿{fmtTHB(r.total)}</td>
+                    </tr>
+                  ))}
+                  <tr className="border-t border-slate-200">
+                    <td className="py-2 font-semibold text-slate-700">รวม</td>
+                    <td className="py-2 text-right font-semibold text-slate-700">{interDoctorTotal.cases}</td>
+                    <td className="py-2 text-right font-semibold text-slate-700">฿{fmtTHB(interDoctorTotal.deposit)}</td>
+                    <td className="py-2 text-right font-semibold text-slate-700">฿{fmtTHB(interDoctorTotal.total)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
+            <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
+            <p>
+              ยอดมัดจำ = Online Price + Medical check up Etc. (ไม่รวม Top up) · ยอด OR = คอลัมน์ Total ในไฟล์ต้นฉบับ · เลือก "ทุกคน (รวม)" เพื่อดูภาพรวมทุกหมอ
+              หรือเลือกหมอรายคนเพื่อดูเฉพาะเคสของหมอคนนั้น (ชื่อหมออ้างอิงตามที่ระบุในไฟล์ต้นฉบับ)
+            </p>
+          </div>
+        </div>
+)}
+
+
         {/* ---- NEW: ยอดขายจากช่องทางอื่น แยกตามหัตถการ (LINE / WhatsApp / Sale หรือ BA) ---- */}
 {activePage === "sales" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mb-6">
@@ -2355,88 +2431,6 @@ export default function AdsDashboard() {
         </div>
 )}
 
-        {/* ---- NEW: Inter แยกตามหมอ + หัตถการ (เคสจริง มิ.ย. 2026) ---- */}
-{activePage === "doctors" && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                <Users size={16} />
-              </div>
-              <h2 className="text-sm font-semibold text-slate-700">Inter แยกตามหมอ + หัตถการ (เคสจริง)</h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <Select icon={Stethoscope} value={interProcFilter} onChange={setInterProcFilter} options={INTER_PROC_OPTIONS} />
-              <Select icon={UserCircle2} value={interDoctorFilter} onChange={setInterDoctorFilter} options={INTER_DOCTOR_OPTIONS} />
-            </div>
-          </div>
-          <p className="text-xs text-slate-400 mb-4 ml-10">
-            จากไฟล์ Inter Sale เดือน{interMonthKey === "jul" ? "กรกฎาคม (ถึง 29/7) 2569" : interMonthKey === "jun" ? "มิถุนายน 2569" : "— ไม่มีข้อมูลสำหรับช่วงวันที่นี้"}{" "}
-            · {INTER_DOCTOR_LABELS[interDoctorFilter]} · รวม {interDoctorTotal.cases} เคส
-          </p>
-
-          <div className="grid grid-cols-3 gap-3 mb-5">
-            <div className="bg-indigo-50 rounded-xl p-3">
-              <p className="text-[11px] text-indigo-600 font-medium mb-0.5">จำนวนเคส</p>
-              <p className="text-lg font-bold text-indigo-700">{interDoctorTotal.cases} เคส</p>
-            </div>
-            <div className="bg-amber-50 rounded-xl p-3">
-              <p className="text-[11px] text-amber-600 font-medium mb-0.5">ยอดมัดจำ (Online + Medical check up)</p>
-              <p className="text-lg font-bold text-amber-700">฿{fmtTHB(interDoctorTotal.deposit)}</p>
-            </div>
-            <div className="bg-emerald-50 rounded-xl p-3">
-              <p className="text-[11px] text-emerald-600 font-medium mb-0.5">ยอด OR (Total)</p>
-              <p className="text-lg font-bold text-emerald-700">฿{fmtTHB(interDoctorTotal.total)}</p>
-            </div>
-          </div>
-
-          {interDoctorRows.length === 0 ? (
-            <p className="text-sm text-slate-400 py-4 text-center">
-              {interMonthKey == null
-                ? "ไม่มีข้อมูล Inter สำหรับช่วงวันที่ที่เลือก (มีข้อมูลเฉพาะ มิ.ย.–ก.ค. 2569) — เปลี่ยนช่วงวันที่ด้านบนเพื่อดูข้อมูล"
-                : "ไม่มีเคสของหมอคนนี้ (ตามหัตถการที่เลือก) ในเดือนนี้"}
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-[11px] text-slate-400 border-b border-slate-100">
-                    <th className="pb-2 font-medium">หัตถการ</th>
-                    <th className="pb-2 font-medium text-right">เคส</th>
-                    <th className="pb-2 font-medium text-right">ยอดมัดจำ</th>
-                    <th className="pb-2 font-medium text-right">ยอด OR (Total)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {interDoctorRows.map((r) => (
-                    <tr key={r.key} className="border-b border-slate-50 last:border-0">
-                      <td className="py-2 text-slate-600">{r.label}</td>
-                      <td className="py-2 text-right text-slate-500">{r.cases}</td>
-                      <td className="py-2 text-right text-slate-600">฿{fmtTHB(r.deposit)}</td>
-                      <td className="py-2 text-right font-semibold text-slate-700">฿{fmtTHB(r.total)}</td>
-                    </tr>
-                  ))}
-                  <tr className="border-t border-slate-200">
-                    <td className="py-2 font-semibold text-slate-700">รวม</td>
-                    <td className="py-2 text-right font-semibold text-slate-700">{interDoctorTotal.cases}</td>
-                    <td className="py-2 text-right font-semibold text-slate-700">฿{fmtTHB(interDoctorTotal.deposit)}</td>
-                    <td className="py-2 text-right font-semibold text-slate-700">฿{fmtTHB(interDoctorTotal.total)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
-            <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
-            <p>
-              ยอดมัดจำ = Online Price + Medical check up Etc. (ไม่รวม Top up) · ยอด OR = คอลัมน์ Total ในไฟล์ต้นฉบับ · เลือก "ทุกคน (รวม)" เพื่อดูภาพรวมทุกหมอ
-              หรือเลือกหมอรายคนเพื่อดูเฉพาะเคสของหมอคนนั้น (ชื่อหมออ้างอิงตามที่ระบุในไฟล์ต้นฉบับ)
-            </p>
-          </div>
-        </div>
-)}
-
         {/* ---- NEW: Sales Funnel Performance (Ads → Inbox → Sales → OR), รายวัน มิ.ย. 2026 ---- */}
 {activePage === "ads" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
@@ -2457,7 +2451,7 @@ export default function AdsDashboard() {
           <>
           <p className="text-xs text-slate-400 mb-4">
             {funnel.label} · ยอดยิง Ads → Inbox{funnel.sales != null ? " → ปิดบิล (มัดจำ+ปรึกษา) → ยอด OR จริง" : ""} · รายวันทั้งเดือน
-            {adsFunnelMonthLabel}
+            {funnelMonthLabel}
           </p>
 
           {/* Funnel metric cards */}
@@ -2531,7 +2525,7 @@ export default function AdsDashboard() {
               <YAxis yAxisId="inbox" orientation="right" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
               <Tooltip
                 formatter={(v, name) => (name === "ads" ? `฿${fmtTHB(v)}` : `${v} inbox`)}
-                labelFormatter={(d) => `วันที่ ${d} ${adsFunnelMonthShort}`}
+                labelFormatter={(d) => `วันที่ ${d} ${funnelMonthShortLabel}`}
                 contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 13 }}
               />
               <Legend formatter={(v) => (v === "ads" ? "ยอดยิง Ads" : "Inbox")} wrapperStyle={{ fontSize: 12 }} />
@@ -2544,9 +2538,9 @@ export default function AdsDashboard() {
             <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <p>
               ข้อมูลชุดนี้มาจากไฟล์ "ยอดขาย Online S45 Clinic" ชีตเดือน
-              {adsMonthKey === "aug"
+              {activeMonthKey === "aug"
                 ? "สิงหาคม 2569 (มีเฉพาะยอดยิง Ads กับ Inbox รายวันจากไฟล์นี้ตรงๆ ส่วนยอดขาย/OR แยกรายวันคำนวณจากไฟล์ธุรกรรม Data S45 Clinic แทน)"
-                : adsMonthKey === "jul"
+                : activeMonthKey === "jul"
                   ? "กรกฎาคม 2026 (มีเฉพาะยอดยิง Ads กับ Inbox รายวัน ยังไม่มียอดขาย/OR แยกรายวันในไฟล์นี้)"
                   : "มิถุนายน 2569 เท่านั้น · \"ยอดขาย (มัดจำ+ปรึกษา)\" คือมูลค่าบิลที่ปิดได้ (ไม่เท่ากับยอด OR ซึ่งเป็นรายรับจากการผ่าตัดจริง)"}
             </p>
@@ -2995,10 +2989,15 @@ export default function AdsDashboard() {
               <h2 className="text-sm font-semibold text-slate-700">เป้าหมาย Inbox เทียบกับ Inbox ที่ทำได้จริง (รายวัน)</h2>
             </div>
             <div className="flex items-center gap-2">
-              <Select icon={Calendar} value={funnelMonthFilter} onChange={setFunnelMonthFilter} options={FUNNEL_MONTH_OPTIONS} />
               <Select icon={Stethoscope} value={inboxDailyFilter} onChange={setInboxDailyFilter} options={inboxDailyOptions} />
             </div>
           </div>
+          {!funnelSource ? (
+            <p className="text-sm text-slate-400 py-6 text-center">
+              ไม่มีข้อมูล Inbox รายวันสำหรับช่วงวันที่ที่เลือก (มีข้อมูลเฉพาะ มิ.ย.–ส.ค. 2569 เท่านั้น) — เปลี่ยนช่วงวันที่ด้านบนเพื่อดูข้อมูล
+            </p>
+          ) : (
+          <>
           <p className="text-xs text-slate-400 mb-5 ml-10">
             {inboxDailyFunnel.label} · รายวันทั้งเดือน{funnelMonthLabel} ·{" "}
             {inboxDailyTargetPerDay != null
@@ -3154,7 +3153,7 @@ export default function AdsDashboard() {
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-white rounded-lg p-3 border border-indigo-100">
                 <p className="text-[11px] text-slate-500 font-medium mb-0.5">เฉลี่ยแชท/คน/วัน</p>
-                <p className="text-lg font-bold text-indigo-700">{avgChatsPerAgentPerDay.toFixed(1)} แชท</p>
+                <p className="text-lg font-bold text-indigo-700">{inboxDailyData.length > 0 ? avgChatsPerAgentPerDay.toFixed(1) : "—"} แชท</p>
               </div>
               <div className="bg-white rounded-lg p-3 border border-indigo-100">
                 <p className="text-[11px] text-slate-500 font-medium mb-0.5">เฉลี่ยแชท/คน/เดือน</p>
@@ -3162,6 +3161,8 @@ export default function AdsDashboard() {
               </div>
             </div>
           </div>
+          </>
+          )}
 
           {/* Bad Lead เทียบ Inbox ทั้งหมด */}
           <div className="rounded-xl border border-rose-100 bg-rose-50/50 p-4 mb-5">
@@ -3170,7 +3171,7 @@ export default function AdsDashboard() {
               <h3 className="text-sm font-semibold text-slate-700">Bad Lead เทียบ Inbox ทั้งหมด — กรกฎาคม 2569</h3>
             </div>
             <p className="text-[11px] text-amber-600 mb-2">
-              ⚠ การ์ดนี้ตรึงไว้ที่ ก.ค. 2569 เสมอ ไม่ขยับตาม Dropdown เดือนด้านบน เพราะไฟล์ Bad Lead ต้นฉบับมีข้อมูลเดือนกรกฎาคมเดือนเดียว
+              ⚠ การ์ดนี้ตรึงไว้ที่ ก.ค. 2569 เสมอ ไม่ขยับตาม Filter วันที่ด้านบน เพราะไฟล์ Bad Lead ต้นฉบับมีข้อมูลเดือนกรกฎาคมเดือนเดียว
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-white rounded-lg p-3 border border-rose-100">
@@ -3189,13 +3190,19 @@ export default function AdsDashboard() {
           </div>
 
           {/* ปิดปรึกษา / ปิดมัดจำ แยกตามหัตถการ เทียบ Inbox */}
-          {(() => {
+          {!funnelSource ? (
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 mb-5">
+              <p className="text-sm text-slate-400 py-2 text-center">
+                ไม่มีข้อมูลปิดปรึกษา/ปิดมัดจำสำหรับช่วงวันที่ที่เลือก (มีข้อมูลเฉพาะ มิ.ย.–ส.ค. 2569 เท่านั้น)
+              </p>
+            </div>
+          ) : (() => {
             const closeCounts =
-              funnelMonthFilter === "aug" ? FUNNEL_CLOSE_COUNTS_AUG : funnelMonthFilter === "jul" ? FUNNEL_CLOSE_COUNTS_JUL : FUNNEL_CLOSE_COUNTS;
+              activeMonthKey === "aug" ? FUNNEL_CLOSE_COUNTS_AUG : activeMonthKey === "jul" ? FUNNEL_CLOSE_COUNTS_JUL : FUNNEL_CLOSE_COUNTS;
             // ก.ค./ส.ค.: closeCounts.all รวมแค่ 4 หัตถการที่มีข้อมูล (ไม่รวม inter) — ตัวหาร Inbox ของแถวรวมต้องตัด inter ออกด้วย
             // เพื่อให้ % สอดคล้องกับตัวตั้ง ไม่งั้น % จะต่ำเกินจริงเพราะหารด้วย Inbox ที่รวม inter (ซึ่งไม่มีใน closeCounts.all)
             const allInboxForClose =
-              funnelMonthFilter === "jul" || funnelMonthFilter === "aug"
+              activeMonthKey === "jul" || activeMonthKey === "aug"
                 ? funnelSource.nose_open.inbox + funnelSource.nose_semi.inbox + funnelSource.breast_lipo.inbox + funnelSource.brow_hairline.inbox
                 : funnelSource.all.inbox;
             return (
@@ -3297,7 +3304,7 @@ export default function AdsDashboard() {
                 </tbody>
               </table>
             </div>
-            {(funnelMonthFilter === "jul" || funnelMonthFilter === "aug") && (
+            {(activeMonthKey === "jul" || activeMonthKey === "aug") && (
               <p className="text-[11px] text-slate-400 mt-2">
                 Inter ยังไม่มีข้อมูลปิดปรึกษา/ปิดมัดจำของเดือนนี้ (ไฟล์ธุรกรรมไม่ได้แท็ก Inter แยกเป็นหัตถการของตัวเอง) —
                 "รวมทุกหัตถการ" ด้านบนจึงรวมเฉพาะ 4 หัตถการที่มีข้อมูลจริงเท่านั้น
