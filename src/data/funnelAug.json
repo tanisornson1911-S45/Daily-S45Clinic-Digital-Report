@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-28T02:14:05.614Z",
+  "generatedAt": "2026-08-28T04:29:56.467Z",
   "daysWithData": 24,
   "data": {
     "nose_open": {
@@ -508,10 +508,10 @@
       "ads": 403561.13999999996,
       "inbox": 2777,
       "or": 2343790,
-      "sales": 2778290,
-      "basket": 132299.52380952382,
-      "closeRate": 0.007562117392870004,
-      "adsCost": 0.14525522533644794,
+      "sales": 2798290,
+      "basket": 127195,
+      "closeRate": 0.00792221822110191,
+      "adsCost": 0.14421705398654178,
       "adsCostOr": 0.17218314780761074,
       "dailyAds": [
         6613.46,
@@ -742,10 +742,10 @@
       "ads": 1195243.6199999999,
       "inbox": 6167,
       "or": 7900880,
-      "sales": 10332370,
-      "basket": 137764.93333333332,
-      "closeRate": 0.012161504783525215,
-      "adsCost": 0.11567952173605861,
+      "sales": 10352370,
+      "basket": 136215.3947368421,
+      "closeRate": 0.012323658180638884,
+      "adsCost": 0.11545603760298365,
       "adsCostOr": 0.15127980933769403,
       "dailyAds": [
         24090.789999999997,
@@ -925,16 +925,16 @@
       "depositValue": 503000
     },
     "brow_hairline": {
-      "consult": 21,
-      "deposit": 20,
-      "consultValue": 2778290,
-      "depositValue": 2698390
+      "consult": 22,
+      "deposit": 21,
+      "consultValue": 2798290,
+      "depositValue": 2718390
     },
     "all": {
-      "consult": 75,
-      "deposit": 74,
-      "consultValue": 10332370,
-      "depositValue": 10252470
+      "consult": 76,
+      "deposit": 75,
+      "consultValue": 10352370,
+      "depositValue": 10272470
     }
   }
 }
