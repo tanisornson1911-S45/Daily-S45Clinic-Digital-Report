@@ -4144,6 +4144,7 @@ export default function AdsDashboard() {
                     <span>❤️ {fmtTHB(p.reactions)}</span>
                     <span>💬 {fmtTHB(p.comments)}</span>
                     <span>🔁 {fmtTHB(p.shares)}</span>
+                    <span>👆 {fmtTHB(p.clicks ?? 0)}</span>
                   </p>
                   <p className="text-xs text-blue-600 group-hover:underline flex items-center gap-1 mt-1.5">
                     <ExternalLink size={11} /> เปิดดูโพสต์ต้นฉบับ
@@ -4158,7 +4159,7 @@ export default function AdsDashboard() {
             <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <p>
               ดึงจากโพสต์จริงบนเพจ "S45 Clinic เสริมจมูกสไตล์เกาหลี By หมอตี้" ย้อนหลัง 180 วัน อัตโนมัติทุกคืน — จับคู่โพสต์กับหัตถการจากคำที่พบในแคปชั่น
-              แล้วกรองด้วยช่วงวันที่ที่เลือกอยู่ (Filter ด้านบนของแดชบอร์ด) เรียงตามคะแนน Engagement (Reaction + Comment×3 + Share×5) มากไปน้อย
+              แล้วกรองด้วยช่วงวันที่ที่เลือกอยู่ (Filter ด้านบนของแดชบอร์ด) เรียงตามคะแนน Engagement (Reaction + Comment×3 + Share×5 + Click×4) มากไปน้อย
               ไม่มีการตัดจำนวน — แสดงทุกโพสต์ที่ตรงเงื่อนไข
             </p>
           </div>
@@ -4212,6 +4213,7 @@ export default function AdsDashboard() {
                     <span>❤️ {fmtTHB(c.reactions)}</span>
                     <span>💬 {fmtTHB(c.comments)}</span>
                     <span>🔁 {fmtTHB(c.shares)}</span>
+                    <span>👆 {fmtTHB(c.clicks ?? 0)}</span>
                   </p>
                   <p className="text-xs text-blue-600 group-hover:underline flex items-center gap-1 mt-1.5">
                     <ExternalLink size={11} /> เปิดดูโพสต์ต้นฉบับ
@@ -4226,7 +4228,7 @@ export default function AdsDashboard() {
             <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <p>
               ดึงจากโพสต์จริงบนเพจ "S45 Clinic เสริมจมูกสไตล์เกาหลี By หมอตี้" ย้อนหลัง 180 วัน อัตโนมัติทุกคืน — จับคู่โพสต์กับคุณหมอจากชื่อ/แฮชแท็กที่พบใน
-              แคปชั่น แล้วเลือก 3 อันดับแรกต่อคนตามคะแนน Engagement (Reaction + Comment×3 + Share×5) ยิ่งคะแนนสูงยิ่งเป็นเคสที่คนสนใจมาก เหมาะเอาไป Re-run
+              แคปชั่น แล้วเลือก 3 อันดับแรกต่อคนตามคะแนน Engagement (Reaction + Comment×3 + Share×5 + Click×4) ยิ่งคะแนนสูงยิ่งเป็นเคสที่คนสนใจมาก เหมาะเอาไป Re-run
               เป็น Ads กระตุ้น Inbox ต่อ
             </p>
           </div>
