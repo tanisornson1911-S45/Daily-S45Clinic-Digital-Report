@@ -6,8 +6,10 @@ name: Update dashboard ad-spend data
 # ในหน้า Ads/โฆษณา และ Inbox & Bad Lead) อัตโนมัติ ถ้าข้อมูลเปลี่ยน — Vercel จะ redeploy เอง
 # เมื่อมี commit ใหม่บน branch main
 #
-# ต้องตั้ง repo secret ชื่อ FB_ACCESS_TOKEN (System User token, สิทธิ์ ads_read)
-# ที่ Settings → Secrets and variables → Actions → New repository secret
+# ต้องตั้ง repo secret ชื่อ FB_ACCESS_TOKEN (System User token) ที่ Settings → Secrets and
+# variables → Actions → New repository secret — ต้องมีสิทธิ์ ads_read (ใช้กับ Marketing API
+# สำหรับยอด ad spend) บวก pages_read_engagement + pages_show_list + pages_read_user_content
+# (ใช้กับ Graph API ส่วน Page posts สำหรับการ์ด "เคสเด่นคุณหมอ" — ดู fetch-fb-doctor-posts.mjs)
 
 on:
   schedule:
@@ -40,14 +42,19 @@ jobs:
           FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
         run: node scripts/fetch-fb-daily.mjs
 
+      - name: Fetch top-engagement doctor posts
+        env:
+          FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
+        run: node scripts/fetch-fb-doctor-posts.mjs
+
       - name: Commit & push if data changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src/data/adSpend.json src/data/adDaily.json
-          if git diff --cached --quiet -- src/data/adSpend.json src/data/adDaily.json; then
+          git add src/data/adSpend.json src/data/adDaily.json src/data/doctorHeroPosts.json
+          if git diff --cached --quiet -- src/data/adSpend.json src/data/adDaily.json src/data/doctorHeroPosts.json; then
             echo "No change — nothing to commit."
           else
-            git commit -m "chore: update ad-spend + daily Ads/Inbox data (automated)"
+            git commit -m "chore: update ad-spend + daily Ads/Inbox + doctor hero posts data (automated)"
             git push origin HEAD:main
           fi
