@@ -676,40 +676,9 @@ const OR_LEAD_TIME_DAYS = liveLeadTimeDays(CURRENT_SPEND_MONTH);
 const AD_COST_THRESHOLD = 0.1;
 
 // ============================================================
-// เคสเด่นคุณหมอ (Hero Case) ที่จะนำมากระตุ้นยอด Inbox Nose Open — ลิงก์ Facebook เข้าถึงอัตโนมัติไม่ได้
-// จึงแสดงเป็นการ์ดอ้างอิงลิงก์แทนการฝังรูปจริง
+// เคสเด่นคุณหมอ (Hero Case) ที่นำมากระตุ้นยอด Inbox Nose Open — ดึงจาก src/data/doctorHeroPosts.json
+// (สร้างโดย scripts/fetch-fb-doctor-posts.mjs ทุกคืน) เลือกโพสต์จริงจากเพจที่มี Engagement สูงสุดต่อหมอ
 // ============================================================
-const DOCTOR_HERO_CASES = {
-  doctor_tee: {
-    label: "หมอตี้",
-    cases: [{ patient: "คุณแคนดี้", url: "https://www.facebook.com/share/p/1GAEbPmVFE/?mibextid=wwXIfr" }],
-  },
-  doctor_rose: {
-    label: "หมอโรส",
-    cases: [
-      { patient: "คุณกาน", url: "https://www.facebook.com/share/p/1CTTQkXxxJ/" },
-      { patient: "คุณหนิงหนิง", url: "https://www.facebook.com/share/p/1Cid3iAnQA/" },
-    ],
-  },
-  doctor_che: {
-    label: "หมอเช",
-    cases: [{ patient: "คุณลิซ่า", url: "https://www.facebook.com/share/p/1JfcTBg7Eo/" }],
-  },
-  doctor_toon: {
-    label: "หมอตูน",
-    cases: [
-      { patient: "คุณบี", url: "https://www.facebook.com/share/p/192w9K6CJK/" },
-      {
-        patient: "คุณผ้าแพร",
-        url: "https://www.facebook.com/S45CLINIC/posts/pfbid0uDDEW9ZguMAxrXyPhEiHxWa93HcvUEDXM8N1tpdAifp5Bg1qDJbv5FES8z3TRsk6l?rdid=DLCSHTDnTtkRbxS9",
-      },
-    ],
-  },
-};
-// DOCTOR_HERO_POSTS — เวอร์ชันสด ดึงจาก src/data/doctorHeroPosts.json (สร้างโดย
-// scripts/fetch-fb-doctor-posts.mjs ทุกคืน) เลือกโพสต์จริงจากเพจที่มี Engagement สูงสุดต่อหมอ
-// แทนลิงก์ที่พิมพ์มือใน DOCTOR_HERO_CASES ด้านบน (ตัวนั้นยังใช้อยู่ในส่วน "Digital Plan: Ads Hero
-// July 26" ซึ่งเป็นแผนที่บันทึกไว้ตอนนั้น ไม่ใช่ข้อมูลสด จึงไม่เปลี่ยนตาม)
 const DOCTOR_HERO_POSTS = DOCTOR_HERO_POSTS_DATA.doctors;
 
 const fmtTHB = (n) => new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 }).format(Math.round(n));
@@ -4240,52 +4209,6 @@ export default function AdsDashboard() {
               แคปชั่น แล้วเลือก 3 อันดับแรกต่อคนตามคะแนน Engagement (Reaction + Comment×3 + Share×5) ยิ่งคะแนนสูงยิ่งเป็นเคสที่คนสนใจมาก เหมาะเอาไป Re-run
               เป็น Ads กระตุ้น Inbox ต่อ
             </p>
-          </div>
-        </div>
-)}
-
-        {/* ---- NEW: Digital Plan Ads Hero July 26 แยกตามหมอ ---- */}
-{activePage === "ads" && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-              <Zap size={16} />
-            </div>
-            <h2 className="text-sm font-semibold text-slate-700">Digital Plan: Ads Hero July 26 แยกตามหมอ</h2>
-          </div>
-          <p className="text-xs text-slate-400 mb-5 ml-10">
-            นำเคสเด่นของแต่ละคุณหมอมากระตุ้นให้เกิด Viral อีกครั้ง เพื่อเพิ่มปริมาณ Inbox ของ Nose Open ให้มากขึ้น
-          </p>
-
-          <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-4 mb-5">
-            <p className="text-sm text-slate-700 leading-relaxed">
-              ใช้แนวทางเดียวกับ <span className="font-semibold">"กองทัพมด"</span> — นำเคสเด่น (Hero Case) ของคุณหมอแต่ละคนที่มี Engagement
-              ดีอยู่แล้วตามธรรมชาติ มาทำเป็น Ads รูปแบบ Messenger ซ้ำอีกรอบในเดือนกรกฎาคม เพื่อกระตุ้นให้เกิดกระแส Viral รอบใหม่ และดันปริมาณ
-              Inbox ของ Nose Open ให้เพิ่มขึ้น โดยแยกทำเป็นชุดโฆษณาตามคุณหมอแต่ละคน เพื่อให้วัดผลเปรียบเทียบได้ว่าเคสของหมอคนไหนกระตุ้น Inbox ได้ดีที่สุด
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-3">
-            {Object.entries(DOCTOR_HERO_CASES).map(([key, d]) => (
-              <div key={key} className="rounded-xl border border-slate-100 p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <UserCircle2 size={14} className="text-pink-500" />
-                  <p className="text-sm font-semibold text-slate-700">{d.label}</p>
-                </div>
-                <ul className="space-y-1 text-xs text-slate-500 list-disc list-inside">
-                  {d.cases.map((c, i) => (
-                    <li key={i}>
-                      เคส{c.patient} — Re-run เป็น Ads Messenger ใหม่ กรกฎาคม 2026
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
-            <Layers size={14} className="text-slate-400 mt-0.5 shrink-0" />
-            <p>แผนงานนี้เป็นแนวทางที่ทีม Digital วางไว้สำหรับเดือนกรกฎาคม 2026 ยังไม่ใช่ผลการดำเนินงานจริง — ใช้ติดตามผล Inbox Nose Open เทียบกับก่อนเริ่ม Re-run</p>
           </div>
         </div>
 )}
