@@ -3275,14 +3275,6 @@ export default function AdsDashboard() {
               : "หัตถการนี้ยังไม่มีเป้าหมาย Inbox ต่อวันที่กำหนดไว้"}
           </p>
 
-          {inboxDaysWithData < inboxDates.length && (
-            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-5 ml-10">
-              ไฟล์ "ยอดขาย Online S45 Clinic" กรอกข้อมูล Inbox รายวันล่าช้ากว่าข้อมูลอื่น —{" "}
-              {inboxLastDataIso ? `ล่าสุดกรอกถึงวันที่ ${fmtDateTh(inboxLastDataIso)}` : "ยังไม่มีข้อมูลของเดือนนี้เลย"} · ตัวเลขด้านล่างจึงรวมได้แค่{" "}
-              {inboxDaysWithData} จาก {inboxDates.length} วันที่เลือก
-            </p>
-          )}
-
           {/* Summary cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
             <div className="bg-slate-50 rounded-xl p-3">
