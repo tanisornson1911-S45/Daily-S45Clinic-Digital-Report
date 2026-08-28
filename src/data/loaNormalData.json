@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-08-28T00:00:00.000Z",
+  "source": "Seed value hand-computed from Google Sheet \"S45 - สรุปค่าใช้จ่ายให้บัญชี\" (spreadsheetId 1vrX6lnDxeYDyllXSmYP00Ly594N57PH1I7wPZffxy_A) content read via MCP on 2026-08-28, summing its two \"LOA- กรกฎาคม\" tabs (2 บัญชี). Will be overwritten with the authoritative value by scripts/fetch-loa-normal.mjs once GOOGLE_SERVICE_ACCOUNT_KEY runs in the nightly workflow. August not included — no \"LOA- สิงหาคม\" tab exists in the source Sheet yet.",
+  "months": {
+    "2026-07": {
+      "open": { "broadcastReach": 1455096, "budgetUsed": 87305.76, "budgetLeft": 34434.24, "quotaLeft": 373904 },
+      "semi": { "broadcastReach": 362350, "budgetUsed": 21741.0, "budgetLeft": 2959.0, "quotaLeft": 38317 },
+      "breast": { "broadcastReach": 280976, "budgetUsed": 16858.68, "budgetLeft": 191.44, "quotaLeft": 3191 },
+      "brow": { "broadcastReach": 1168402, "budgetUsed": 70104.06, "budgetLeft": 6005.88, "quotaLeft": 98931 },
+      "branding": { "broadcastReach": 202994, "budgetUsed": 12179.64, "budgetLeft": -179.64, "quotaLeft": -2994 }
+    }
+  }
+}

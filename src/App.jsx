@@ -58,9 +58,11 @@ import {
 import adSpendData from "./data/adSpend.json";
 import RAW_TX_DATA from "./data/rawTx.json";
 import LOA_DATA from "./data/loaData.json";
+import LOA_NORMAL_DATA from "./data/loaNormalData.json";
 import FUNNEL_AUG_DATA from "./data/funnelAug.json";
 import AD_DAILY from "./data/adDaily.json";
 const loaDataByMonth = LOA_DATA.months;
+const loaNormalDataByMonth = LOA_NORMAL_DATA.months;
 
 // ============================================================
 // LIVE AD SPEND — src/data/adSpend.json ถูกเขียนทับอัตโนมัติโดย
@@ -414,6 +416,25 @@ function buildLoaRows(monthIso, defs, peoplePerBroadcast) {
     };
   });
 }
+// buildLoaNormalRows: เหมือน buildLoaRows แต่อ่านจาก src/data/loaNormalData.json (สร้างสดโดย
+// scripts/fetch-loa-normal.mjs จาก Google Sheet "S45 - สรุปค่าใช้จ่ายให้บัญชี" — ช่องทาง "ปกติ"
+// ของเดือน ก.ค. 2569 เป็นต้นไป ไม่ได้อยู่ในไฟล์ SharePoint ที่ loaData.json ใช้ ดู build-loa.mjs)
+function buildLoaNormalRows(monthIso, defs, peoplePerBroadcast) {
+  const month = loaNormalDataByMonth[monthIso];
+  if (!month) return null;
+  return defs.map(({ sourceKey, key, label }) => {
+    const c = month[sourceKey] || { broadcastReach: 0, budgetUsed: 0, budgetLeft: null, quotaLeft: null };
+    return {
+      key,
+      label,
+      broadcastReach: c.broadcastReach,
+      budgetUsed: c.budgetUsed,
+      budgetLeft: c.budgetLeft,
+      quotaLeft: c.quotaLeft,
+      timesLeft: c.quotaLeft != null ? c.quotaLeft / peoplePerBroadcast : null,
+    };
+  });
+}
 const LOA_NORMAL_DEFS = [
   { sourceKey: "open", key: "open", label: "Open (เสริมจมูกโอเพ่น)" },
   { sourceKey: "semi", key: "semi", label: "Semi (เสริมจมูก Semi Open)" },
@@ -427,16 +448,11 @@ const LOA_AFTERCARE_DEFS = [
   { sourceKey: "skin", key: "skin_ac", label: "สกิน (Aftercare)" },
 ];
 const LOA_JUNE = buildLoaRows("2026-06", LOA_NORMAL_DEFS, 39000);
-// LOA_JUL_NORMAL — ชีต "LOA- กรกฎาคม" ช่องทางปกติ ยังไม่พบไฟล์ต้นทางใน M365 workbook (ชีต
-// "LOA- กรกฎาคม"/"LOA- สิงหาคม" ที่ดึงมาได้จริงคือช่องทาง Aftercare คนละงบ/โควตา — ดู build-loa.mjs)
-// จึงคงค่าที่ paste มือไว้ก่อน (validated: งบใช้ไป = จำนวนบรอดแคสต์ x 0.06) รอไฟล์ต้นทางจริง
-const LOA_JUL_NORMAL = [
-  { key: "open", label: "Open (เสริมจมูกโอเพ่น)", broadcastReach: 604215, budgetUsed: 36252.9, budgetLeft: 12887.1, quotaLeft: 214785, timesLeft: 5.51 },
-  { key: "semi", label: "Semi (เสริมจมูก Semi Open)", broadcastReach: 241140, budgetUsed: 14468.4, budgetLeft: 231.6, quotaLeft: -7140, timesLeft: -0.18 },
-  { key: "breast", label: "หน้าอก/ดูดไขมัน", broadcastReach: 200328, budgetUsed: 12019.68, budgetLeft: 30.32, quotaLeft: 505, timesLeft: 0.01 },
-  { key: "brow", label: "ยกคิ้ว/เลื่อนไรผม", broadcastReach: 763501, budgetUsed: 45810.06, budgetLeft: -700.06, quotaLeft: -12835, timesLeft: -0.33 },
-  { key: "branding", label: "แบรนด์ดิ้ง", broadcastReach: 0, budgetUsed: 0, budgetLeft: 0, quotaLeft: 0, timesLeft: 0 },
-];
+// LOA_JUL_NORMAL / LOA_NORMAL_AUG — ช่องทางปกติ เดือน ก.ค. 2569 เป็นต้นไป มาจาก
+// src/data/loaNormalData.json (Google Sheet "S45 - สรุปค่าใช้จ่ายให้บัญชี" ไม่ใช่ไฟล์ SharePoint
+// ที่ loaData.json ใช้ — ดู scripts/fetch-loa-normal.mjs) เดือนไหนยังไม่มีชีตต้นฉบับจะได้ null
+const LOA_JUL_NORMAL = buildLoaNormalRows("2026-07", LOA_NORMAL_DEFS, 39000);
+const LOA_NORMAL_AUG = buildLoaNormalRows("2026-08", LOA_NORMAL_DEFS, 39000);
 const LOA_AFTERCARE_JUL = buildLoaRows("2026-07", LOA_AFTERCARE_DEFS, 26000);
 const LOA_AFTERCARE_AUG = buildLoaRows("2026-08", LOA_AFTERCARE_DEFS, 26000);
 const LOA_MONTHLY_BUDGET = 120000; // ยอดบลอดต่อเดือน
@@ -1939,7 +1955,7 @@ export default function AdsDashboard() {
   const loaChannelMeta = LOA_CHANNEL_META[loaChannel];
   // เดือนที่มีข้อมูล LOA จริงต่างกันตามช่องทาง — ปกติมีแค่ มิ.ย./ก.ค. 2569, Aftercare มีแค่ ก.ค./ส.ค. 2569
   // ผูกกับ Filter วันที่หลักด้านบนโดยตรง (activeMonthKey จากด้านบน) ไม่มี Dropdown เดือนแยกอีกต่อไป
-  const loaAvailableMonths = loaChannel === "aftercare" ? ["jul", "aug"] : ["jun", "jul"];
+  const loaAvailableMonths = loaChannel === "aftercare" ? ["jul", "aug"] : ["jun", "jul", "aug"];
   const loaMonthKey = loaAvailableMonths.includes(activeMonthKey) ? activeMonthKey : null;
   const loaSelSource =
     loaMonthKey == null
@@ -1950,7 +1966,9 @@ export default function AdsDashboard() {
           : LOA_AFTERCARE_JUL
         : loaMonthKey === "jun"
           ? LOA_JUNE
-          : LOA_JUL_NORMAL;
+          : loaMonthKey === "aug"
+            ? LOA_NORMAL_AUG
+            : LOA_JUL_NORMAL;
   const loaSelTotal = loaSelSource
     ? loaSelSource.reduce(
         (acc, r) => ({ budgetUsed: acc.budgetUsed + r.budgetUsed, budgetLeft: acc.budgetLeft + r.budgetLeft, quotaLeft: acc.quotaLeft + r.quotaLeft }),
@@ -1980,10 +1998,15 @@ export default function AdsDashboard() {
   const loaSelMostUsedPctRow = [...loaSelCountCompare].filter((r) => r.total > 0).sort((a, b) => b.used / b.total - a.used / a.total)[0];
   const loaSelMonthLabel = loaMonthKey === "aug" ? "สิงหาคม 2569" : loaMonthKey === "jul" ? "กรกฎาคม 2569" : loaMonthKey === "jun" ? "มิถุนายน 2569" : null;
   const loaSelSheetNote = loaMonthKey
-    ? `ไฟล์ "S45 - ยอดบลอดแคส LINE OA After Care.xlsx" ชีต "LOA- ${
-        loaMonthKey === "aug" ? "สิงหาคม" : loaMonthKey === "jul" ? "กรกฎาคม" : "มิถุนายน"
-      }" `
+    ? loaChannel === "aftercare"
+      ? `ไฟล์ "S45 - ยอดบลอดแคส LINE OA After Care.xlsx" ชีต "LOA- ${loaMonthKey === "aug" ? "สิงหาคม" : "กรกฎาคม"}" `
+      : loaMonthKey === "jun"
+        ? `ไฟล์ "S45 - ยอดบลอดแคส LINE OA After Care.xlsx" ชีต "LOA- มิถุนายน" `
+        : `ไฟล์ Google Sheet "S45 - สรุปค่าใช้จ่ายให้บัญชี" ชีต "LOA- ${loaMonthKey === "aug" ? "สิงหาคม" : "กรกฎาคม"}" `
     : "";
+  // เดือนที่ "ปกติ" มีข้อมูลจริง (ไม่ใช่แค่อยู่ใน loaAvailableMonths) ใช้ทำข้อความ "มีข้อมูลเฉพาะ..." ให้ตรงของจริง
+  const loaNormalRealMonths = ["มิ.ย.", ...(LOA_JUL_NORMAL ? ["ก.ค."] : []), ...(LOA_NORMAL_AUG ? ["ส.ค."] : [])];
+  const loaNormalAvailableLabel = `${loaNormalRealMonths.join("–")} 2569`;
 
   const channelMixSorted = [...CHANNEL_MIX].sort((a, b) => b.budget - a.budget);
   const maxChannelBudget = Math.max(...CHANNEL_MIX.map((c) => c.budget));
@@ -2013,8 +2036,15 @@ export default function AdsDashboard() {
     : null;
   // ถ้าช่วงที่เลือกยื่นออกไปนอก มิ.ย.-ส.ค. (หรือเกินวันที่ 23 ส.ค.) ตัวเลข OR ด้านบน (ถ้ามี) จะไม่รวมส่วนที่ยื่นออกไปนั้น
   const summaryOrMissingRange = dateRange.start < "2026-06-01" || dateRange.end > "2026-08-23";
-  // LOA (LINE OA Broadcast) มีแค่ยอดรวมทั้งเดือน ไม่มีรายวัน จึงใช้ได้เฉพาะตอนเลือกเต็มเดือนมิ.ย./ก.ค. เท่านั้น (ช่องทางปกติ)
-  const loaSummarySource = isJunFull ? LOA_JUNE : dateRange.start === "2026-07-01" && dateRange.end === "2026-07-31" ? LOA_JUL_NORMAL : null;
+  // LOA (LINE OA Broadcast) มีแค่ยอดรวมทั้งเดือน ไม่มีรายวัน จึงใช้ได้เฉพาะตอนเลือกเต็มเดือน มิ.ย./ก.ค./ส.ค. เท่านั้น (ช่องทางปกติ)
+  const isAugFullForLoa = dateRange.start === "2026-08-01" && dateRange.end === "2026-08-31";
+  const loaSummarySource = isJunFull
+    ? LOA_JUNE
+    : dateRange.start === "2026-07-01" && dateRange.end === "2026-07-31"
+      ? LOA_JUL_NORMAL
+      : isAugFullForLoa
+        ? LOA_NORMAL_AUG
+        : null;
   const loaSummaryTotal = loaSummarySource
     ? loaSummarySource.reduce((acc, r) => ({ budgetUsed: acc.budgetUsed + r.budgetUsed, budgetLeft: acc.budgetLeft + r.budgetLeft }), { budgetUsed: 0, budgetLeft: 0 })
     : null;
@@ -2780,7 +2810,7 @@ export default function AdsDashboard() {
           {!loaSelSource ? (
             <p className="text-sm text-slate-400 py-6 text-center">
               ไม่มีข้อมูล LOA Broadcast ({loaChannelMeta.label}) สำหรับช่วงวันที่ที่เลือก
-              (มีข้อมูลเฉพาะ {loaChannel === "aftercare" ? "ก.ค.–ส.ค. 2569" : "มิ.ย.–ก.ค. 2569"}) — เปลี่ยนช่วงวันที่ด้านบนเพื่อดูข้อมูล
+              (มีข้อมูลเฉพาะ {loaChannel === "aftercare" ? "ก.ค.–ส.ค. 2569" : loaNormalAvailableLabel}) — เปลี่ยนช่วงวันที่ด้านบนเพื่อดูข้อมูล
             </p>
           ) : (
           <>
@@ -2931,7 +2961,7 @@ export default function AdsDashboard() {
           {!loaSelSource ? (
             <p className="text-sm text-slate-400 py-6 text-center">
               ไม่มีข้อมูล LOA Broadcast ({loaChannelMeta.label}) สำหรับช่วงวันที่ที่เลือก
-              (มีข้อมูลเฉพาะ {loaChannel === "aftercare" ? "ก.ค.–ส.ค. 2569" : "มิ.ย.–ก.ค. 2569"}) — เปลี่ยนช่วงวันที่ด้านบนเพื่อดูข้อมูล
+              (มีข้อมูลเฉพาะ {loaChannel === "aftercare" ? "ก.ค.–ส.ค. 2569" : loaNormalAvailableLabel}) — เปลี่ยนช่วงวันที่ด้านบนเพื่อดูข้อมูล
             </p>
           ) : (
           <>
