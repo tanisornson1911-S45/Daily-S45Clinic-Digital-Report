@@ -615,6 +615,7 @@ const FUNNEL_CLOSE_COUNTS_AUG = FUNNEL_AUG_DATA.closeCounts;
 // แทนรายการลิงก์คัดมือแบบเดิม
 // ============================================================
 const ANT_ARMY_POSTS = ANT_ARMY_POSTS_DATA.procedures;
+const ANT_ARMY_PAGE_SIZE = 12; // จำนวนโพสต์ต่อหน้าก่อนกด "ดูเพิ่มเติม" — กันหน้ายาวเกินไปเมื่อโพสต์เยอะ
 const S45_LOGO ="data:image/webp;base64,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";
 
 // ============================================================
@@ -1315,6 +1316,7 @@ export default function AdsDashboard() {
   const [growthTab, setGrowthTab] = useState("budget"); // "budget" | "staff"
   const [heroCaseFilter, setHeroCaseFilter] = useState("doctor_tee");
   const [antArmyProcFilter, setAntArmyProcFilter] = useState("all");
+  const [antArmyVisibleCount, setAntArmyVisibleCount] = useState(ANT_ARMY_PAGE_SIZE);
   const [interDoctorFilter, setInterDoctorFilter] = useState("all");
   const [interProcFilter, setInterProcFilter] = useState("all");
   const [dateRange, setDateRange] = useState({ start: "2026-06-01", end: "2026-06-30" });
@@ -1767,6 +1769,12 @@ export default function AdsDashboard() {
       })
       .sort((a, b) => b.engagementScore - a.engagementScore);
   })();
+  // รีเซ็ตจำนวนที่แสดง (ปุ่ม "ดูเพิ่มเติม") กลับไปหน้าแรกทุกครั้งที่เปลี่ยนหัตถการหรือช่วงวันที่ ไม่งั้นจะค้าง
+  // จำนวนเดิมไว้ทั้งที่รายการเปลี่ยนไปแล้ว
+  React.useEffect(() => {
+    setAntArmyVisibleCount(ANT_ARMY_PAGE_SIZE);
+  }, [antArmyProcFilter, dateRange.start, dateRange.end]);
+  const antArmyVisiblePosts = antArmyPosts.slice(0, antArmyVisibleCount);
   const inboxDailyFunnel = funnelSource ? funnelSource[inboxDailyFilter] : null;
   const inboxHasSalesData = inboxDailyFunnel?.dailyConsult != null;
   const inboxDailyTargetPerDay = inboxDailyFilter === "all" ? INBOX_DAILY_TARGET_ALL : INBOX_DAILY_TARGET[inboxDailyFilter] ?? null;
@@ -4111,7 +4119,7 @@ export default function AdsDashboard() {
           </div>
 
           <p className="text-xs font-medium text-slate-500 mb-2">
-            โพสต์ Organic ที่เข้าถึง/มี Engagement ดี ({antArmyPosts.length} โพสต์) — ช่วง {rangeLabel}
+            โพสต์ Organic ที่เข้าถึง/มี Engagement ดี — แสดง {Math.min(antArmyVisibleCount, antArmyPosts.length)} จาก {antArmyPosts.length} โพสต์ — ช่วง {rangeLabel}
           </p>
 
           {antArmyPosts.length === 0 ? (
@@ -4119,8 +4127,9 @@ export default function AdsDashboard() {
               ไม่พบโพสต์ที่ตรงกับหัตถการนี้ในช่วงวันที่เลือก — ลองเปลี่ยนหัตถการหรือขยายช่วงวันที่ดู
             </p>
           ) : (
+          <>
           <div className="grid sm:grid-cols-2 gap-3">
-            {antArmyPosts.map((p) => (
+            {antArmyVisiblePosts.map((p) => (
               <a
                 key={p.postId}
                 href={p.permalinkUrl}
@@ -4153,6 +4162,17 @@ export default function AdsDashboard() {
               </a>
             ))}
           </div>
+          {antArmyVisibleCount < antArmyPosts.length && (
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={() => setAntArmyVisibleCount((n) => n + ANT_ARMY_PAGE_SIZE)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+              >
+                ดูเพิ่มเติม ({antArmyPosts.length - antArmyVisibleCount} โพสต์ที่เหลือ)
+              </button>
+            </div>
+          )}
+          </>
           )}
 
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
@@ -4160,7 +4180,7 @@ export default function AdsDashboard() {
             <p>
               ดึงจากโพสต์จริงบนเพจ "S45 Clinic เสริมจมูกสไตล์เกาหลี By หมอตี้" ย้อนหลัง 180 วัน อัตโนมัติทุกคืน — จับคู่โพสต์กับหัตถการจากคำที่พบในแคปชั่น
               แล้วกรองด้วยช่วงวันที่ที่เลือกอยู่ (Filter ด้านบนของแดชบอร์ด) เรียงตามคะแนน Engagement (Reaction + Comment×3 + Share×5 + Click×4) มากไปน้อย
-              ไม่มีการตัดจำนวน — แสดงทุกโพสต์ที่ตรงเงื่อนไข
+              ไม่มีการตัดจำนวนโพสต์ที่ค้นเจอ (ทุกโพสต์ที่ตรงเงื่อนไขถูกนำมาคำนวณ) เพียงแต่แสดงผลทีละ {ANT_ARMY_PAGE_SIZE} โพสต์ กด "ดูเพิ่มเติม" เพื่อโหลดต่อ
             </p>
           </div>
         </div>
