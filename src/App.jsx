@@ -61,6 +61,7 @@ import LOA_DATA from "./data/loaData.json";
 import LOA_NORMAL_DATA from "./data/loaNormalData.json";
 import FUNNEL_AUG_DATA from "./data/funnelAug.json";
 import AD_DAILY from "./data/adDaily.json";
+import DOCTOR_HERO_POSTS_DATA from "./data/doctorHeroPosts.json";
 const loaDataByMonth = LOA_DATA.months;
 const loaNormalDataByMonth = LOA_NORMAL_DATA.months;
 
@@ -705,6 +706,11 @@ const DOCTOR_HERO_CASES = {
     ],
   },
 };
+// DOCTOR_HERO_POSTS — เวอร์ชันสด ดึงจาก src/data/doctorHeroPosts.json (สร้างโดย
+// scripts/fetch-fb-doctor-posts.mjs ทุกคืน) เลือกโพสต์จริงจากเพจที่มี Engagement สูงสุดต่อหมอ
+// แทนลิงก์ที่พิมพ์มือใน DOCTOR_HERO_CASES ด้านบน (ตัวนั้นยังใช้อยู่ในส่วน "Digital Plan: Ads Hero
+// July 26" ซึ่งเป็นแผนที่บันทึกไว้ตอนนั้น ไม่ใช่ข้อมูลสด จึงไม่เปลี่ยนตาม)
+const DOCTOR_HERO_POSTS = DOCTOR_HERO_POSTS_DATA.doctors;
 
 const fmtTHB = (n) => new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 }).format(Math.round(n));
 
@@ -1776,7 +1782,7 @@ export default function AdsDashboard() {
   };
   const INBOX_DAILY_TARGET_ALL = Object.values(INBOX_DAILY_TARGET).reduce((s, v) => s + v, 0); // รวมทุกหัตถการ รวม Inter แล้ว
   const inboxDailyOptions = Object.entries(FUNNEL_DATA).map(([k, v]) => [k, v.label]);
-  const heroCaseOptions = Object.entries(DOCTOR_HERO_CASES).map(([k, v]) => [k, v.label]);
+  const heroCaseOptions = Object.entries(DOCTOR_HERO_POSTS).map(([k, v]) => [k, v.label]);
   // Inter แยกตามหมอ — ผูกกับ Filter วันที่หลักด้านบน (activeMonthKey) แทน Dropdown เดือนแยกเดิม (มีข้อมูลแค่
   // มิ.ย./ก.ค. 2569 เท่านั้น) · interProcFilter กรองตารางที่ปกติแสดงทุกหัตถการของหมอคนนั้นให้เหลือหัตถการเดียว
   const interMonthKey = activeMonthKey === "jun" || activeMonthKey === "jul" ? activeMonthKey : null;
@@ -1803,7 +1809,7 @@ export default function AdsDashboard() {
   const interCasesMoM = compareEnabled && interCompareDataKey ? pctDelta(interDoctorTotal.cases, interCompareTotal.cases) : null;
   const interDepositMoM = compareEnabled && interCompareDataKey ? pctDelta(interDoctorTotal.deposit, interCompareTotal.deposit) : null;
   const interTotalMoM = compareEnabled && interCompareDataKey ? pctDelta(interDoctorTotal.total, interCompareTotal.total) : null;
-  const selectedHeroDoctor = DOCTOR_HERO_CASES[heroCaseFilter];
+  const selectedHeroDoctor = DOCTOR_HERO_POSTS[heroCaseFilter];
   const inboxDailyFunnel = funnelSource ? funnelSource[inboxDailyFilter] : null;
   const inboxHasSalesData = inboxDailyFunnel?.dailyConsult != null;
   const inboxDailyTargetPerDay = inboxDailyFilter === "all" ? INBOX_DAILY_TARGET_ALL : INBOX_DAILY_TARGET[inboxDailyFilter] ?? null;
@@ -4183,40 +4189,56 @@ export default function AdsDashboard() {
             <Select icon={Stethoscope} value={heroCaseFilter} onChange={setHeroCaseFilter} options={heroCaseOptions} />
           </div>
           <p className="text-xs text-slate-400 mb-5 ml-10">
-            {selectedHeroDoctor.label} · {selectedHeroDoctor.cases.length} เคส — เลือกคุณหมอจาก Dropdown เพื่อดูเคสเด่นของแต่ละคน
+            {selectedHeroDoctor.label} · {selectedHeroDoctor.cases.length} เคส — ดึงจากโพสต์จริงบนเพจที่มี Engagement สูงสุด
+            เลือกคุณหมอจาก Dropdown เพื่อดูเคสเด่นของแต่ละคน
           </p>
 
+          {selectedHeroDoctor.cases.length === 0 ? (
+            <p className="text-sm text-slate-400 py-8 text-center">
+              ยังไม่พบโพสต์ที่มีชื่อ "{selectedHeroDoctor.label}" อยู่ในแคปชั่นช่วง 180 วันที่ผ่านมา — ลองแท็กชื่อคุณหมอในโพสต์ถัดไปเพื่อให้ระบบดึงมาแสดงได้
+            </p>
+          ) : (
           <div className="grid sm:grid-cols-2 gap-3">
             {selectedHeroDoctor.cases.map((c, i) => (
               <a
-                key={i}
-                href={c.url}
+                key={c.postId || i}
+                href={c.permalinkUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group flex flex-col rounded-xl border border-slate-100 overflow-hidden hover:border-pink-200 transition-colors"
               >
-                <div className="aspect-[4/3] bg-gradient-to-br from-pink-50 to-slate-50 flex flex-col items-center justify-center gap-2">
-                  <ImageIcon size={28} className="text-pink-300" />
-                  <span className="text-[11px] text-slate-400">รูปภาพเคสจากโพสต์ Facebook</span>
+                <div className="aspect-[4/3] bg-slate-100 overflow-hidden">
+                  {c.fullPicture ? (
+                    <img src={c.fullPicture} alt={`${selectedHeroDoctor.label} case`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-pink-50 to-slate-50 flex flex-col items-center justify-center gap-2">
+                      <ImageIcon size={28} className="text-pink-300" />
+                      <span className="text-[11px] text-slate-400">ไม่มีรูปภาพ</span>
+                    </div>
+                  )}
                 </div>
                 <div className="p-3">
-                  <p className="text-sm font-semibold text-slate-700">
-                    {selectedHeroDoctor.label} · เคส{c.patient}
+                  <p className="text-sm text-slate-700 line-clamp-2">{c.message || `${selectedHeroDoctor.label} · โพสต์`}</p>
+                  <p className="text-xs text-slate-400 mt-1.5 flex items-center gap-2">
+                    <span>❤️ {fmtTHB(c.reactions)}</span>
+                    <span>💬 {fmtTHB(c.comments)}</span>
+                    <span>🔁 {fmtTHB(c.shares)}</span>
                   </p>
-                  <p className="text-xs text-blue-600 group-hover:underline flex items-center gap-1 mt-1">
+                  <p className="text-xs text-blue-600 group-hover:underline flex items-center gap-1 mt-1.5">
                     <ExternalLink size={11} /> เปิดดูโพสต์ต้นฉบับ
                   </p>
                 </div>
               </a>
             ))}
           </div>
+          )}
 
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
             <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <p>
-              ระบบไม่สามารถดึงรูปภาพจริงจากโพสต์ Facebook มาแสดงในแดชบอร์ดได้โดยอัตโนมัติ (Facebook บล็อกการเข้าถึงแบบอัตโนมัติ) การ์ดด้านบนจึง
-              เป็นตัวแทนลิงก์ให้กดเข้าไปดูรูป/วิดีโอเคสจริงที่โพสต์นั้นโดยตรง — หากต้องการให้รูปเคสแสดงในแดชบอร์ดจริง สามารถ Screenshot รูปจากโพสต์
-              แล้วอัปโหลดไฟล์ภาพมาให้ฝังแทนได้
+              ดึงจากโพสต์จริงบนเพจ "S45 Clinic เสริมจมูกสไตล์เกาหลี By หมอตี้" ย้อนหลัง 180 วัน อัตโนมัติทุกคืน — จับคู่โพสต์กับคุณหมอจากชื่อ/แฮชแท็กที่พบใน
+              แคปชั่น แล้วเลือก 3 อันดับแรกต่อคนตามคะแนน Engagement (Reaction + Comment×3 + Share×5) ยิ่งคะแนนสูงยิ่งเป็นเคสที่คนสนใจมาก เหมาะเอาไป Re-run
+              เป็น Ads กระตุ้น Inbox ต่อ
             </p>
           </div>
         </div>
