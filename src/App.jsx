@@ -1319,11 +1319,28 @@ export default function AdsDashboard() {
   const [antArmyVisibleCount, setAntArmyVisibleCount] = useState(ANT_ARMY_PAGE_SIZE);
   const [interDoctorFilter, setInterDoctorFilter] = useState("all");
   const [interProcFilter, setInterProcFilter] = useState("all");
-  const [dateRange, setDateRange] = useState({ start: "2026-06-01", end: "2026-06-30" });
-  // ค่าเริ่มต้นเปิด Compare ไว้เลย เทียบมิถุนายนกับพฤษภาคมเต็มเดือน (ไม่ใช้ previousPeriodRange เพราะพ.ค. มี 31 วัน
-  // ยาวกว่ามิ.ย. 1 วัน จะเลื่อนไปเริ่ม 2 พ.ค. แทนที่จะเป็นทั้งเดือน) — ผู้ใช้ยังปรับช่วงเทียบเองได้ตามปกติจาก Date Picker
+  // ค่าเริ่มต้นเปิดหน้ามาต้องเป็น "เดือนนี้" เสมอ (อ่านจากนาฬิกาเครื่องจริง new Date() ไม่ล็อกวันที่ตายตัว) เริ่ม
+  // วันที่ 1 ของเดือนปัจจุบัน ถึงวันที่วันนี้จริง — เหมือนกับพฤติกรรมของปุ่ม preset "เดือนนี้" ใน Date Picker
+  const [dateRange, setDateRange] = useState(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return { start: `${y}-${m}-01`, end: `${y}-${m}-${d}` };
+  });
+  // ค่าเริ่มต้นเปิด Compare ไว้เลย เทียบเดือนนี้กับเดือนที่แล้วเต็มเดือน (ไม่ใช้ previousPeriodRange เพราะบางคู่เดือน
+  // จำนวนวันไม่เท่ากัน จะเลื่อนวันเริ่มผิดไป) — ผู้ใช้ยังปรับช่วงเทียบเองได้ตามปกติจาก Date Picker
   const [compareEnabled, setCompareEnabled] = useState(true);
-  const [compareRange, setCompareRange] = useState({ start: "2026-05-01", end: "2026-05-31" });
+  const [compareRange, setCompareRange] = useState(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth() + 1; // 1-12 ของเดือนนี้
+    const lastMonthNum = m === 1 ? 12 : m - 1;
+    const lastMonthYear = m === 1 ? y - 1 : y;
+    const lastMonthEndDay = new Date(lastMonthYear, lastMonthNum, 0).getDate();
+    const pad = (n) => String(n).padStart(2, "0");
+    return { start: `${lastMonthYear}-${pad(lastMonthNum)}-01`, end: `${lastMonthYear}-${pad(lastMonthNum)}-${pad(lastMonthEndDay)}` };
+  });
   const monthFilter = "jun26"; // คงไว้เพื่อความเข้ากันได้กับส่วนที่ล็อกไว้ที่มิถุนายน (Sales Funnel/Inbox/LOA/Bad Lead/Inter)
 
   // ---- Sidebar navigation + dark mode ----
