@@ -260,6 +260,36 @@ const otherChannelTotalOf = (rows) =>
     { cases: 0, deposit: 0, online: 0, total: 0 }
   );
 
+// computeFbTotalsForRange / computeOtherChannelTotalsForRange: เหมือน activeFbTotal/activeOtherChannelTotal
+// ใน component แต่รับ range เป็นพารามิเตอร์ได้อิสระ (pure function) — ใช้คำนวณยอดของ compareRange เพื่อทำ
+// ป้าย % เทียบ (MoMBadge) บนการ์ดสรุปของแต่ละ section โดยไม่ต้องผูกกับ dateRange หลักที่เลือกอยู่จริง
+function computeFbTotalsForRange(range) {
+  if (range.start === "2026-07-01" && range.end === "2026-07-31") return FB_TOTAL;
+  const fb = RAW_TX.filter((t) => t.d >= range.start && t.d <= range.end && t.ch === "Facebook");
+  return {
+    cases: fb.length,
+    total: fb.reduce((s, r) => s + r.tot, 0),
+    online: fb.reduce((s, r) => s + r.onl, 0),
+    deposit: fb.reduce((s, r) => s + r.dep, 0),
+  };
+}
+function computeOtherChannelTotalsForRange(range, filter) {
+  if (range.start === "2026-07-01" && range.end === "2026-07-31") return otherChannelTotalOf(OTHER_CHANNEL_DATA[filter]);
+  const chMatch =
+    filter === "line"
+      ? (t) => t.ch === "Line"
+      : filter === "whatsapp"
+        ? (t) => t.ch === "WhatsApp"
+        : (t) => t.ch === "Sale หาเอง" || t.ch === "ช่องทางส่วนตัว BA";
+  const rows = RAW_TX.filter((t) => t.d >= range.start && t.d <= range.end && chMatch(t));
+  return {
+    cases: rows.length,
+    total: rows.reduce((s, r) => s + r.tot, 0),
+    online: rows.reduce((s, r) => s + r.onl, 0),
+    deposit: rows.reduce((s, r) => s + r.dep, 0),
+  };
+}
+
 // ============================================================
 // SOURCE 3 — RAW_TX เดือน CURRENT_SPEND_MONTH ทุกช่องทาง เฉพาะแถวที่มีมัดจำ (dep > 0)
 // กรุ๊ปตาม Doctor + Surgery คำนวณสดทุกครั้งที่โหลดหน้า — key ตรงกับหมวดหัตถการเดียวกับด้านบน
@@ -1587,6 +1617,14 @@ export default function AdsDashboard() {
     return FB_BY_KEY[procFilter] ?? { total: 0, online: 0, deposit: 0, cases: 0 };
   }, [procFilter]);
 
+  // % เทียบกับ compareRange (การ์ดสรุป "ยอดขายจาก Facebook แยกตามหัตถการ") — ใช้ compareRange เดียวกับที่ตั้งไว้
+  // บน DateRangePicker ด้านบน ไม่ใช่ "เดือนก่อนหน้า" ตายตัว
+  const fbCompareTotals = compareEnabled ? computeFbTotalsForRange(compareRange) : null;
+  const fbActiveTotal = isJunFull ? fbSummary : activeFbTotal;
+  const fbTotalMoM = fbCompareTotals ? pctDelta(fbActiveTotal.total, fbCompareTotals.total) : null;
+  const fbOnlineMoM = fbCompareTotals ? pctDelta(fbActiveTotal.online, fbCompareTotals.online) : null;
+  const fbDepositMoM = fbCompareTotals ? pctDelta(fbActiveTotal.deposit, fbCompareTotals.deposit) : null;
+
   // ค่าโฆษณาที่ใช้ไป — คอลัมน์ Spend ในชีต Budget Allocate คือ Facebook เท่านั้น
   const fbSpend = totals.spend;
 
@@ -1697,6 +1735,12 @@ export default function AdsDashboard() {
   const activeOtherChannelTotal = otherChannelTotalOf(activeOtherChannelRows);
   const otherChannelTotal = otherChannelTotalOf(otherChannelRows);
 
+  // % เทียบกับ compareRange (การ์ดสรุป "ยอดขายจากช่องทางอื่น แยกตามหัตถการ")
+  const otherCompareTotals = compareEnabled ? computeOtherChannelTotalsForRange(compareRange, otherChannelFilter) : null;
+  const otherTotalMoM = otherCompareTotals ? pctDelta(activeOtherChannelTotal.total, otherCompareTotals.total) : null;
+  const otherOnlineMoM = otherCompareTotals ? pctDelta(activeOtherChannelTotal.online, otherCompareTotals.online) : null;
+  const otherDepositMoM = otherCompareTotals ? pctDelta(activeOtherChannelTotal.deposit, otherCompareTotals.deposit) : null;
+
   // เป้าหมาย Inbox ต่อวัน แยกตามหัตถการ (ตัวเลขจริงที่ทีมกำหนด)
   // เทียบกับ Inbox ที่ทำได้จริงรายวัน ในเดือนมิถุนายน (จาก Sales Funnel data) — เลือกหัตถการผ่าน Dropdown
   const INBOX_DAILY_TARGET = {
@@ -1719,6 +1763,22 @@ export default function AdsDashboard() {
     (acc, r) => ({ cases: acc.cases + r.cases, deposit: acc.deposit + r.deposit, total: acc.total + r.total }),
     { cases: 0, deposit: 0, total: 0 }
   );
+  // % เทียบกับ compareRange (การ์ดสรุป "Inter แยกตามหมอ + หัตถการ") — Inter มีข้อมูลแค่ยอดรวมทั้งเดือน มิ.ย./ก.ค.
+  // เท่านั้น (ไม่มีรายวัน) จึงเทียบได้เฉพาะตอน compareRange ตกอยู่ในเดือนใดเดือนหนึ่งใน 2 เดือนนี้พอดี
+  const interCompareMonthKey = (() => {
+    const k = monthKeyFromRange(compareRange);
+    return k === "jun" || k === "jul" ? k : null;
+  })();
+  const interCompareDataKey = interCompareMonthKey === "jun" ? "jun26" : interCompareMonthKey === "jul" ? "jul26" : null;
+  const interCompareRowsAll = interCompareDataKey ? INTER_BY_DOCTOR_MONTH[interCompareDataKey]?.[interDoctorFilter] || [] : [];
+  const interCompareRows = interProcFilter === "all" ? interCompareRowsAll : interCompareRowsAll.filter((r) => r.key === interProcFilter);
+  const interCompareTotal = interCompareRows.reduce(
+    (acc, r) => ({ cases: acc.cases + r.cases, deposit: acc.deposit + r.deposit, total: acc.total + r.total }),
+    { cases: 0, deposit: 0, total: 0 }
+  );
+  const interCasesMoM = compareEnabled && interCompareDataKey ? pctDelta(interDoctorTotal.cases, interCompareTotal.cases) : null;
+  const interDepositMoM = compareEnabled && interCompareDataKey ? pctDelta(interDoctorTotal.deposit, interCompareTotal.deposit) : null;
+  const interTotalMoM = compareEnabled && interCompareDataKey ? pctDelta(interDoctorTotal.total, interCompareTotal.total) : null;
   const selectedHeroDoctor = DOCTOR_HERO_CASES[heroCaseFilter];
   const inboxDailyFunnel = funnelSource ? funnelSource[inboxDailyFilter] : null;
   const inboxHasSalesData = inboxDailyFunnel?.dailyConsult != null;
@@ -2259,14 +2319,17 @@ export default function AdsDashboard() {
             <div className="bg-emerald-50 rounded-xl p-3">
               <p className="text-[11px] text-emerald-600 font-medium mb-0.5">ยอดขายรวม</p>
               <p className="text-lg font-bold text-emerald-700">฿{fmtTHB(isJunFull ? fbSummary.total : activeFbTotal.total)}</p>
+              <MoMBadge delta={fbTotalMoM} />
             </div>
             <div className="bg-sky-50 rounded-xl p-3">
               <p className="text-[11px] text-sky-600 font-medium mb-0.5">ยอดขายออนไลน์</p>
               <p className="text-lg font-bold text-sky-700">฿{fmtTHB(isJunFull ? fbSummary.online : activeFbTotal.online)}</p>
+              <MoMBadge delta={fbOnlineMoM} />
             </div>
             <div className="bg-amber-50 rounded-xl p-3">
               <p className="text-[11px] text-amber-600 font-medium mb-0.5">ยอดมัดจำ</p>
               <p className="text-lg font-bold text-amber-700">฿{fmtTHB(isJunFull ? fbSummary.deposit : activeFbTotal.deposit)}</p>
+              <MoMBadge delta={fbDepositMoM} />
             </div>
           </div>
 
@@ -2362,14 +2425,17 @@ export default function AdsDashboard() {
             <div className="bg-indigo-50 rounded-xl p-3">
               <p className="text-[11px] text-indigo-600 font-medium mb-0.5">จำนวนเคส</p>
               <p className="text-lg font-bold text-indigo-700">{interDoctorTotal.cases} เคส</p>
+              <MoMBadge delta={interCasesMoM} />
             </div>
             <div className="bg-amber-50 rounded-xl p-3">
               <p className="text-[11px] text-amber-600 font-medium mb-0.5">ยอดมัดจำ (Online + Medical check up)</p>
               <p className="text-lg font-bold text-amber-700">฿{fmtTHB(interDoctorTotal.deposit)}</p>
+              <MoMBadge delta={interDepositMoM} />
             </div>
             <div className="bg-emerald-50 rounded-xl p-3">
               <p className="text-[11px] text-emerald-600 font-medium mb-0.5">ยอด OR (Total)</p>
               <p className="text-lg font-bold text-emerald-700">฿{fmtTHB(interDoctorTotal.total)}</p>
+              <MoMBadge delta={interTotalMoM} />
             </div>
           </div>
 
@@ -2441,14 +2507,17 @@ export default function AdsDashboard() {
             <div className="bg-emerald-50 rounded-xl p-3">
               <p className="text-[11px] text-emerald-600 font-medium mb-0.5">ยอดขายรวม</p>
               <p className="text-lg font-bold text-emerald-700">฿{fmtTHB(activeOtherChannelTotal.total)}</p>
+              <MoMBadge delta={otherTotalMoM} />
             </div>
             <div className="bg-sky-50 rounded-xl p-3">
               <p className="text-[11px] text-sky-600 font-medium mb-0.5">ยอดขายออนไลน์</p>
               <p className="text-lg font-bold text-sky-700">฿{fmtTHB(activeOtherChannelTotal.online)}</p>
+              <MoMBadge delta={otherOnlineMoM} />
             </div>
             <div className="bg-amber-50 rounded-xl p-3">
               <p className="text-[11px] text-amber-600 font-medium mb-0.5">ยอดมัดจำ</p>
               <p className="text-lg font-bold text-amber-700">฿{fmtTHB(activeOtherChannelTotal.deposit)}</p>
+              <MoMBadge delta={otherDepositMoM} />
             </div>
           </div>
 
