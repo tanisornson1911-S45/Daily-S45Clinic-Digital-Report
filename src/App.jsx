@@ -2171,13 +2171,15 @@ export default function AdsDashboard() {
           </p>
 
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-amber-50 rounded-xl p-3">
-              <p className="text-[11px] text-amber-600 font-medium mb-0.5">ยอดมัดจำรวม</p>
-              <p className="text-lg font-bold text-amber-700">
-                {isJunFull ? `฿${fmtTHB(totals.deposit)}` : rangeTotals.deposit != null ? `฿${fmtTHB(rangeTotals.deposit)}` : "ไม่มีข้อมูล"}
-              </p>
-              <p className="text-[11px] text-amber-500 mt-1">
-                ROAS ต่อยอดมัดจำ{" "}
+            <div className="bg-amber-50 rounded-xl p-3 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] text-amber-600 font-medium mb-0.5">ยอดมัดจำรวม</p>
+                <p className="text-lg font-bold text-amber-700 truncate">
+                  {isJunFull ? `฿${fmtTHB(totals.deposit)}` : rangeTotals.deposit != null ? `฿${fmtTHB(rangeTotals.deposit)}` : "ไม่มีข้อมูล"}
+                </p>
+                <p className="text-[11px] text-amber-500 mt-1">ROAS ต่อยอดมัดจำ</p>
+              </div>
+              <p className="text-2xl font-bold text-amber-700 shrink-0">
                 {isJunFull
                   ? roasDeposit.toFixed(2)
                   : rangeTotals.deposit != null && rangeSpend > 0
@@ -2186,13 +2188,15 @@ export default function AdsDashboard() {
                 x
               </p>
             </div>
-            <div className="bg-sky-50 rounded-xl p-3">
-              <p className="text-[11px] text-sky-600 font-medium mb-0.5">ยอด Online Price</p>
-              <p className="text-lg font-bold text-sky-700">
-                {isJunFull ? `฿${fmtTHB(totals.online)}` : rangeTotals.online != null ? `฿${fmtTHB(rangeTotals.online)}` : "ไม่มีข้อมูล"}
-              </p>
-              <p className="text-[11px] text-sky-500 mt-1">
-                ROAS ต่อ Online Price{" "}
+            <div className="bg-sky-50 rounded-xl p-3 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] text-sky-600 font-medium mb-0.5">ยอด Online Price</p>
+                <p className="text-lg font-bold text-sky-700 truncate">
+                  {isJunFull ? `฿${fmtTHB(totals.online)}` : rangeTotals.online != null ? `฿${fmtTHB(rangeTotals.online)}` : "ไม่มีข้อมูล"}
+                </p>
+                <p className="text-[11px] text-sky-500 mt-1">ROAS ต่อ Online Price</p>
+              </div>
+              <p className="text-2xl font-bold text-sky-700 shrink-0">
                 {isJunFull
                   ? roasOnline.toFixed(2)
                   : rangeTotals.online != null && rangeSpend > 0
@@ -2201,13 +2205,15 @@ export default function AdsDashboard() {
                 x
               </p>
             </div>
-            <div className="bg-emerald-50 rounded-xl p-3">
-              <p className="text-[11px] text-emerald-600 font-medium mb-0.5">ยอดขายรวม (Total Price)</p>
-              <p className="text-lg font-bold text-emerald-700">
-                {isJunFull ? `฿${fmtTHB(totals.sales)}` : rangeTotals.sales != null ? `฿${fmtTHB(rangeTotals.sales)}` : "ไม่มีข้อมูล"}
-              </p>
-              <p className="text-[11px] text-emerald-500 mt-1">
-                ROAS ต่อยอดขายรวม{" "}
+            <div className="bg-emerald-50 rounded-xl p-3 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] text-emerald-600 font-medium mb-0.5">ยอดขายรวม (Total Price)</p>
+                <p className="text-lg font-bold text-emerald-700 truncate">
+                  {isJunFull ? `฿${fmtTHB(totals.sales)}` : rangeTotals.sales != null ? `฿${fmtTHB(rangeTotals.sales)}` : "ไม่มีข้อมูล"}
+                </p>
+                <p className="text-[11px] text-emerald-500 mt-1">ROAS ต่อยอดขายรวม</p>
+              </div>
+              <p className="text-2xl font-bold text-emerald-700 shrink-0">
                 {isJunFull
                   ? roasSales.toFixed(2)
                   : rangeTotals.sales != null && rangeSpend > 0
