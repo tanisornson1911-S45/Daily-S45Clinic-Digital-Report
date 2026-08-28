@@ -21,23 +21,39 @@ async function main() {
   }
 
   const postsUrl = new URL(`https://graph.facebook.com/v21.0/${PAGE_ID}/posts`);
-  postsUrl.searchParams.set("fields", "message,full_picture,permalink_url,created_time");
-  postsUrl.searchParams.set("limit", "5");
+  postsUrl.searchParams.set(
+    "fields",
+    "message,full_picture,permalink_url,created_time,reactions.summary(true).limit(0),comments.summary(true).limit(0),shares"
+  );
+  postsUrl.searchParams.set("limit", "10");
   postsUrl.searchParams.set("access_token", pageToken);
   const postsRes = await fetch(postsUrl);
   const postsJson = await postsRes.json();
-  console.log("\n=== /posts ===");
-  console.log(JSON.stringify(postsJson, null, 2).slice(0, 3000));
+  console.log("\n=== /posts (with engagement fields) ===");
+  for (const p of postsJson.data || []) {
+    console.log({
+      id: p.id,
+      created_time: p.created_time,
+      reactions: p.reactions?.summary?.total_count,
+      comments: p.comments?.summary?.total_count,
+      shares: p.shares?.count,
+      has_picture: !!p.full_picture,
+      message_preview: (p.message || "").slice(0, 60),
+    });
+  }
+  if (postsJson.error) console.log("ERROR:", JSON.stringify(postsJson.error));
 
   const firstPostId = postsJson.data?.[0]?.id;
   if (firstPostId) {
-    const insightsUrl = new URL(`https://graph.facebook.com/v21.0/${firstPostId}/insights`);
-    insightsUrl.searchParams.set("metric", "post_impressions_unique,post_engaged_users,post_reactions_like_total");
-    insightsUrl.searchParams.set("access_token", pageToken);
-    const insightsRes = await fetch(insightsUrl);
-    const insightsJson = await insightsRes.json();
-    console.log("\n=== /insights ===");
-    console.log(JSON.stringify(insightsJson, null, 2).slice(0, 3000));
+    for (const metric of ["post_impressions", "post_clicks", "post_reactions_by_type_total"]) {
+      const insightsUrl = new URL(`https://graph.facebook.com/v21.0/${firstPostId}/insights`);
+      insightsUrl.searchParams.set("metric", metric);
+      insightsUrl.searchParams.set("access_token", pageToken);
+      const insightsRes = await fetch(insightsUrl);
+      const insightsJson = await insightsRes.json();
+      console.log(`\n=== /insights metric=${metric} ===`);
+      console.log(JSON.stringify(insightsJson, null, 2).slice(0, 800));
+    }
   }
 }
 
