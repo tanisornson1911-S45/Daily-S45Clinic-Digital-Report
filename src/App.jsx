@@ -2406,28 +2406,45 @@ export default function AdsDashboard() {
               </p>
             )}
 
-            {/* ต้นทุนต่อการซื้อ (CPA) แยกตามหัตถการ */}
+            {/* ต้นทุนต่อการซื้อ (CPA) แยกตามหัตถการ — เทียบเป็น % ห่างจากค่าเฉลี่ยของทุกหัตถการที่แสดง ถ้าห่าง
+                เกิน 10% (แพงกว่า/ถูกกว่าค่าเฉลี่ย) ใช้สีบอกแทนคำว่า "เพิ่มขึ้น/ลดลง" — แพงกว่าเฉลี่ย = แดง (ต้นทุน
+                สูงกว่าปกติ ไม่ดี), ถูกกว่าเฉลี่ย = เขียว (ต้นทุนต่ำกว่าปกติ ดี), ใกล้เคียงเฉลี่ย (±10%) = เทาปกติ */}
             <div className="mt-4 pt-3 border-t border-slate-100">
-              <p className="text-[11px] text-slate-400 font-medium mb-2">
-                ต้นทุนต่อการซื้อ (ค่าโฆษณา Facebook ÷ จำนวนเคส) — ใช้เงินเท่าไหร่เพื่อให้ได้ 1 ยอดซื้อ
+              <p className="text-[11px] text-slate-400 font-medium mb-2 flex items-center gap-1.5">
+                <Wallet size={12} className="text-slate-400" />
+                ต้นทุนต่อการซื้อ (ค่าโฆษณา Facebook ÷ จำนวนเคส) — ใช้เงินเท่าไหร่เพื่อให้ได้ 1 ยอดซื้อ · เทียบ % จากค่าเฉลี่ย
               </p>
-              <div className="flex flex-wrap gap-2">
-                {activeFbSurgery.map((r) => {
-                  const cpa = r.spend != null && r.cases > 0 ? r.spend / r.cases : null;
-                  const isSelected = procFilter === "all" || procFilter === r.key;
-                  return (
-                    <div
-                      key={r.key}
-                      className={`rounded-lg border px-3 py-1.5 ${
-                        isSelected ? "border-slate-200 bg-slate-50" : "border-slate-100 bg-slate-50/40 opacity-40"
-                      }`}
-                    >
-                      <p className="text-[11px] text-slate-500">{r.label}</p>
-                      <p className="text-sm font-bold text-slate-700">{cpa != null ? `฿${fmtTHB(cpa)}` : "ไม่มีข้อมูล"}</p>
-                    </div>
-                  );
-                })}
-              </div>
+              {(() => {
+                const cpaRows = activeFbSurgery.map((r) => ({ ...r, cpa: r.spend != null && r.cases > 0 ? r.spend / r.cases : null }));
+                const validCpas = cpaRows.filter((r) => r.cpa != null).map((r) => r.cpa);
+                const avgCpa = validCpas.length > 0 ? validCpas.reduce((s, v) => s + v, 0) / validCpas.length : null;
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {cpaRows.map((r) => {
+                      const isSelected = procFilter === "all" || procFilter === r.key;
+                      const pctFromAvg = r.cpa != null && avgCpa > 0 ? ((r.cpa - avgCpa) / avgCpa) * 100 : null;
+                      const isHigh = pctFromAvg != null && pctFromAvg > 10;
+                      const isLow = pctFromAvg != null && pctFromAvg < -10;
+                      const boxTone = isHigh ? "bg-rose-50 border-rose-200" : isLow ? "bg-emerald-50 border-emerald-200" : "bg-slate-50 border-slate-200";
+                      const labelTone = isHigh ? "text-rose-500" : isLow ? "text-emerald-500" : "text-slate-400";
+                      const valueTone = isHigh ? "text-rose-700" : isLow ? "text-emerald-700" : "text-slate-700";
+                      const pctTone = isHigh ? "text-rose-600" : isLow ? "text-emerald-600" : "text-slate-400";
+                      return (
+                        <div key={r.key} className={`rounded-xl border px-3 py-2.5 ${boxTone} ${!isSelected ? "opacity-40" : ""}`}>
+                          <p className={`text-[11px] font-medium ${labelTone}`}>{r.label}</p>
+                          <p className={`text-base font-bold ${valueTone}`}>{r.cpa != null ? `฿${fmtTHB(r.cpa)}` : "ไม่มีข้อมูล"}</p>
+                          {pctFromAvg != null && (
+                            <p className={`text-[11px] font-semibold mt-0.5 ${pctTone}`}>
+                              {pctFromAvg > 0 ? "+" : ""}
+                              {pctFromAvg.toFixed(0)}% จากค่าเฉลี่ย
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           </div>
           )}
