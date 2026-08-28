@@ -1,17 +1,17 @@
 {
-  "generatedAt": "2026-08-26T20:18:26.769Z",
+  "generatedAt": "2026-08-28T02:14:05.614Z",
   "daysWithData": 24,
   "data": {
     "nose_open": {
       "label": "เสริมจมูกโอเพ่น (Nose Open)",
       "ads": 574516.63,
       "inbox": 1872,
-      "or": 4498990,
-      "sales": 6098280,
-      "basket": 217795.7142857143,
-      "closeRate": 0.014957264957264958,
-      "adsCost": 0.09420961812183107,
-      "adsCostOr": 0.12769902355862092,
+      "or": 4927990,
+      "sales": 6527280,
+      "basket": 217576,
+      "closeRate": 0.016025641025641024,
+      "adsCost": 0.08801777003591083,
+      "adsCostOr": 0.11658234493170644,
       "dailyAds": [
         12629.83,
         16433.45,
@@ -507,12 +507,12 @@
       "label": "ยกคิ้ว/เลื่อนไรผม/ยกมุมปาก",
       "ads": 403561.13999999996,
       "inbox": 2777,
-      "or": 2099780,
-      "sales": 2534280,
-      "basket": 126714,
-      "closeRate": 0.007202016564638099,
-      "adsCost": 0.15924094417349305,
-      "adsCostOr": 0.19219210583965937,
+      "or": 2343790,
+      "sales": 2778290,
+      "basket": 132299.52380952382,
+      "closeRate": 0.007562117392870004,
+      "adsCost": 0.14525522533644794,
+      "adsCostOr": 0.17218314780761074,
       "dailyAds": [
         6613.46,
         15543.14,
@@ -741,12 +741,12 @@
       "label": "รวมทุกหัตถการ",
       "ads": 1195243.6199999999,
       "inbox": 6167,
-      "or": 7227870,
-      "sales": 9659360,
-      "basket": 134157.77777777778,
-      "closeRate": 0.011675044592184207,
-      "adsCost": 0.12373942165940599,
-      "adsCostOr": 0.16536595428528736,
+      "or": 7900880,
+      "sales": 10332370,
+      "basket": 137764.93333333332,
+      "closeRate": 0.012161504783525215,
+      "adsCost": 0.11567952173605861,
+      "adsCostOr": 0.15127980933769403,
       "dailyAds": [
         24090.789999999997,
         39490.50000000001,
@@ -907,10 +907,10 @@
   },
   "closeCounts": {
     "nose_open": {
-      "consult": 28,
-      "deposit": 28,
-      "consultValue": 6098280,
-      "depositValue": 6098280
+      "consult": 30,
+      "deposit": 30,
+      "consultValue": 6527280,
+      "depositValue": 6527280
     },
     "nose_semi": {
       "consult": 19,
@@ -925,16 +925,16 @@
       "depositValue": 503000
     },
     "brow_hairline": {
-      "consult": 20,
-      "deposit": 19,
-      "consultValue": 2534280,
-      "depositValue": 2454380
+      "consult": 21,
+      "deposit": 20,
+      "consultValue": 2778290,
+      "depositValue": 2698390
     },
     "all": {
-      "consult": 72,
-      "deposit": 71,
-      "consultValue": 9659360,
-      "depositValue": 9579460
+      "consult": 75,
+      "deposit": 74,
+      "consultValue": 10332370,
+      "depositValue": 10252470
     }
   }
 }
