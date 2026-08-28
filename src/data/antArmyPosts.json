@@ -1,0 +1,10 @@
+{
+  "generatedAt": "2026-08-28T00:00:00.000Z",
+  "source": "Seed placeholder — will be overwritten by scripts/fetch-fb-doctor-posts.mjs on the next automated run.",
+  "procedures": {
+    "nose_open": { "label": "Nose Open", "posts": [] },
+    "nose_semi": { "label": "Semi Open", "posts": [] },
+    "brow_hairline": { "label": "Brow Lift (ยกคิ้ว)", "posts": [] },
+    "breast_lipo": { "label": "Breast/ดูดไขมัน", "posts": [] }
+  }
+}

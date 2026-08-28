@@ -42,7 +42,7 @@ jobs:
           FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
         run: node scripts/fetch-fb-daily.mjs
 
-      - name: Fetch top-engagement doctor posts
+      - name: Fetch top-engagement doctor + procedure posts
         env:
           FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
         run: node scripts/fetch-fb-doctor-posts.mjs
@@ -51,10 +51,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src/data/adSpend.json src/data/adDaily.json src/data/doctorHeroPosts.json
-          if git diff --cached --quiet -- src/data/adSpend.json src/data/adDaily.json src/data/doctorHeroPosts.json; then
+          git add src/data/adSpend.json src/data/adDaily.json src/data/doctorHeroPosts.json src/data/antArmyPosts.json
+          if git diff --cached --quiet -- src/data/adSpend.json src/data/adDaily.json src/data/doctorHeroPosts.json src/data/antArmyPosts.json; then
             echo "No change — nothing to commit."
           else
-            git commit -m "chore: update ad-spend + daily Ads/Inbox + doctor hero posts data (automated)"
+            git commit -m "chore: update ad-spend + daily Ads/Inbox + doctor/procedure posts data (automated)"
             git push origin HEAD:main
           fi
