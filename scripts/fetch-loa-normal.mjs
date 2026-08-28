@@ -119,6 +119,9 @@ async function fetchSheetValues(accessToken, title) {
 }
 
 // เหมือน parseSheet ใน build-loa.mjs — อ่านคอลัมน์จาก header row จริง ไม่ hardcode ตำแหน่ง
+// dailyReach: ค่ารายวันตาม "ตำแหน่งแถว" (แถวที่ 1 = วันที่ 1 ของเดือนนั้นเสมอ) ไม่ใช้คอลัมน์ "วันที่"
+// ในชีตเป็นตัวระบุวัน เพราะพบว่าบางชีตป้ายวันที่ค้างมาจากการ copy ชีตเดือนก่อน (ไม่ตรงเดือนจริง) —
+// ตำแหน่งแถวเทียบกับ tab title (ที่รู้เดือนแน่ชัดแล้ว) เชื่อถือได้กว่า
 function parseSheet(sheet) {
   const header = sheet[0] || [];
   const hasDateCol = header[0] === "วันที่";
@@ -134,6 +137,19 @@ function parseSheet(sheet) {
   const budgetRow = findRow("งบบรอดแคสต์");
   const budgetLeftRow = findRow("งบบลอดคงเหลือ");
   const quotaLeftRow = findRow("บลอดคงเหลือ");
+  const reachRowIdx = sheet.indexOf(reachRow);
+  const budgetRowIdx = sheet.indexOf(budgetRow);
+  let dailyRows =
+    reachRowIdx === -1 || budgetRowIdx === -1 ? sheet.slice(1) : sheet.slice(1, Math.min(reachRowIdx, budgetRowIdx));
+
+  let lastDay = dailyRows.length;
+  while (
+    lastDay > 0 &&
+    categoryCols.every(({ col }) => !(typeof dailyRows[lastDay - 1]?.[col] === "number" && dailyRows[lastDay - 1][col] !== 0))
+  ) {
+    lastDay--;
+  }
+  dailyRows = dailyRows.slice(0, lastDay);
 
   const categories = {};
   for (const { col, key } of categoryCols) {
@@ -141,22 +157,31 @@ function parseSheet(sheet) {
     const budgetUsed = typeof budgetRow?.[col] === "number" ? budgetRow[col] : 0;
     const budgetLeft = typeof budgetLeftRow?.[col] === "number" ? budgetLeftRow[col] : null;
     const quotaLeft = typeof quotaLeftRow?.[col] === "number" ? quotaLeftRow[col] : null;
-    categories[key] = { broadcastReach: reach, budgetUsed, budgetLeft, quotaLeft };
+    const dailyReach = dailyRows.map((r) => (typeof r[col] === "number" ? r[col] : 0));
+    categories[key] = { broadcastReach: reach, budgetUsed, budgetLeft, quotaLeft, dailyReach };
   }
   return categories;
+}
+
+function mergeDaily(a, b) {
+  const len = Math.max(a.length, b.length);
+  const out = new Array(len);
+  for (let i = 0; i < len; i++) out[i] = (a[i] || 0) + (b[i] || 0);
+  return out;
 }
 
 function mergeCategories(a, b) {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
   const out = {};
   for (const key of keys) {
-    const ca = a[key] || { broadcastReach: 0, budgetUsed: 0, budgetLeft: null, quotaLeft: null };
-    const cb = b[key] || { broadcastReach: 0, budgetUsed: 0, budgetLeft: null, quotaLeft: null };
+    const ca = a[key] || { broadcastReach: 0, budgetUsed: 0, budgetLeft: null, quotaLeft: null, dailyReach: [] };
+    const cb = b[key] || { broadcastReach: 0, budgetUsed: 0, budgetLeft: null, quotaLeft: null, dailyReach: [] };
     out[key] = {
       broadcastReach: ca.broadcastReach + cb.broadcastReach,
       budgetUsed: ca.budgetUsed + cb.budgetUsed,
       budgetLeft: ca.budgetLeft == null && cb.budgetLeft == null ? null : (ca.budgetLeft || 0) + (cb.budgetLeft || 0),
       quotaLeft: ca.quotaLeft == null && cb.quotaLeft == null ? null : (ca.quotaLeft || 0) + (cb.quotaLeft || 0),
+      dailyReach: mergeDaily(ca.dailyReach || [], cb.dailyReach || []),
     };
   }
   return out;

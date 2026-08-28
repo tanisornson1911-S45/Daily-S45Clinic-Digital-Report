@@ -82,13 +82,32 @@ function parseSheet(sheet) {
   const budgetLeftRow = findRow("งบบลอดคงเหลือ");
   const quotaLeftRow = findRow("บลอดคงเหลือ");
 
-  // Jan/Feb have no row labels at all — the summary is just the last two
-  // data rows (in that order: reach, then budget).
+  // แถวรายวัน = ทุกแถวระหว่าง header กับแถวสรุป "จำนวนบรอดแคสต์" (ใช้เป็น dailyReach ให้ Filter
+  // ตามวันที่จริงได้ — ไม่ใช่แค่ยอดรวมทั้งเดือน) — Jan/Feb ไม่มี label แถวสรุปเลย ใช้ 2 แถวสุดท้าย
+  // ที่มีข้อมูลเป็นแถวสรุปแทน (reach ก่อน budget) ส่วนที่เหลือคือแถวรายวัน
+  let dailyRows;
   if (!reachRow || !budgetRow) {
     const dataRows = sheet.slice(1).filter((r) => r.some((c) => c !== ""));
     reachRow = dataRows[dataRows.length - 2];
     budgetRow = dataRows[dataRows.length - 1];
+    dailyRows = dataRows.slice(0, dataRows.length - 2);
+  } else {
+    const reachRowIdx = sheet.indexOf(reachRow);
+    const budgetRowIdx = sheet.indexOf(budgetRow);
+    dailyRows = sheet.slice(1, Math.min(reachRowIdx, budgetRowIdx));
   }
+
+  // ตัดท้าย array รายวันที่ทุกหัตถการว่าง/เป็น 0 พร้อมกัน (วันที่ยังไม่ถึง/ยังไม่กรอกจริง) — เก็บไว้
+  // เฉพาะเท่าที่มีข้อมูลจริงอย่างน้อย 1 หัตถการ ไม่ตัดตามหัตถการใดหัตถการหนึ่งเพื่อกันวันที่มีจริงแต่บาง
+  // หัตถการเป็น 0 (ไม่ได้บรอดวันนั้น) หายไปด้วย
+  let lastDay = dailyRows.length;
+  while (
+    lastDay > 0 &&
+    categoryCols.every(({ col }) => !(typeof dailyRows[lastDay - 1]?.[col] === "number" && dailyRows[lastDay - 1][col] !== 0))
+  ) {
+    lastDay--;
+  }
+  dailyRows = dailyRows.slice(0, lastDay);
 
   const categories = {};
   for (const { col, key } of categoryCols) {
@@ -96,7 +115,8 @@ function parseSheet(sheet) {
     const budgetUsed = typeof budgetRow?.[col] === "number" ? budgetRow[col] : 0;
     const budgetLeft = typeof budgetLeftRow?.[col] === "number" ? budgetLeftRow[col] : null;
     const quotaLeft = typeof quotaLeftRow?.[col] === "number" ? quotaLeftRow[col] : null;
-    categories[key] = { broadcastReach: reach, budgetUsed, budgetLeft, quotaLeft };
+    const dailyReach = dailyRows.map((r) => (typeof r[col] === "number" ? r[col] : 0));
+    categories[key] = { broadcastReach: reach, budgetUsed, budgetLeft, quotaLeft, dailyReach };
   }
   return categories;
 }

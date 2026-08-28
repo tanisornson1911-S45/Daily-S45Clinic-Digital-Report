@@ -416,25 +416,6 @@ function buildLoaRows(monthIso, defs, peoplePerBroadcast) {
     };
   });
 }
-// buildLoaNormalRows: เหมือน buildLoaRows แต่อ่านจาก src/data/loaNormalData.json (สร้างสดโดย
-// scripts/fetch-loa-normal.mjs จาก Google Sheet "S45 - สรุปค่าใช้จ่ายให้บัญชี" — ช่องทาง "ปกติ"
-// ของเดือน ก.ค. 2569 เป็นต้นไป ไม่ได้อยู่ในไฟล์ SharePoint ที่ loaData.json ใช้ ดู build-loa.mjs)
-function buildLoaNormalRows(monthIso, defs, peoplePerBroadcast) {
-  const month = loaNormalDataByMonth[monthIso];
-  if (!month) return null;
-  return defs.map(({ sourceKey, key, label }) => {
-    const c = month[sourceKey] || { broadcastReach: 0, budgetUsed: 0, budgetLeft: null, quotaLeft: null };
-    return {
-      key,
-      label,
-      broadcastReach: c.broadcastReach,
-      budgetUsed: c.budgetUsed,
-      budgetLeft: c.budgetLeft,
-      quotaLeft: c.quotaLeft,
-      timesLeft: c.quotaLeft != null ? c.quotaLeft / peoplePerBroadcast : null,
-    };
-  });
-}
 const LOA_NORMAL_DEFS = [
   { sourceKey: "open", key: "open", label: "Open (เสริมจมูกโอเพ่น)" },
   { sourceKey: "semi", key: "semi", label: "Semi (เสริมจมูก Semi Open)" },
@@ -447,14 +428,9 @@ const LOA_AFTERCARE_DEFS = [
   { sourceKey: "brow", key: "brow_ac", label: "ยกคิ้ว (Aftercare)" },
   { sourceKey: "skin", key: "skin_ac", label: "สกิน (Aftercare)" },
 ];
+// LOA_JUNE — ใช้เฉพาะการ์ด Insight เดือนมิถุนายนบนหน้าภาพรวม (ตั้งใจให้คงที่ ไม่ผูกกับ Filter วันที่หลัก
+// ดูการ์ด LOA Broadcast บนหน้า Ads/loaRangeRows() ด้านล่างสำหรับเวอร์ชัน Filter ตามวันที่จริง)
 const LOA_JUNE = buildLoaRows("2026-06", LOA_NORMAL_DEFS, 39000);
-// LOA_JUL_NORMAL / LOA_NORMAL_AUG — ช่องทางปกติ เดือน ก.ค. 2569 เป็นต้นไป มาจาก
-// src/data/loaNormalData.json (Google Sheet "S45 - สรุปค่าใช้จ่ายให้บัญชี" ไม่ใช่ไฟล์ SharePoint
-// ที่ loaData.json ใช้ — ดู scripts/fetch-loa-normal.mjs) เดือนไหนยังไม่มีชีตต้นฉบับจะได้ null
-const LOA_JUL_NORMAL = buildLoaNormalRows("2026-07", LOA_NORMAL_DEFS, 39000);
-const LOA_NORMAL_AUG = buildLoaNormalRows("2026-08", LOA_NORMAL_DEFS, 39000);
-const LOA_AFTERCARE_JUL = buildLoaRows("2026-07", LOA_AFTERCARE_DEFS, 26000);
-const LOA_AFTERCARE_AUG = buildLoaRows("2026-08", LOA_AFTERCARE_DEFS, 26000);
 const LOA_MONTHLY_BUDGET = 120000; // ยอดบลอดต่อเดือน
 const LOA_MONTHLY_QUOTA = 2000000; // จำนวนบลอดต่อเดือน
 const LOA_PEOPLE_PER_BROADCAST = 39000; // ตามชีตต้นฉบับ: * 39000 คนต่อการบลอด 1 ครั้ง
@@ -467,10 +443,77 @@ const LOA_CHANNEL_OPTIONS = [
   ["normal", "ปกติ"],
   ["aftercare", "Line OA Aftercare"],
 ];
-// หมายเหตุ: ช่องทาง "ปกติ" มีข้อมูลงบ/โควตาคงเหลือครบเฉพาะ มิ.ย.-ก.ค. 2569 (เดือนอื่นในชีตต้นฉบับไม่มี
-// แถวคงเหลือให้) ส่วนช่องทาง "Aftercare" มีข้อมูลแค่ ก.ค.-ส.ค. 2569 (ไฟล์ยังไม่มีเดือนอื่น) — เดือนที่ใช้
-// แสดงผลตอนนี้ผูกกับ Filter วันที่หลักของหน้า Ads โดยตรง (ดู loaAvailableMonths/loaMonthKey ใน component)
-// ไม่มี Dropdown เดือนแยกอีกต่อไป
+// หมายเหตุ: ช่องทาง "ปกติ" มีข้อมูลรายวันจริงตั้งแต่ มิ.ย. 2569 เป็นต้นไป (มิ.ย.จาก loaData.json/
+// ไฟล์ SharePoint, ก.ค.เป็นต้นไปจาก loaNormalData.json/Google Sheet) ส่วน "Aftercare" มีข้อมูลรายวันจริง
+// ตั้งแต่ ก.ค. 2569 เป็นต้นไป (loaData.json เช่นกัน) — ทั้ง 2 ช่องทางจึง Filter ตามช่วงวันที่ที่เลือกได้จริง
+// (ไม่ใช่แค่ยอดรวมทั้งเดือนอีกต่อไป) ดู loaRangeRows() ด้านล่าง
+
+// ช่วงเดือนที่แต่ละช่องทางมีข้อมูลรายวันจริง (source ต่างไฟล์กันตามเดือน — ดูหมายเหตุด้านบน)
+function loaChannelMonthSources(channel) {
+  if (channel === "aftercare") {
+    return [
+      { monthIso: "2026-07", src: loaDataByMonth["2026-07"] },
+      { monthIso: "2026-08", src: loaDataByMonth["2026-08"] },
+    ];
+  }
+  return [
+    { monthIso: "2026-06", src: loaDataByMonth["2026-06"] },
+    { monthIso: "2026-07", src: loaNormalDataByMonth["2026-07"] },
+    { monthIso: "2026-08", src: loaNormalDataByMonth["2026-08"] },
+  ];
+}
+function loaLastDayIso(monthIso) {
+  const [y, m] = monthIso.split("-").map(Number);
+  return `${monthIso}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`;
+}
+// loaRangeRows: คำนวณยอด Broadcast/งบ ของช่องทางหนึ่ง "เฉพาะช่วงวันที่ที่เลือกจริง" จาก dailyReach
+// รายวัน (รวมข้าม เดือนได้ถ้าช่วงที่เลือกคาบเกี่ยวหลายเดือน) — งบ/โควตาคงเหลือ คำนวณแบบ "คงเหลือ ณ วันสุดท้าย
+// ของช่วงที่เลือก" เทียบกับงบ/โควตาเต็มเดือนของเดือนที่ช่วงนั้นสิ้นสุด (งบตั้งไว้ = budgetUsed+budgetLeft ล่าสุด
+// ที่ดึงมาของเดือนนั้น) คืน null ถ้าช่วงที่เลือกไม่คาบเกี่ยวเดือนที่มีข้อมูลรายวันของช่องทางนี้เลย
+function loaRangeRows(channel, dateRange, defs) {
+  const peoplePerBroadcast = LOA_CHANNEL_META[channel].peoplePerBroadcast;
+  const monthSources = loaChannelMonthSources(channel);
+  const capMonthIso = dateRange.end.slice(0, 7);
+  const capSrc = monthSources.find((m) => m.monthIso === capMonthIso)?.src;
+
+  const rows = [];
+  for (const { sourceKey, key, label } of defs) {
+    let reach = 0;
+    let coveredAny = false;
+    for (const { monthIso, src } of monthSources) {
+      const c = src?.[sourceKey];
+      if (!c || !c.dailyReach || c.dailyReach.length === 0) continue;
+      reach += sumDailyOverlap(dateRange, `${monthIso}-01`, loaLastDayIso(monthIso), c.dailyReach);
+      coveredAny = true;
+    }
+    if (!coveredAny) continue;
+
+    const budgetUsed = reach * 0.06;
+    let budgetLeft = null;
+    let quotaLeft = null;
+    const capCategory = capSrc?.[sourceKey];
+    if (capCategory?.dailyReach?.length && capCategory.budgetUsed != null && capCategory.budgetLeft != null) {
+      const capBudget = capCategory.budgetUsed + capCategory.budgetLeft;
+      const monthStart = `${capMonthIso}-01`;
+      const cumulativeReach = sumDailyOverlap({ start: monthStart, end: dateRange.end }, monthStart, loaLastDayIso(capMonthIso), capCategory.dailyReach);
+      budgetLeft = capBudget - cumulativeReach * 0.06;
+      if (capCategory.quotaLeft != null) {
+        const capQuota = capCategory.broadcastReach + capCategory.quotaLeft;
+        quotaLeft = capQuota - cumulativeReach;
+      }
+    }
+    rows.push({
+      key,
+      label,
+      broadcastReach: reach,
+      budgetUsed,
+      budgetLeft,
+      quotaLeft,
+      timesLeft: quotaLeft != null ? quotaLeft / peoplePerBroadcast : null,
+    });
+  }
+  return rows.length ? rows : null;
+}
 
 // ============================================================
 // สัดส่วนงบโฆษณาแยกตามช่องทาง (ชีต Budget Allocate July26, แถว Total บรรทัด 39) — ใช้สรุปว่าช่องทางไหนแทบไม่ได้ใช้งบ
@@ -1951,41 +1994,37 @@ export default function AdsDashboard() {
   );
   const maxLoaCountTotal = Math.max(...loaCountCompare.map((r) => r.total));
 
-  // ---- เลือกช่องทาง/เดือน LOA สำหรับการ์ด Broadcast บนหน้า Ads (แยกจาก loaTotal/LOA_JUNE ด้านบนซึ่งใช้เฉพาะสรุปมิถุนายนบนหน้าภาพรวม) ----
+  // ---- เลือกช่องทาง LOA สำหรับการ์ด Broadcast บนหน้า Ads (แยกจาก loaTotal/LOA_JUNE ด้านบนซึ่งใช้เฉพาะสรุปมิถุนายนบนหน้าภาพรวม) ----
+  // Filter ตามช่วงวันที่ที่เลือกจริง (loaRangeRows รวม dailyReach ข้ามเดือนได้) ไม่ใช่แค่ยอดรวมทั้งเดือนอีกต่อไป
   const loaChannelMeta = LOA_CHANNEL_META[loaChannel];
-  // เดือนที่มีข้อมูล LOA จริงต่างกันตามช่องทาง — ปกติมีแค่ มิ.ย./ก.ค. 2569, Aftercare มีแค่ ก.ค./ส.ค. 2569
-  // ผูกกับ Filter วันที่หลักด้านบนโดยตรง (activeMonthKey จากด้านบน) ไม่มี Dropdown เดือนแยกอีกต่อไป
-  const loaAvailableMonths = loaChannel === "aftercare" ? ["jul", "aug"] : ["jun", "jul", "aug"];
-  const loaMonthKey = loaAvailableMonths.includes(activeMonthKey) ? activeMonthKey : null;
-  const loaSelSource =
-    loaMonthKey == null
-      ? null
-      : loaChannel === "aftercare"
-        ? loaMonthKey === "aug"
-          ? LOA_AFTERCARE_AUG
-          : LOA_AFTERCARE_JUL
-        : loaMonthKey === "jun"
-          ? LOA_JUNE
-          : loaMonthKey === "aug"
-            ? LOA_NORMAL_AUG
-            : LOA_JUL_NORMAL;
+  const loaDefs = loaChannel === "aftercare" ? LOA_AFTERCARE_DEFS : LOA_NORMAL_DEFS;
+  const loaSelSource = loaRangeRows(loaChannel, dateRange, loaDefs);
+  // budgetLeft/quotaLeft/timesLeft อาจเป็น null ได้ถ้าช่วงที่เลือกสิ้นสุดในเดือนที่ไม่มีข้อมูล "งบตั้งไว้"
+  // อ้างอิง (เช่น เลือกช่วงที่ยื่นออกไปก่อน มิ.ย./หลัง ส.ค.) — ตัดแถวเหล่านั้นออกจากการเรียง/รวมงบ แต่ยัง
+  // นับ broadcastReach/budgetUsed ได้ตามปกติ (ไม่ต้องมี "งบตั้งไว้" ก็รู้ว่ายิงบรอดไปเท่าไรในช่วงนั้น)
   const loaSelTotal = loaSelSource
     ? loaSelSource.reduce(
-        (acc, r) => ({ budgetUsed: acc.budgetUsed + r.budgetUsed, budgetLeft: acc.budgetLeft + r.budgetLeft, quotaLeft: acc.quotaLeft + r.quotaLeft }),
+        (acc, r) => ({
+          budgetUsed: acc.budgetUsed + r.budgetUsed,
+          budgetLeft: acc.budgetLeft + (r.budgetLeft ?? 0),
+          quotaLeft: acc.quotaLeft + (r.quotaLeft ?? 0),
+        }),
         { budgetUsed: 0, budgetLeft: 0, quotaLeft: 0 }
       )
     : null;
   const loaSelWithTimesUsed = loaSelSource ? loaSelSource.map((r) => ({ ...r, timesUsed: r.broadcastReach / loaChannelMeta.peoplePerBroadcast })) : [];
   const loaSelByUsedDesc = [...loaSelWithTimesUsed].sort((a, b) => b.budgetUsed - a.budgetUsed);
   const loaSelMostUsed = loaSelByUsedDesc[0] || null;
-  const loaSelMostLeft = loaSelSource ? [...loaSelSource].sort((a, b) => b.budgetLeft - a.budgetLeft)[0] : null;
-  const loaSelMostUrgent = loaSelSource ? [...loaSelSource].sort((a, b) => a.timesLeft - b.timesLeft)[0] : null;
-  const maxLoaSelBudget = loaSelSource ? Math.max(...loaSelSource.map((r) => r.budgetUsed + r.budgetLeft)) : 0;
+  const loaSelRowsWithBudgetLeft = loaSelSource ? loaSelSource.filter((r) => r.budgetLeft != null) : [];
+  const loaSelRowsWithTimesLeft = loaSelSource ? loaSelSource.filter((r) => r.timesLeft != null) : [];
+  const loaSelMostLeft = loaSelRowsWithBudgetLeft.length ? [...loaSelRowsWithBudgetLeft].sort((a, b) => b.budgetLeft - a.budgetLeft)[0] : null;
+  const loaSelMostUrgent = loaSelRowsWithTimesLeft.length ? [...loaSelRowsWithTimesLeft].sort((a, b) => a.timesLeft - b.timesLeft)[0] : null;
+  const maxLoaSelBudget = loaSelSource ? Math.max(...loaSelSource.map((r) => r.budgetUsed + (r.budgetLeft ?? 0))) : 0;
   const loaSelCountCompare = loaSelSource
     ? loaSelSource
         .map((r) => {
           const used = Math.round(r.broadcastReach / loaChannelMeta.peoplePerBroadcast);
-          const left = Math.round(r.timesLeft);
+          const left = r.timesLeft != null ? Math.round(r.timesLeft) : 0;
           return { key: r.key, label: r.label, used, left, total: used + left };
         })
         .sort((a, b) => b.total - a.total)
@@ -1996,17 +2035,12 @@ export default function AdsDashboard() {
   );
   const maxLoaSelCountTotal = Math.max(0, ...loaSelCountCompare.map((r) => r.total));
   const loaSelMostUsedPctRow = [...loaSelCountCompare].filter((r) => r.total > 0).sort((a, b) => b.used / b.total - a.used / a.total)[0];
-  const loaSelMonthLabel = loaMonthKey === "aug" ? "สิงหาคม 2569" : loaMonthKey === "jul" ? "กรกฎาคม 2569" : loaMonthKey === "jun" ? "มิถุนายน 2569" : null;
-  const loaSelSheetNote = loaMonthKey
-    ? loaChannel === "aftercare"
-      ? `ไฟล์ "S45 - ยอดบลอดแคส LINE OA After Care.xlsx" ชีต "LOA- ${loaMonthKey === "aug" ? "สิงหาคม" : "กรกฎาคม"}" `
-      : loaMonthKey === "jun"
-        ? `ไฟล์ "S45 - ยอดบลอดแคส LINE OA After Care.xlsx" ชีต "LOA- มิถุนายน" `
-        : `ไฟล์ Google Sheet "S45 - สรุปค่าใช้จ่ายให้บัญชี" ชีต "LOA- ${loaMonthKey === "aug" ? "สิงหาคม" : "กรกฎาคม"}" `
-    : "";
-  // เดือนที่ "ปกติ" มีข้อมูลจริง (ไม่ใช่แค่อยู่ใน loaAvailableMonths) ใช้ทำข้อความ "มีข้อมูลเฉพาะ..." ให้ตรงของจริง
-  const loaNormalRealMonths = ["มิ.ย.", ...(LOA_JUL_NORMAL ? ["ก.ค."] : []), ...(LOA_NORMAL_AUG ? ["ส.ค."] : [])];
-  const loaNormalAvailableLabel = `${loaNormalRealMonths.join("–")} 2569`;
+  const loaSelSheetNote =
+    loaChannel === "aftercare"
+      ? `ไฟล์ "S45 - ยอดบลอดแคส LINE OA After Care.xlsx" `
+      : `ไฟล์ "S45 - ยอดบลอดแคส LINE OA After Care.xlsx" (มิ.ย. 2569) และ Google Sheet "S45 - สรุปค่าใช้จ่ายให้บัญชี" (ก.ค. 2569 เป็นต้นไป) `;
+  // ช่วงเดือนที่ช่องทางนี้มีข้อมูลรายวันจริงให้ Filter ได้ (ใช้ในข้อความ "ไม่มีข้อมูล...")
+  const loaAvailableRangeLabel = loaChannel === "aftercare" ? "ก.ค. 2569 เป็นต้นไป" : "มิ.ย. 2569 เป็นต้นไป";
 
   const channelMixSorted = [...CHANNEL_MIX].sort((a, b) => b.budget - a.budget);
   const maxChannelBudget = Math.max(...CHANNEL_MIX.map((c) => c.budget));
@@ -2036,19 +2070,13 @@ export default function AdsDashboard() {
     : null;
   // ถ้าช่วงที่เลือกยื่นออกไปนอก มิ.ย.-ส.ค. (หรือเกินวันที่ 23 ส.ค.) ตัวเลข OR ด้านบน (ถ้ามี) จะไม่รวมส่วนที่ยื่นออกไปนั้น
   const summaryOrMissingRange = dateRange.start < "2026-06-01" || dateRange.end > "2026-08-23";
-  // LOA (LINE OA Broadcast) มีแค่ยอดรวมทั้งเดือน ไม่มีรายวัน จึงใช้ได้เฉพาะตอนเลือกเต็มเดือน มิ.ย./ก.ค./ส.ค. เท่านั้น (ช่องทางปกติ)
-  const isAugFullForLoa = dateRange.start === "2026-08-01" && dateRange.end === "2026-08-31";
-  const loaSummarySource = isJunFull
-    ? LOA_JUNE
-    : dateRange.start === "2026-07-01" && dateRange.end === "2026-07-31"
-      ? LOA_JUL_NORMAL
-      : isAugFullForLoa
-        ? LOA_NORMAL_AUG
-        : null;
+  // LOA (LINE OA Broadcast) สรุปช่องทาง "ปกติ" ตามช่วงวันที่ที่เลือกจริง (เหมือนการ์ดบนหน้า Ads)
+  const loaSummarySource = loaRangeRows("normal", dateRange, LOA_NORMAL_DEFS);
   const loaSummaryTotal = loaSummarySource
-    ? loaSummarySource.reduce((acc, r) => ({ budgetUsed: acc.budgetUsed + r.budgetUsed, budgetLeft: acc.budgetLeft + r.budgetLeft }), { budgetUsed: 0, budgetLeft: 0 })
+    ? loaSummarySource.reduce((acc, r) => ({ budgetUsed: acc.budgetUsed + r.budgetUsed, budgetLeft: acc.budgetLeft + (r.budgetLeft ?? 0) }), { budgetUsed: 0, budgetLeft: 0 })
     : null;
-  const loaSummaryMostUrgent = loaSummarySource ? [...loaSummarySource].sort((a, b) => a.timesLeft - b.timesLeft)[0] : null;
+  const loaSummaryRowsWithTimesLeft = loaSummarySource ? loaSummarySource.filter((r) => r.timesLeft != null) : [];
+  const loaSummaryMostUrgent = loaSummaryRowsWithTimesLeft.length ? [...loaSummaryRowsWithTimesLeft].sort((a, b) => a.timesLeft - b.timesLeft)[0] : null;
 
   const targetTone = (pct) => {
     if (pct >= 0.7) return { bar: "bg-emerald-500", text: "text-emerald-600" };
@@ -2797,7 +2825,7 @@ export default function AdsDashboard() {
                 <Megaphone size={16} />
               </div>
               <h2 className="text-sm font-semibold text-slate-700">
-                ค่าใช้จ่าย LINE OA Broadcast — {loaChannelMeta.label} {loaSelMonthLabel || "(ไม่มีข้อมูลสำหรับช่วงวันที่นี้)"}
+                ค่าใช้จ่าย LINE OA Broadcast — {loaChannelMeta.label} {loaSelSource ? `(${rangeLabel})` : "(ไม่มีข้อมูลสำหรับช่วงวันที่นี้)"}
               </h2>
             </div>
             <div className="flex items-center gap-2">
@@ -2810,7 +2838,7 @@ export default function AdsDashboard() {
           {!loaSelSource ? (
             <p className="text-sm text-slate-400 py-6 text-center">
               ไม่มีข้อมูล LOA Broadcast ({loaChannelMeta.label}) สำหรับช่วงวันที่ที่เลือก
-              (มีข้อมูลเฉพาะ {loaChannel === "aftercare" ? "ก.ค.–ส.ค. 2569" : loaNormalAvailableLabel}) — เปลี่ยนช่วงวันที่ด้านบนเพื่อดูข้อมูล
+              (มีข้อมูลตั้งแต่ {loaAvailableRangeLabel}) — เปลี่ยนช่วงวันที่ด้านบนเพื่อดูข้อมูล
             </p>
           ) : (
           <>
@@ -2839,22 +2867,34 @@ export default function AdsDashboard() {
               <p className="text-[11px] text-rose-500 font-medium mb-0.5">ใช้ Broadcast มากที่สุด</p>
               <p className="text-sm font-bold text-rose-700">{loaSelMostUsed.label}</p>
               <p className="text-xs text-rose-500 mt-0.5">
-                ฿{fmtTHB(loaSelMostUsed.budgetUsed)} · {((loaSelMostUsed.budgetUsed / loaSelTotal.budgetUsed) * 100).toFixed(0)}% ของงบที่ใช้ไปทั้งหมด
+                ฿{fmtTHB(loaSelMostUsed.budgetUsed)} · {loaSelTotal.budgetUsed > 0 ? ((loaSelMostUsed.budgetUsed / loaSelTotal.budgetUsed) * 100).toFixed(0) : "0"}% ของงบที่ใช้ไปทั้งหมด
               </p>
             </div>
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
               <p className="text-[11px] text-emerald-600 font-medium mb-0.5">เหลืองบมากที่สุด</p>
-              <p className="text-sm font-bold text-emerald-700">{loaSelMostLeft.label}</p>
-              <p className="text-xs text-emerald-600 mt-0.5">
-                ฿{fmtTHB(loaSelMostLeft.budgetLeft)} · ยังบลอดได้อีก {Math.round(loaSelMostLeft.timesLeft)}x
-              </p>
+              {loaSelMostLeft ? (
+                <>
+                  <p className="text-sm font-bold text-emerald-700">{loaSelMostLeft.label}</p>
+                  <p className="text-xs text-emerald-600 mt-0.5">
+                    ฿{fmtTHB(loaSelMostLeft.budgetLeft)} · ยังบลอดได้อีก {Math.round(loaSelMostLeft.timesLeft)}x
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs text-slate-400 mt-0.5">ไม่มีข้อมูลงบตั้งไว้ของเดือนนี้</p>
+              )}
             </div>
             <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3">
               <p className="text-[11px] text-amber-600 font-medium mb-0.5">⚠ ควรเติมงบเร่งด่วน</p>
-              <p className="text-sm font-bold text-amber-700">{loaSelMostUrgent.label}</p>
-              <p className="text-xs text-amber-600 mt-0.5">
-                เหลือ ฿{fmtTHB(loaSelMostUrgent.budgetLeft)} · บลอดได้อีกแค่ {Math.round(loaSelMostUrgent.timesLeft)}x
-              </p>
+              {loaSelMostUrgent ? (
+                <>
+                  <p className="text-sm font-bold text-amber-700">{loaSelMostUrgent.label}</p>
+                  <p className="text-xs text-amber-600 mt-0.5">
+                    เหลือ ฿{fmtTHB(loaSelMostUrgent.budgetLeft)} · บลอดได้อีกแค่ {Math.round(loaSelMostUrgent.timesLeft)}x
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs text-slate-400 mt-0.5">ไม่มีข้อมูลงบตั้งไว้ของเดือนนี้</p>
+              )}
             </div>
           </div>
 
@@ -2862,8 +2902,8 @@ export default function AdsDashboard() {
           <p className="text-xs font-medium text-slate-500 mb-2">เปรียบเทียบงบที่ใช้ไป vs คงเหลือ (เรียงจากใช้มาก → น้อย)</p>
           <div className="space-y-3 mb-5">
             {loaSelByUsedDesc.map((r) => {
-              const budgetTotal = r.budgetUsed + r.budgetLeft;
-              const usedPct = (r.budgetUsed / budgetTotal) * 100;
+              const budgetTotal = r.budgetUsed + (r.budgetLeft ?? 0);
+              const usedPct = budgetTotal > 0 ? (r.budgetUsed / budgetTotal) * 100 : 100;
               return (
                 <div key={r.key} className="flex items-center gap-3">
                   <div className="w-32 sm:w-40 shrink-0">
@@ -2876,7 +2916,7 @@ export default function AdsDashboard() {
                   </div>
                   <div className="w-40 text-right shrink-0 hidden sm:block">
                     <p className="text-xs text-slate-600">
-                      ใช้ ฿{fmtTHB(r.budgetUsed)} <span className="text-slate-300">·</span> เหลือ ฿{fmtTHB(r.budgetLeft)}
+                      ใช้ ฿{fmtTHB(r.budgetUsed)} <span className="text-slate-300">·</span> เหลือ {r.budgetLeft != null ? `฿${fmtTHB(r.budgetLeft)}` : "ไม่มีข้อมูล"}
                     </p>
                   </div>
                 </div>
@@ -2899,7 +2939,8 @@ export default function AdsDashboard() {
               </thead>
               <tbody>
                 {loaSelWithTimesUsed.map((r) => {
-                  const pctUsed = r.budgetUsed / (r.budgetUsed + r.budgetLeft || 1);
+                  const budgetTotal = r.budgetUsed + (r.budgetLeft ?? 0);
+                  const pctUsed = budgetTotal > 0 ? r.budgetUsed / budgetTotal : 1;
                   return (
                     <tr key={r.key} className="border-b border-slate-50 last:border-0">
                       <td className="py-2 text-slate-600">{r.label}</td>
@@ -2915,10 +2956,10 @@ export default function AdsDashboard() {
                           <span className="font-semibold text-slate-700">฿{fmtTHB(r.budgetUsed)}</span>
                         </div>
                       </td>
-                      <td className="py-2 text-right text-slate-500">฿{fmtTHB(r.budgetLeft)}</td>
-                      <td className="py-2 text-right text-slate-500">{fmtTHB(r.quotaLeft)}</td>
-                      <td className={`py-2 text-right font-semibold ${r.timesLeft < 1 ? "text-rose-500" : "text-slate-700"}`}>
-                        {Math.round(r.timesLeft)}x
+                      <td className="py-2 text-right text-slate-500">{r.budgetLeft != null ? `฿${fmtTHB(r.budgetLeft)}` : "—"}</td>
+                      <td className="py-2 text-right text-slate-500">{r.quotaLeft != null ? fmtTHB(r.quotaLeft) : "—"}</td>
+                      <td className={`py-2 text-right font-semibold ${r.timesLeft != null && r.timesLeft < 1 ? "text-rose-500" : "text-slate-700"}`}>
+                        {r.timesLeft != null ? `${Math.round(r.timesLeft)}x` : "—"}
                       </td>
                     </tr>
                   );
@@ -2948,7 +2989,7 @@ export default function AdsDashboard() {
                 <Megaphone size={16} />
               </div>
               <h2 className="text-sm font-semibold text-slate-700">
-                จำนวนครั้งการ Broadcast แยกตามหัตถการ — {loaChannelMeta.label} {loaSelMonthLabel || "(ไม่มีข้อมูลสำหรับช่วงวันที่นี้)"}
+                จำนวนครั้งการ Broadcast แยกตามหัตถการ — {loaChannelMeta.label} {loaSelSource ? `(${rangeLabel})` : "(ไม่มีข้อมูลสำหรับช่วงวันที่นี้)"}
               </h2>
             </div>
             <div className="flex items-center gap-2">
@@ -2961,7 +3002,7 @@ export default function AdsDashboard() {
           {!loaSelSource ? (
             <p className="text-sm text-slate-400 py-6 text-center">
               ไม่มีข้อมูล LOA Broadcast ({loaChannelMeta.label}) สำหรับช่วงวันที่ที่เลือก
-              (มีข้อมูลเฉพาะ {loaChannel === "aftercare" ? "ก.ค.–ส.ค. 2569" : loaNormalAvailableLabel}) — เปลี่ยนช่วงวันที่ด้านบนเพื่อดูข้อมูล
+              (มีข้อมูลตั้งแต่ {loaAvailableRangeLabel}) — เปลี่ยนช่วงวันที่ด้านบนเพื่อดูข้อมูล
             </p>
           ) : (
           <>
