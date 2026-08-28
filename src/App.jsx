@@ -787,6 +787,30 @@ function MoMBadge({ delta, goodDirection = "up" }) {
   );
 }
 
+// ป้าย % เทียบ Compare แบบตัวเลขใหญ่ชิดขวา — เหมือนสไตล์ ROAS บนหน้า ยอดขาย (ตัวเลขใหญ่ด้านขวาของกล่อง
+// ส่วนคำอธิบาย "เทียบเดือนก่อน" ย้ายไปอยู่ใต้ยอดเงินฝั่งซ้ายแทน — ดู <MoMCaption> คู่กัน)
+function MoMBadgeLarge({ delta, goodDirection = "up" }) {
+  if (delta == null || !Number.isFinite(delta)) return null;
+  const isUp = delta > 0;
+  const isFlat = Math.abs(delta) < 0.05;
+  const isGood = isFlat ? null : isUp === (goodDirection === "up");
+  return (
+    <p
+      className={`text-2xl font-bold shrink-0 flex items-center gap-1 ${
+        isFlat ? "text-slate-400" : isGood ? "text-emerald-600" : "text-rose-600"
+      }`}
+    >
+      {!isFlat && (isUp ? <ArrowUp size={18} /> : <ArrowDown size={18} />)}
+      {Math.abs(delta).toFixed(1)}%
+    </p>
+  );
+}
+// คำอธิบายเล็กๆ ใต้ยอดเงิน คู่กับ MoMBadgeLarge — แสดงเฉพาะตอนมีค่าเทียบจริง (delta != null) เหมือนกัน
+function MoMCaption({ delta }) {
+  if (delta == null || !Number.isFinite(delta)) return null;
+  return <p className="text-[11px] text-slate-400 mt-1">เทียบเดือนก่อน</p>;
+}
+
 // ============================================================
 // เปรียบเทียบช่วงเวลา (Compare) — คำนวณ exec metrics (ยอดขายรวม/ยอดขาย FB/
 // ค่าโฆษณา FB/Ads ต่อยอดขาย/ROAS) สำหรับช่วงวันที่ใดก็ได้ ใช้ตรรกะเดียวกับ
@@ -2316,20 +2340,29 @@ export default function AdsDashboard() {
           </p>
 
           <div className="grid grid-cols-3 gap-3 mb-5">
-            <div className="bg-emerald-50 rounded-xl p-3">
-              <p className="text-[11px] text-emerald-600 font-medium mb-0.5">ยอดขายรวม</p>
-              <p className="text-lg font-bold text-emerald-700">฿{fmtTHB(isJunFull ? fbSummary.total : activeFbTotal.total)}</p>
-              <MoMBadge delta={fbTotalMoM} />
+            <div className="bg-emerald-50 rounded-xl p-3 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] text-emerald-600 font-medium mb-0.5">ยอดขายรวม</p>
+                <p className="text-lg font-bold text-emerald-700 truncate">฿{fmtTHB(isJunFull ? fbSummary.total : activeFbTotal.total)}</p>
+                <MoMCaption delta={fbTotalMoM} />
+              </div>
+              <MoMBadgeLarge delta={fbTotalMoM} />
             </div>
-            <div className="bg-sky-50 rounded-xl p-3">
-              <p className="text-[11px] text-sky-600 font-medium mb-0.5">ยอดขายออนไลน์</p>
-              <p className="text-lg font-bold text-sky-700">฿{fmtTHB(isJunFull ? fbSummary.online : activeFbTotal.online)}</p>
-              <MoMBadge delta={fbOnlineMoM} />
+            <div className="bg-sky-50 rounded-xl p-3 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] text-sky-600 font-medium mb-0.5">ยอดขายออนไลน์</p>
+                <p className="text-lg font-bold text-sky-700 truncate">฿{fmtTHB(isJunFull ? fbSummary.online : activeFbTotal.online)}</p>
+                <MoMCaption delta={fbOnlineMoM} />
+              </div>
+              <MoMBadgeLarge delta={fbOnlineMoM} />
             </div>
-            <div className="bg-amber-50 rounded-xl p-3">
-              <p className="text-[11px] text-amber-600 font-medium mb-0.5">ยอดมัดจำ</p>
-              <p className="text-lg font-bold text-amber-700">฿{fmtTHB(isJunFull ? fbSummary.deposit : activeFbTotal.deposit)}</p>
-              <MoMBadge delta={fbDepositMoM} />
+            <div className="bg-amber-50 rounded-xl p-3 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] text-amber-600 font-medium mb-0.5">ยอดมัดจำ</p>
+                <p className="text-lg font-bold text-amber-700 truncate">฿{fmtTHB(isJunFull ? fbSummary.deposit : activeFbTotal.deposit)}</p>
+                <MoMCaption delta={fbDepositMoM} />
+              </div>
+              <MoMBadgeLarge delta={fbDepositMoM} />
             </div>
           </div>
 
@@ -2422,20 +2455,29 @@ export default function AdsDashboard() {
           </p>
 
           <div className="grid grid-cols-3 gap-3 mb-5">
-            <div className="bg-indigo-50 rounded-xl p-3">
-              <p className="text-[11px] text-indigo-600 font-medium mb-0.5">จำนวนเคส</p>
-              <p className="text-lg font-bold text-indigo-700">{interDoctorTotal.cases} เคส</p>
-              <MoMBadge delta={interCasesMoM} />
+            <div className="bg-indigo-50 rounded-xl p-3 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] text-indigo-600 font-medium mb-0.5">จำนวนเคส</p>
+                <p className="text-lg font-bold text-indigo-700 truncate">{interDoctorTotal.cases} เคส</p>
+                <MoMCaption delta={interCasesMoM} />
+              </div>
+              <MoMBadgeLarge delta={interCasesMoM} />
             </div>
-            <div className="bg-amber-50 rounded-xl p-3">
-              <p className="text-[11px] text-amber-600 font-medium mb-0.5">ยอดมัดจำ (Online + Medical check up)</p>
-              <p className="text-lg font-bold text-amber-700">฿{fmtTHB(interDoctorTotal.deposit)}</p>
-              <MoMBadge delta={interDepositMoM} />
+            <div className="bg-amber-50 rounded-xl p-3 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] text-amber-600 font-medium mb-0.5">ยอดมัดจำ (Online + Medical check up)</p>
+                <p className="text-lg font-bold text-amber-700 truncate">฿{fmtTHB(interDoctorTotal.deposit)}</p>
+                <MoMCaption delta={interDepositMoM} />
+              </div>
+              <MoMBadgeLarge delta={interDepositMoM} />
             </div>
-            <div className="bg-emerald-50 rounded-xl p-3">
-              <p className="text-[11px] text-emerald-600 font-medium mb-0.5">ยอด OR (Total)</p>
-              <p className="text-lg font-bold text-emerald-700">฿{fmtTHB(interDoctorTotal.total)}</p>
-              <MoMBadge delta={interTotalMoM} />
+            <div className="bg-emerald-50 rounded-xl p-3 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] text-emerald-600 font-medium mb-0.5">ยอด OR (Total)</p>
+                <p className="text-lg font-bold text-emerald-700 truncate">฿{fmtTHB(interDoctorTotal.total)}</p>
+                <MoMCaption delta={interTotalMoM} />
+              </div>
+              <MoMBadgeLarge delta={interTotalMoM} />
             </div>
           </div>
 
@@ -2504,20 +2546,29 @@ export default function AdsDashboard() {
           </p>
 
           <div className="grid grid-cols-3 gap-3 mb-5">
-            <div className="bg-emerald-50 rounded-xl p-3">
-              <p className="text-[11px] text-emerald-600 font-medium mb-0.5">ยอดขายรวม</p>
-              <p className="text-lg font-bold text-emerald-700">฿{fmtTHB(activeOtherChannelTotal.total)}</p>
-              <MoMBadge delta={otherTotalMoM} />
+            <div className="bg-emerald-50 rounded-xl p-3 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] text-emerald-600 font-medium mb-0.5">ยอดขายรวม</p>
+                <p className="text-lg font-bold text-emerald-700 truncate">฿{fmtTHB(activeOtherChannelTotal.total)}</p>
+                <MoMCaption delta={otherTotalMoM} />
+              </div>
+              <MoMBadgeLarge delta={otherTotalMoM} />
             </div>
-            <div className="bg-sky-50 rounded-xl p-3">
-              <p className="text-[11px] text-sky-600 font-medium mb-0.5">ยอดขายออนไลน์</p>
-              <p className="text-lg font-bold text-sky-700">฿{fmtTHB(activeOtherChannelTotal.online)}</p>
-              <MoMBadge delta={otherOnlineMoM} />
+            <div className="bg-sky-50 rounded-xl p-3 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] text-sky-600 font-medium mb-0.5">ยอดขายออนไลน์</p>
+                <p className="text-lg font-bold text-sky-700 truncate">฿{fmtTHB(activeOtherChannelTotal.online)}</p>
+                <MoMCaption delta={otherOnlineMoM} />
+              </div>
+              <MoMBadgeLarge delta={otherOnlineMoM} />
             </div>
-            <div className="bg-amber-50 rounded-xl p-3">
-              <p className="text-[11px] text-amber-600 font-medium mb-0.5">ยอดมัดจำ</p>
-              <p className="text-lg font-bold text-amber-700">฿{fmtTHB(activeOtherChannelTotal.deposit)}</p>
-              <MoMBadge delta={otherDepositMoM} />
+            <div className="bg-amber-50 rounded-xl p-3 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] text-amber-600 font-medium mb-0.5">ยอดมัดจำ</p>
+                <p className="text-lg font-bold text-amber-700 truncate">฿{fmtTHB(activeOtherChannelTotal.deposit)}</p>
+                <MoMCaption delta={otherDepositMoM} />
+              </div>
+              <MoMBadgeLarge delta={otherDepositMoM} />
             </div>
           </div>
 
