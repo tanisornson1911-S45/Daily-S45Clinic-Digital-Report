@@ -2711,15 +2711,6 @@ export default function AdsDashboard() {
             {funnel.label} · ยอดยิง Ads → Inbox{funnel.sales != null ? " → ปิดบิล (มัดจำ+ปรึกษา) → ยอด OR จริง" : ""} · {rangeLabel}
           </p>
 
-          {funnel.daysWithAdsData < funnel.daysRequested && (
-            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-4">
-              ไฟล์ "ยอดขาย Online S45 Clinic" กรอกข้อมูลยอดยิง Ads/Inbox รายวันล่าช้ากว่าข้อมูลอื่น —{" "}
-              {funnel.lastAdsDataIso ? `ล่าสุดกรอกถึงวันที่ ${fmtDateTh(funnel.lastAdsDataIso)}` : "ยังไม่มีข้อมูลของเดือนนี้เลย"} ·
-              ยอดยิง Ads/Inbox ด้านล่างจึงรวมได้แค่ {funnel.daysWithAdsData} จาก {funnel.daysRequested} วันที่เลือก (ยอดขาย/OR
-              ไม่กระทบ เพราะมาจากไฟล์ธุรกรรมคนละไฟล์ที่อัปเดตทันวัน)
-            </p>
-          )}
-
           {/* Funnel metric cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
             <div className="bg-slate-50 rounded-xl p-3">
