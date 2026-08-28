@@ -3228,21 +3228,6 @@ export default function AdsDashboard() {
             })}
           </div>
 
-          {/* Unused platform callout */}
-          <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50/60 p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle size={16} className="text-rose-500" />
-              <h3 className="text-sm font-semibold text-slate-700">ช่องทางโฆษณาที่แทบไม่ได้ใช้งบ</h3>
-            </div>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              <span className="font-semibold text-rose-600">TikTok</span> ไม่มีงบตั้งไว้เลยในเดือนนี้ (฿0 หรือ 0% ของงบโฆษณาทั้งหมด — เดือน
-              มิ.ย. เคยมี ฿10,000 จัดสรรให้กลุ่ม Inter) ทุกหัตถการรวมถึง Inter ไม่มีงบ TikTok เหลืออยู่เลย เทียบกับ Facebook ที่กิน
-              งบไปถึง {((CHANNEL_MIX.find((c) => c.key === "facebook").budget / CHANNEL_MIX_TOTAL) * 100).toFixed(0)}% ของทั้งหมด —
-              เนื่องจาก TikTok เป็นแพลตฟอร์มที่กลุ่มเป้าหมายวัยรุ่น/วัยทำงานตอนต้นซึ่งสนใจศัลยกรรมความงามใช้งานหนาแน่น
-              อาจพิจารณาทดลองจัดสรรงบเพิ่มเติมสำหรับหัตถการหลัก (โดยเฉพาะ Semi Open และยกคิ้ว ที่ยังมีช่องว่างด้านงบ Broadcast อยู่แล้ว)
-              เพื่อทดสอบประสิทธิภาพเทียบกับ Facebook ก่อนตัดสินใจขยายงบระยะยาว
-            </p>
-          </div>
 
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
             <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
