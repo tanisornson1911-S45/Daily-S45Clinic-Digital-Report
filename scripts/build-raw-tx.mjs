@@ -67,6 +67,15 @@ const SURGERY_MAP = {
   "ดึงหน้า": "brow_hairline",
 };
 
+// ผู้กรอกข้อมูลบางครั้งพิมพ์ชื่อหมอขาดวรรณยุกต์/สะกดต่างกัน ทำให้คนเดียวกันถูกนับแยกเป็นคนละหมอในสรุปยอด
+// มัดจำ/จำนวนเคสแยกตามหมอ — normalize ให้เหลือชื่อเดียวตรงนี้ก่อนเขียนลง RAW_TX
+const DOCTOR_NAME_ALIASES = {
+  "หมอจิจ๊ะ": "หมอจิ๊จ๊ะ", // ขาดวรรณยุกต์ตรี (ไม้ตรี) บนพยางค์แรก
+};
+function normalizeDoctorName(name) {
+  return DOCTOR_NAME_ALIASES[name] || name;
+}
+
 function excelDate(s) {
   if (typeof s !== "number") return null;
   const dt = new Date(Math.round((s - 25569) * 86400 * 1000));
@@ -107,7 +116,7 @@ function main() {
       skipped.push(r);
       continue;
     }
-    const doc = r[5] && r[5] !== "" ? r[5] : "รอระบุ";
+    const doc = r[5] && r[5] !== "" ? normalizeDoctorName(r[5]) : "รอระบุ";
     const or = excelDate(r[8]); // null if a string placeholder ("รอระบุ", "ยกเลิก", ...) or empty
     const dep = typeof r[9] === "number" ? r[9] : 0;
     const onl = typeof r[10] === "number" ? r[10] : 0;

@@ -322,9 +322,9 @@ const DOCTOR_PROC_LABELS = {
 };
 const DOCTOR_PROC_OPTIONS = [["all", "รวมทุกหัตถการ"], ...Object.entries(DOCTOR_PROC_LABELS)];
 // รายชื่อหมอทั้งหมด ใช้เป็นตัวเลือก Dropdown "แยกหมอ" ในสรุปเคสมัดจำแยกตามหมอ — รวมทั้งชื่อจาก DOCTOR_PROC (มิ.ย.)
-// และชื่อจริงทั้งหมดที่พบในไฟล์ธุรกรรม RAW_TX (ครอบคลุมทุกเดือน) เพราะสะกดไม่ตรงกันบางชื่อ (เช่น "หมอจิจ๊ะ" ในไฟล์มิ.ย.
-// กับ "หมอจิ๊จ๊ะ" ในไฟล์ธุรกรรมดิบ) และมีหมอบางคนที่ไม่มีเคสมัดจำในมิ.ย.เลยจึงไม่อยู่ใน DOCTOR_PROC แต่มีเคสในเดือนอื่น
-// ตัดค่า "รอระบุ" ออกเพราะไม่ใช่ชื่อหมอจริง (แปลว่ายังไม่ได้ระบุ)
+// และชื่อจริงทั้งหมดที่พบในไฟล์ธุรกรรม RAW_TX (ครอบคลุมทุกเดือน) มีหมอบางคนที่ไม่มีเคสมัดจำในมิ.ย.เลยจึงไม่อยู่ใน
+// DOCTOR_PROC แต่มีเคสในเดือนอื่น ตัดค่า "รอระบุ" ออกเพราะไม่ใช่ชื่อหมอจริง (แปลว่ายังไม่ได้ระบุ) · ชื่อที่ผู้กรอกพิมพ์
+// สะกดต่างกัน (เช่น "หมอจิจ๊ะ" vs "หมอจิ๊จ๊ะ") ถูก normalize รวมเป็นชื่อเดียวไว้ตั้งแต่ scripts/build-raw-tx.mjs แล้ว
 const DOCTOR_NAME_OPTIONS = [
   ["all", "ทุกคน (รวม)"],
   ...[...new Set([...DOCTOR_PROC.map((r) => r.doctor), ...RAW_TX.map((t) => t.doc)])]
@@ -1013,19 +1013,28 @@ const NAV_ITEMS = [
   { key: "inbox", label: "Inbox & Bad Lead", icon: MessageCircle },
 ];
 
-function Sidebar({ activePage, setActivePage, mobileOpen, setMobileOpen }) {
+function Sidebar({ activePage, setActivePage, mobileOpen, setMobileOpen, collapsed, setCollapsed }) {
   return (
     <>
       {mobileOpen && <div className="fixed inset-0 bg-slate-900/40 z-30 sm:hidden" onClick={() => setMobileOpen(false)} />}
       <aside
-        className={`fixed sm:sticky top-0 z-40 h-screen w-64 shrink-0 bg-white border-r border-slate-100 flex flex-col transition-transform duration-200 sm:translate-x-0 ${
+        className={`fixed sm:sticky top-0 z-40 h-screen ${collapsed ? "sm:w-20" : "sm:w-64"} w-64 shrink-0 bg-white border-r border-slate-100 flex flex-col transition-all duration-200 sm:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex items-center justify-between px-5 py-5 border-b border-slate-100">
-          <div className="flex items-center gap-2 min-w-0">
+        {/* ปุ่มพับ/กางเมนู — เฉพาะจอ sm+ (แท็บเล็ต/เดสก์ท็อป) เพราะมือถือใช้ปุ่ม Hamburger/X แบบเดิมอยู่แล้ว
+            ช่วยให้ใช้งานบน iPad แนวตั้งได้สะดวกขึ้น (พับเก็บเมนูเพื่อให้พื้นที่อ่านข้อมูลกว้างขึ้น) */}
+        <button
+          onClick={() => setCollapsed((c) => !c)}
+          className="hidden sm:flex items-center justify-center absolute -right-3 top-8 w-6 h-6 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300 shadow-sm z-10"
+          title={collapsed ? "กางเมนู" : "พับเมนู"}
+        >
+          {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
+        </button>
+        <div className={`flex items-center ${collapsed ? "sm:justify-center" : "justify-between"} px-5 py-5 border-b border-slate-100`}>
+          <div className={`flex items-center gap-2 min-w-0 ${collapsed ? "sm:gap-0" : ""}`}>
             <img src={S45_LOGO} alt="" className="w-7 h-7 rounded-md object-contain shrink-0" />
-            <span className="text-sm font-bold text-slate-800 truncate">S45 Clinic</span>
+            <span className={`text-sm font-bold text-slate-800 truncate ${collapsed ? "sm:hidden" : ""}`}>S45 Clinic</span>
           </div>
           <button className="sm:hidden text-slate-400" onClick={() => setMobileOpen(false)}>
             <X size={18} />
@@ -1041,17 +1050,18 @@ function Sidebar({ activePage, setActivePage, mobileOpen, setMobileOpen }) {
                   setActivePage(key);
                   setMobileOpen(false);
                 }}
+                title={collapsed ? label : undefined}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                  active ? "bg-indigo-50 text-indigo-700" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-                }`}
+                  collapsed ? "sm:justify-center sm:px-0" : ""
+                } ${active ? "bg-indigo-50 text-indigo-700" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"}`}
               >
-                <Icon size={17} className={active ? "text-indigo-600" : "text-slate-400"} />
-                {label}
+                <Icon size={17} className={`shrink-0 ${active ? "text-indigo-600" : "text-slate-400"}`} />
+                <span className={collapsed ? "sm:hidden" : ""}>{label}</span>
               </button>
             );
           })}
         </nav>
-        <div className="px-5 py-4 border-t border-slate-100 text-[11px] text-slate-400">Ads Performance Dashboard</div>
+        <div className={`px-5 py-4 border-t border-slate-100 text-[11px] text-slate-400 ${collapsed ? "sm:hidden" : ""}`}>Ads Performance Dashboard</div>
       </aside>
     </>
   );
@@ -1346,6 +1356,14 @@ export default function AdsDashboard() {
   // ---- Sidebar navigation + dark mode ----
   const [activePage, setActivePage] = useState("overview");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  // จำสถานะพับ/กางเมนูไว้ใน localStorage เหมือน dark mode — เปิดแอปครั้งต่อไปจะยังคงสถานะเดิมไว้
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("s45-sidebar-collapsed") === "1";
+  });
+  React.useEffect(() => {
+    window.localStorage.setItem("s45-sidebar-collapsed", sidebarCollapsed ? "1" : "0");
+  }, [sidebarCollapsed]);
   const [dark, setDark] = useState(() => {
     if (typeof window === "undefined") return false;
     const saved = window.localStorage.getItem("s45-dark-mode");
@@ -2189,7 +2207,14 @@ export default function AdsDashboard() {
           aria-hidden="true"
           className="fixed top-1/2 left-1/2 sm:left-[calc(50%+8rem)] -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[900px] opacity-[0.05] pointer-events-none select-none z-0"
         />
-        <Sidebar activePage={activePage} setActivePage={setActivePage} mobileOpen={mobileNavOpen} setMobileOpen={setMobileNavOpen} />
+        <Sidebar
+          activePage={activePage}
+          setActivePage={setActivePage}
+          mobileOpen={mobileNavOpen}
+          setMobileOpen={setMobileNavOpen}
+          collapsed={sidebarCollapsed}
+          setCollapsed={setSidebarCollapsed}
+        />
         <div className="flex-1 min-w-0 p-4 sm:p-8 relative overflow-hidden">
       <div className="max-w-5xl mx-auto relative z-10">
         {/* Header */}
