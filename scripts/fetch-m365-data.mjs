@@ -81,6 +81,22 @@ const WORKBOOKS = [
     sheets: ["ม.ค.69", "ก.พ.69", "มี.ค.69", "เม.ย.69", "พ.ค.69", "มิ.ย.69", "ก.ค.69", "ส.ค.69"],
   },
   {
+    key: "bad_lead_plus_connect",
+    // "Bad Lead [Plus Connect].xlsx" — personal/digital_mkt_s45clinic_com/Documents/ (2026-08-31)
+    // Live export from Plus Connect (the team's chat/CRM tool) of every contact marked with the
+    // "คุณสมบัติไม่ครบ" tag (= how the Digital team flags a Bad Lead per the process in App.jsx's
+    // "แผนการดำเนินงานของ Digital ต่อการลดจำนวน Bad Lead" section) — one row per lead, with a real
+    // created_at timestamp and a free-form tags column (junk/spam marker, procedure/campaign hints,
+    // plus some auto-added calendar-component tags like "2026"/"Aug"/day numbers that
+    // scripts/build-bad-lead.mjs filters out). Replaces the old hand-curated 159-chat/July-only
+    // static sample. Row also carries PII (name/phone/email/profile picture/social links) that
+    // build-bad-lead.mjs deliberately drops — only non-identifying fields (date, platform, channel,
+    // tags, assignee) make it into src/data/badLead.json.
+    driveId: "b!xxDvakZnBUOmKljZWLuYZ9g177OXvLtHthxJClpsEqA5xrnAHB8PRI3WaLvrDur8",
+    itemId: "01JXWUHPFW5KXNXGMQU5HLR4MIKMX74OWJ",
+    sheets: ["Sheet1"],
+  },
+  {
     key: "loa_broadcast",
     // "S45 - ยอดบลอดแคส LINE OA After Care.xlsx" — personal/digital_mkt_s45clinic_com/Documents/ (2026-08-25)
     // Daily LINE OA broadcast reach per procedure category, one "LOA- <month>" sheet per
