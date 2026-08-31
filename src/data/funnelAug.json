@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-30T21:17:21.559Z",
+  "generatedAt": "2026-08-31T13:43:43.302Z",
   "daysWithData": 25,
   "data": {
     "nose_open": {
@@ -7,10 +7,10 @@
       "ads": 625687.29,
       "inbox": 1964,
       "or": 6439470,
-      "sales": 7883670,
-      "basket": 213072.16216216216,
-      "closeRate": 0.01883910386965377,
-      "adsCost": 0.07936497722507412,
+      "sales": 7993570,
+      "basket": 210357.1052631579,
+      "closeRate": 0.019348268839103868,
+      "adsCost": 0.07827382383590811,
       "adsCostOr": 0.09716440794040504,
       "dailyAds": [
         12629.83,
@@ -526,10 +526,10 @@
       "ads": 420782.99999999994,
       "inbox": 2895,
       "or": 2541690,
-      "sales": 3531980,
-      "basket": 130814.07407407407,
-      "closeRate": 0.00932642487046632,
-      "adsCost": 0.1191351593157379,
+      "sales": 3767770,
+      "basket": 129923.10344827586,
+      "closeRate": 0.01001727115716753,
+      "adsCost": 0.1116795876606056,
       "adsCostOr": 0.1655524473873682,
       "dailyAds": [
         6613.46,
@@ -768,10 +768,10 @@
       "ads": 1273172.8099999998,
       "inbox": 6434,
       "or": 9648660,
-      "sales": 12602550,
-      "basket": 136984.23913043478,
-      "closeRate": 0.014299036369288157,
-      "adsCost": 0.10102501557224529,
+      "sales": 12948240,
+      "basket": 136297.26315789475,
+      "closeRate": 0.01476530929437364,
+      "adsCost": 0.09832786618104081,
       "adsCostOr": 0.131953329270593,
       "dailyAds": [
         24090.789999999997,
@@ -939,10 +939,10 @@
   },
   "closeCounts": {
     "nose_open": {
-      "consult": 37,
-      "deposit": 37,
-      "consultValue": 7883670,
-      "depositValue": 7883670
+      "consult": 38,
+      "deposit": 38,
+      "consultValue": 7993570,
+      "depositValue": 7993570
     },
     "nose_semi": {
       "consult": 23,
@@ -957,16 +957,16 @@
       "depositValue": 503000
     },
     "brow_hairline": {
-      "consult": 27,
-      "deposit": 26,
-      "consultValue": 3531980,
-      "depositValue": 3452080
+      "consult": 29,
+      "deposit": 28,
+      "consultValue": 3767770,
+      "depositValue": 3687870
     },
     "all": {
-      "consult": 92,
-      "deposit": 91,
-      "consultValue": 12602550,
-      "depositValue": 12522650
+      "consult": 95,
+      "deposit": 94,
+      "consultValue": 12948240,
+      "depositValue": 12868340
     }
   }
 }
