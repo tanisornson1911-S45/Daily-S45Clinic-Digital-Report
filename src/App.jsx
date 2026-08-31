@@ -4085,14 +4085,6 @@ export default function AdsDashboard() {
           </div>
           )}
 
-          <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
-            <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
-            <p>
-              ดึงอัตโนมัติทุกคืนจาก Plus Connect (ทุกแชทที่ทีม Digital ติดแท็ก "คุณสมบัติไม่ครบ") กรองตามช่วงวันที่ที่เลือกอยู่ ไม่ใช่การสุ่มตรวจสอบด้วยมือแบบเดิมอีกต่อไป —
-              ไม่แสดงชื่อ/เบอร์/รูปโปรไฟล์จริงของผู้ทัก เพื่อความเป็นส่วนตัว ไฟล์ต้นฉบับไม่มีข้อมูลอายุ/เพศ หากต้องการตัวเลขกลุ่มอายุที่แม่นยำ แนะนำให้ดึงจาก Meta Ads
-              Manager (Breakdown by Age) ของแคมเปญที่มี Bad Lead สูงแทน
-            </p>
-          </div>
         </div>
 )}
 
