@@ -635,6 +635,9 @@ const FUNNEL_CLOSE_COUNTS_JUL = {
 // (ดูคอมเมนต์ด้านบน) เพราะชีตต้นฉบับยังไม่กรอกตัวเลขกลุ่มนี้เหมือนกัน · inter ไม่มี key ใน
 // FUNNEL_CLOSE_COUNTS_AUG เหตุผลเดียวกับ FUNNEL_CLOSE_COUNTS_JUL
 const FUNNEL_DATA_AUG = FUNNEL_AUG_DATA.data;
+// จำนวนวันที่มีข้อมูลจริงครบทุกหัตถการของ ส.ค. (build-funnel.mjs คำนวณจาก MIN ของทุกหัตถการ กันไม่ให้ยอดรวม
+// รายวันของวันหลังๆ ต่ำผิดจริงเพราะบางหัตถการยังไม่กรอกข้อมูล) — ใช้เตือนผู้ใช้เวลาช่วงที่เลือกเลยวันนี้ไป
+const FUNNEL_AUG_DAYS_WITH_DATA = FUNNEL_AUG_DATA.daysWithData;
 const FUNNEL_CLOSE_COUNTS_AUG = FUNNEL_AUG_DATA.closeCounts;
 
 // ============================================================
@@ -2231,6 +2234,10 @@ export default function AdsDashboard() {
     : null;
   // ถ้าช่วงที่เลือกยื่นออกไปนอก มิ.ย.-ส.ค. (หรือเกินวันที่ 23 ส.ค.) ตัวเลข OR ด้านบน (ถ้ามี) จะไม่รวมส่วนที่ยื่นออกไปนั้น
   const summaryOrMissingRange = dateRange.start < "2026-06-01" || dateRange.end > "2026-08-23";
+  // Inbox ของ ส.ค. มีข้อมูลจริงครบทุกหัตถการแค่ถึงวันที่ FUNNEL_AUG_DAYS_WITH_DATA (ดูคอมเมนต์ที่ตัวแปรนั้น) —
+  // ถ้าช่วงที่เลือกยื่นไปถึง ส.ค. เกินวันนั้น ตัวเลข Inbox รวมด้านล่างจะนับได้ไม่ครบทุกวันจริง ต้องเตือนผู้ใช้
+  const funnelAugCutoffDate = `2026-08-${String(FUNNEL_AUG_DAYS_WITH_DATA).padStart(2, "0")}`;
+  const summaryInboxMissingRange = hasAugustOverlap && dateRange.end > funnelAugCutoffDate;
   // Bad Lead — คำนวณสดจาก BAD_LEAD_LEADS (Plus Connect) ตามช่วงวันที่ที่เลือกจริง เทียบ % กับ summaryInboxTotal
   // เดียวกับที่ใช้ทั้งหน้า (มีความหมายเฉพาะตอนช่วงที่เลือกทับซ้อน มิ.ย.-ส.ค. ที่มีข้อมูล Inbox รายวัน)
   const badLeadInRange = BAD_LEAD_LEADS.filter((l) => l.d >= dateRange.start && l.d <= dateRange.end);
@@ -2250,6 +2257,10 @@ export default function AdsDashboard() {
     : null;
   const loaSummaryRowsWithTimesLeft = loaSummarySource ? loaSummarySource.filter((r) => r.timesLeft != null) : [];
   const loaSummaryMostUrgent = loaSummaryRowsWithTimesLeft.length ? [...loaSummaryRowsWithTimesLeft].sort((a, b) => a.timesLeft - b.timesLeft)[0] : null;
+  // เดิมโชว์แค่หัตถการที่ใกล้หมดโควตาที่สุด "1 หัตถการ" ทำให้ตอนที่มีหลายหัตถการครบ/เกินโควตาพร้อมกัน (เช่น ส.ค.
+  // 2569: Open/ยกคิ้ว/แบรนด์ดิ้ง เกินโควตาพร้อมกัน 3 หัตถการ) ดูเหมือนมีแค่หัตถการเดียวที่เกิน — แก้ให้แสดงทุกหัตถการ
+  // ที่ครบ/เกินโควตาแล้วจริง (timesLeft <= 0) แทน
+  const loaSummaryOverQuota = loaSummaryRowsWithTimesLeft.filter((r) => r.timesLeft <= 0);
 
   const targetTone = (pct) => {
     if (pct >= 0.7) return { bar: "bg-emerald-500", text: "text-emerald-600" };
@@ -3404,7 +3415,9 @@ export default function AdsDashboard() {
               <p className="text-base font-bold text-amber-700">{summaryOrTotal != null ? `฿${fmtTHB(summaryOrTotal)}` : "—"}</p>
             </div>
             <div className="bg-sky-50 rounded-xl p-3">
-              <p className="text-[11px] text-sky-600 font-medium mb-0.5">Inbox (Funnel)</p>
+              <p className="text-[11px] text-sky-600 font-medium mb-0.5">
+                Inbox (Funnel){summaryInboxMissingRange ? ` · ข้อมูล ส.ค. ถึงวันที่ ${FUNNEL_AUG_DAYS_WITH_DATA} เท่านั้น` : ""}
+              </p>
               <p className="text-base font-bold text-sky-700">{hasFunnelCoverage ? fmtTHB(summaryInboxTotal) : "—"}</p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3">
@@ -3414,10 +3427,14 @@ export default function AdsDashboard() {
               </p>
             </div>
             <div className="bg-rose-50 rounded-xl p-3">
-              <p className="text-[11px] text-rose-500 font-medium mb-0.5">Broadcast ใช้โควตามากที่สุด</p>
-              <p className="text-base font-bold text-rose-700">
-                {loaSummaryMostUrgent
-                  ? `${loaSummaryMostUrgent.label} (${loaSummaryMostUrgent.timesLeft <= 0 ? "ครบ/เกินโควตา" : `เหลือ ${Math.round(loaSummaryMostUrgent.timesLeft)}x`})`
+              <p className="text-[11px] text-rose-500 font-medium mb-0.5">
+                {loaSummaryOverQuota.length > 0 ? `Broadcast ครบ/เกินโควตาแล้ว (${loaSummaryOverQuota.length} หัตถการ)` : "Broadcast ใช้โควตามากที่สุด"}
+              </p>
+              <p className="text-sm font-bold text-rose-700 leading-snug">
+                {loaSummaryOverQuota.length > 0
+                  ? loaSummaryOverQuota.map((r) => r.label).join(", ")
+                  : loaSummaryMostUrgent
+                  ? `${loaSummaryMostUrgent.label} (เหลือ ${Math.round(loaSummaryMostUrgent.timesLeft)}x)`
                   : "—"}
               </p>
             </div>
