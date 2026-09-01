@@ -1350,6 +1350,30 @@ function DateRangePicker({ value, compareEnabled, compareValue, onApply, presets
   );
 }
 
+// ค่าเริ่มต้นของ dateRange/compareRange เมื่อเปิดหน้าเว็บ — ต้องเป็น "เดือนนี้" เสมอ (อ่านจากนาฬิกาเครื่องจริง
+// new Date()) ยกเว้นตอนเพิ่งขึ้นเดือนใหม่แล้วไฟล์ธุรกรรม (RAW_TX) ยังไม่มีข้อมูลของเดือนนี้เลยสักแถวเดียว (ปกติ
+// sync ล่าช้า 1-3 วันหลังขึ้นเดือนใหม่) กรณีนั้นเปิดด้วย "เดือนที่แล้ว" แทนชั่วคราวจนกว่าจะมีข้อมูลจริงเข้ามา —
+// ไม่งั้นหน้าแรกจะดูเหมือนพังเพราะทุกอย่างเป็น 0 ทั้งที่จริงแค่ไฟล์ยังไม่อัปเดต (พบจริง 2569-09-01: เดือนนี้ยังไม่มี
+// ข้อมูลเลยสักแถว หน้า "หมอ" เลยว่างเปล่า) · compareRange เทียบกับเดือนก่อนเดือนอ้างอิงเสมอไม่ว่าจะ fallback หรือไม่
+function defaultDateRanges() {
+  const pad = (n) => String(n).padStart(2, "0");
+  const monthRange = (y, m) => {
+    const lastDay = new Date(y, m, 0).getDate();
+    return { start: `${y}-${pad(m)}-01`, end: `${y}-${pad(m)}-${pad(lastDay)}` };
+  };
+  const now = new Date();
+  const thisY = now.getFullYear();
+  const thisM = now.getMonth() + 1;
+  const todayIso = `${thisY}-${pad(thisM)}-${pad(now.getDate())}`;
+  const hasDataThisMonth = RAW_TX.some((t) => t.d >= `${thisY}-${pad(thisM)}-01` && t.d <= todayIso);
+  const refY = hasDataThisMonth ? thisY : thisM === 1 ? thisY - 1 : thisY;
+  const refM = hasDataThisMonth ? thisM : thisM === 1 ? 12 : thisM - 1;
+  const dateRange = hasDataThisMonth ? { start: `${thisY}-${pad(thisM)}-01`, end: todayIso } : monthRange(refY, refM);
+  const prevM = refM === 1 ? 12 : refM - 1;
+  const prevY = refM === 1 ? refY - 1 : refY;
+  return { dateRange, compareRange: monthRange(prevY, prevM) };
+}
+
 export default function AdsDashboard() {
   const [procFilter, setProcFilter] = useState("all");
   const [doctorSort, setDoctorSort] = useState("cases"); // "cases" | "deposit"
@@ -1367,28 +1391,13 @@ export default function AdsDashboard() {
   const [antArmyVisibleCount, setAntArmyVisibleCount] = useState(ANT_ARMY_PAGE_SIZE);
   const [interDoctorFilter, setInterDoctorFilter] = useState("all");
   const [interProcFilter, setInterProcFilter] = useState("all");
-  // ค่าเริ่มต้นเปิดหน้ามาต้องเป็น "เดือนนี้" เสมอ (อ่านจากนาฬิกาเครื่องจริง new Date() ไม่ล็อกวันที่ตายตัว) เริ่ม
-  // วันที่ 1 ของเดือนปัจจุบัน ถึงวันที่วันนี้จริง — เหมือนกับพฤติกรรมของปุ่ม preset "เดือนนี้" ใน Date Picker
-  const [dateRange, setDateRange] = useState(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, "0");
-    const d = String(now.getDate()).padStart(2, "0");
-    return { start: `${y}-${m}-01`, end: `${y}-${m}-${d}` };
-  });
-  // ค่าเริ่มต้นเปิด Compare ไว้เลย เทียบเดือนนี้กับเดือนที่แล้วเต็มเดือน (ไม่ใช้ previousPeriodRange เพราะบางคู่เดือน
+  // ดูคอมเมนต์ที่ defaultDateRanges() ด้านบน — ปกติเป็น "เดือนนี้" เสมอ ยกเว้นตอนเพิ่งขึ้นเดือนใหม่แล้ว RAW_TX
+  // ยังไม่มีข้อมูลเลยจะ fallback ไปเดือนที่แล้วชั่วคราว
+  const [dateRange, setDateRange] = useState(() => defaultDateRanges().dateRange);
+  // ค่าเริ่มต้นเปิด Compare ไว้เลย เทียบกับเดือนก่อนเดือนอ้างอิงเต็มเดือน (ไม่ใช้ previousPeriodRange เพราะบางคู่เดือน
   // จำนวนวันไม่เท่ากัน จะเลื่อนวันเริ่มผิดไป) — ผู้ใช้ยังปรับช่วงเทียบเองได้ตามปกติจาก Date Picker
   const [compareEnabled, setCompareEnabled] = useState(true);
-  const [compareRange, setCompareRange] = useState(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth() + 1; // 1-12 ของเดือนนี้
-    const lastMonthNum = m === 1 ? 12 : m - 1;
-    const lastMonthYear = m === 1 ? y - 1 : y;
-    const lastMonthEndDay = new Date(lastMonthYear, lastMonthNum, 0).getDate();
-    const pad = (n) => String(n).padStart(2, "0");
-    return { start: `${lastMonthYear}-${pad(lastMonthNum)}-01`, end: `${lastMonthYear}-${pad(lastMonthNum)}-${pad(lastMonthEndDay)}` };
-  });
+  const [compareRange, setCompareRange] = useState(() => defaultDateRanges().compareRange);
   const monthFilter = "jun26"; // คงไว้เพื่อความเข้ากันได้กับส่วนที่ล็อกไว้ที่มิถุนายน (Sales Funnel/Inbox/LOA/Bad Lead/Inter)
 
   // ---- Sidebar navigation + dark mode ----
