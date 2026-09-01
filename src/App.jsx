@@ -65,6 +65,7 @@ import DOCTOR_HERO_POSTS_DATA from "./data/doctorHeroPosts.json";
 import ANT_ARMY_POSTS_DATA from "./data/antArmyPosts.json";
 import BAD_LEAD_DATA from "./data/badLead.json";
 import OR_SALES_DATA from "./data/orSales.json";
+import CONSULT_PIPELINE_DATA from "./data/consultPipeline.json";
 import INTER_SALE_DATA from "./data/interSale.json";
 const loaDataByMonth = LOA_DATA.months;
 const loaNormalDataByMonth = LOA_NORMAL_DATA.months;
@@ -852,6 +853,20 @@ function computeOrSalesForRange(range, proc) {
   const rows = OR_SALES_DATA.entries.filter((e) => e.d >= range.start && e.d <= range.end && (proc === "all" || e.proc === proc));
   return rows.reduce((s, e) => s + e.amount, 0);
 }
+// "ยอดขายรวม (Facebook)" = Total Price ของเคสที่ปิดมัดจำแล้ว (RAW_TX/มัดจำ 2026) + Online Price ของเคสที่ยัง
+// อยู่แค่ขั้นปรึกษา ยังไม่ปิดมัดจำ (จากชีต "ปรึกษา 2026" — src/data/consultPipeline.json สร้างโดย
+// scripts/build-consult-pipeline.mjs) ไม่รวมซ้ำกับเคสที่ปิดมัดจำแล้ว เพราะกรองสถานะ "ปรึกษา"/"ปรึกษาออนไลน์"
+// ล้วนๆ ไว้ตั้งแต่ตอนสร้างไฟล์แล้ว (ตามที่ผู้ใช้ยืนยัน 2569-09-01: รวมเฉพาะเคสที่ยังไม่ปิดมัดจำ)
+function computeConsultPipelineForRange(range, platform, proc) {
+  const rows = CONSULT_PIPELINE_DATA.entries.filter(
+    (e) =>
+      e.d >= range.start &&
+      e.d <= range.end &&
+      (platform === "all" || e.platform === platform) &&
+      (proc === "all" || e.proc === proc)
+  );
+  return rows.reduce((s, e) => s + e.amount, 0);
+}
 
 function computeExecMetricsForRange(range, proc) {
   // ชื่อตัวแปรแก้จาก isFullJun เป็น isFullJul แล้ว — เดิมเช็คช่วงเต็มเดือน มิ.ย. ทั้งที่ GRAND_TOTAL/CATEGORIES
@@ -870,7 +885,8 @@ function computeExecMetricsForRange(range, proc) {
     ? proc === "all"
       ? FB_TOTAL.total
       : FB_BY_KEY[proc]?.total ?? 0
-    : txInRange.filter((t) => t.ch === "Facebook" && (proc === "all" || t.p === proc)).reduce((s, t) => s + t.tot, 0);
+    : txInRange.filter((t) => t.ch === "Facebook" && (proc === "all" || t.p === proc)).reduce((s, t) => s + t.tot, 0) +
+      computeConsultPipelineForRange(range, "Facebook", proc);
 
   const fbSpend = (() => {
     if (isFullJul) return proc === "all" ? GRAND_TOTAL.spend : CATEGORIES[proc].spend;
@@ -1704,11 +1720,13 @@ export default function AdsDashboard() {
   // เมตริกสรุปบน Metric Cards ด้านบน — ปรับตามช่วงวันที่ (dateRange) + procFilter ที่เลือกจริง
   // ต่างจาก totals/fbSales/fbSpend/ratio/roas ด้านบนซึ่งใช้ในข้อความสรุป insight ที่ล็อกไว้ที่เดือนมิถุนายนเสมอ
   const execSales = isJunFull ? totals.sales : rangeTotals.sales ?? 0;
+  // ยอดขายรวม (Facebook) = Total Price ของเคสที่ปิดมัดจำแล้ว (activeFbTotal/activeFbByKey จาก RAW_TX) + Online
+  // Price ของเคสที่ยังอยู่แค่ขั้นปรึกษา ยังไม่ปิดมัดจำ (computeConsultPipelineForRange) — ดูคอมเมนต์ที่
+  // computeConsultPipelineForRange ด้านบนสำหรับเหตุผลที่ไม่รวมซ้ำกับเคสที่ปิดมัดจำแล้ว
   const execFbSales = isJunFull
     ? fbSales
-    : procFilter === "all"
-    ? activeFbTotal.total
-    : activeFbByKey[procFilter]?.total ?? 0;
+    : (procFilter === "all" ? activeFbTotal.total : activeFbByKey[procFilter]?.total ?? 0) +
+      computeConsultPipelineForRange(dateRange, "Facebook", procFilter);
   const execFbSpend = isJunFull ? fbSpend : rangeSpend;
   const execRatio = execFbSales > 0 ? execFbSpend / execFbSales : 0;
   const execRoas = execFbSpend > 0 ? execFbSales / execFbSpend : 0;
@@ -2728,7 +2746,7 @@ export default function AdsDashboard() {
             icon={Megaphone}
             label="ยอดขายรวม (Facebook)"
             value={`฿${fmtTHB(execFbSales)}`}
-            sub="รวมจาก Total Price เท่านั้น"
+            sub="Total Price (ปิดมัดจำแล้ว) + Online Price (ปรึกษายังไม่มัดจำ)"
             tone="green"
             delta={fbSalesDelta}
           />
