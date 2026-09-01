@@ -64,6 +64,7 @@ import AD_DAILY from "./data/adDaily.json";
 import DOCTOR_HERO_POSTS_DATA from "./data/doctorHeroPosts.json";
 import ANT_ARMY_POSTS_DATA from "./data/antArmyPosts.json";
 import BAD_LEAD_DATA from "./data/badLead.json";
+import OR_SALES_DATA from "./data/orSales.json";
 import INTER_SALE_DATA from "./data/interSale.json";
 const loaDataByMonth = LOA_DATA.months;
 const loaNormalDataByMonth = LOA_NORMAL_DATA.months;
@@ -844,25 +845,35 @@ function categorySpendForRange(range) {
   return rounded;
 }
 
-function computeExecMetricsForRange(range, proc) {
-  const isFullJun = range.start === "2026-06-01" && range.end === "2026-06-30";
-  const txInRange = RAW_TX.filter((t) => t.d >= range.start && t.d <= range.end);
-  const txByProc = proc === "all" ? txInRange : txInRange.filter((t) => t.p === proc);
+// ยอด "ขายรวมทุกช่องทาง" จริง — อิงยอดปิด OR จริงจากชีต "ยอดORจริง+Forecast (พี่เปา)" (src/data/orSales.json,
+// สร้างโดย scripts/build-or-sales.mjs) แทน RAW_TX.tot (คอลัมน์ Total price ในชีต "มัดจำ 2026") เพราะเช็คแล้วว่า
+// มัดจำ 2026 นับยอดขายจริงตกหล่นไปมาก (ก.ค. 2569: มัดจำ 2026 ให้ ฿16.4M แต่ชีต พี่เปา ให้ ฿24.2M — ต่างกัน ~47%)
+function computeOrSalesForRange(range, proc) {
+  const rows = OR_SALES_DATA.entries.filter((e) => e.d >= range.start && e.d <= range.end && (proc === "all" || e.proc === proc));
+  return rows.reduce((s, e) => s + e.amount, 0);
+}
 
-  const sales = isFullJun
+function computeExecMetricsForRange(range, proc) {
+  // ชื่อตัวแปรแก้จาก isFullJun เป็น isFullJul แล้ว — เดิมเช็คช่วงเต็มเดือน มิ.ย. ทั้งที่ GRAND_TOTAL/CATEGORIES
+  // เป็นข้อมูล ก.ค. ที่ยืนยันแล้ว (ไม่ตรงกับ isJunFull ระดับ component ที่เช็ค ก.ค. อยู่แล้ว) ทำให้ถ้าเลือกช่วง
+  // มิ.ย. เป๊ะๆ (หรือ compareRange ตกที่ มิ.ย. เป๊ะๆ) จะโชว์ตัวเลข ก.ค. ผิดเดือนไปแบบเงียบๆ — แก้ให้ตรงกันแล้ว
+  const isFullJul = range.start === "2026-07-01" && range.end === "2026-07-31";
+  const txInRange = RAW_TX.filter((t) => t.d >= range.start && t.d <= range.end);
+
+  const sales = isFullJul
     ? proc === "all"
       ? GRAND_TOTAL.sales
       : CATEGORIES[proc].sales
-    : txByProc.reduce((s, t) => s + t.tot, 0);
+    : computeOrSalesForRange(range, proc);
 
-  const fbSales = isFullJun
+  const fbSales = isFullJul
     ? proc === "all"
       ? FB_TOTAL.total
       : FB_BY_KEY[proc]?.total ?? 0
     : txInRange.filter((t) => t.ch === "Facebook" && (proc === "all" || t.p === proc)).reduce((s, t) => s + t.tot, 0);
 
   const fbSpend = (() => {
-    if (isFullJun) return proc === "all" ? GRAND_TOTAL.spend : CATEGORIES[proc].spend;
+    if (isFullJul) return proc === "all" ? GRAND_TOTAL.spend : CATEGORIES[proc].spend;
     const spendByCat = categorySpendForRange(range);
     return proc === "all" ? spendByCat.all : spendByCat[proc] ?? 0;
   })();
@@ -1591,7 +1602,9 @@ export default function AdsDashboard() {
     : {
         deposit: txInRangeByProc.reduce((s, t) => s + t.dep, 0),
         online: txInRangeByProc.reduce((s, t) => s + t.onl, 0),
-        sales: txInRangeByProc.reduce((s, t) => s + t.tot, 0),
+        // ยอดขายรวมทุกช่องทาง = ยอดปิด OR จริงจากชีต "ยอดORจริง+Forecast (พี่เปา)" ไม่ใช่ RAW_TX.tot อีกต่อไป
+        // (ดูคอมเมนต์ที่ computeOrSalesForRange ด้านบน — RAW_TX นับยอดขายจริงตกหล่นไปมาก)
+        sales: computeOrSalesForRange(dateRange, procFilter),
       };
   const rangeSpend = (() => {
     if (isJunFull) return procFilter === "all" ? GRAND_TOTAL.spend : CATEGORIES[procFilter].spend;

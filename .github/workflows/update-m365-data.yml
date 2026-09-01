@@ -4,9 +4,10 @@ name: Update M365 data (RAW_TX pipeline)
 # LINE OA Broadcast, ยอดขาย Online S45 Clinic, Bad Lead [Plus Connect]) ผ่าน Microsoft Graph API
 # (src/data/m365Raw.json) แล้วแปลงเป็น src/data/rawTx.json (RAW_TX), src/data/loaData.json
 # (LOA broadcast section), src/data/funnelAug.json (Inbox & Bad Lead page's สิงหาคม
-# option), src/data/badLead.json (Bad Lead cards) และ src/data/interSale.json (Inter แยกตามหมอ
-# + หัตถการ) ที่ App.jsx import ใช้จริง — Dashboard จึงอัปเดตข้อมูลธุรกรรม+LOA+Inbox+Bad Lead+Inter
-# อัตโนมัติทุกวัน ไม่ต้อง paste มือแล้ว
+# option), src/data/badLead.json (Bad Lead cards), src/data/interSale.json (Inter แยกตามหมอ
+# + หัตถการ) และ src/data/orSales.json (ยอดขายรวมทุกช่องทางบนหน้าภาพรวม — จากชีต "ยอดORจริง+
+# Forecast (พี่เปา)") ที่ App.jsx import ใช้จริง — Dashboard จึงอัปเดตข้อมูลธุรกรรม+LOA+Inbox+Bad
+# Lead+Inter+ยอดขายรวม อัตโนมัติทุกวัน ไม่ต้อง paste มือแล้ว
 #
 # ต้องตั้ง repo secrets ที่ Settings → Secrets and variables → Actions →
 # New repository secret:
@@ -70,16 +71,19 @@ jobs:
       - name: Build Inter Sale data from M365 data
         run: node scripts/build-inter.mjs
 
+      - name: Build OR Sales data from M365 data
+        run: node scripts/build-or-sales.mjs
+
       - name: Commit & push if data changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json src/data/loaNormalData.json src/data/funnelAug.json src/data/badLead.json src/data/interSale.json
-          if git diff --cached --quiet -- src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json src/data/loaNormalData.json src/data/funnelAug.json src/data/badLead.json src/data/interSale.json; then
+          git add src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json src/data/loaNormalData.json src/data/funnelAug.json src/data/badLead.json src/data/interSale.json src/data/orSales.json
+          if git diff --cached --quiet -- src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json src/data/loaNormalData.json src/data/funnelAug.json src/data/badLead.json src/data/interSale.json src/data/orSales.json; then
             echo "No change — nothing to commit."
             exit 0
           fi
-          git commit -m "chore: update M365 data + rebuild RAW_TX + Bad Lead + Inter (automated)"
+          git commit -m "chore: update M365 data + rebuild RAW_TX + Bad Lead + Inter + OR sales (automated)"
           for attempt in 1 2 3 4 5; do
             if git push origin HEAD:main; then
               exit 0
