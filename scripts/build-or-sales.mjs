@@ -23,17 +23,15 @@
  * exactly equal the sum of the day columns for every row in the sheet (0
  * mismatches out of 256), so exploding the day columns loses no data.
  *
- * "จำนวนเคส" is this sheet's own authoritative case count per (month, doctor,
- * procedure) row — the source Inbox & Bad Lead's "จำนวนเคสที่ปิด OR" card
- * should use (per user request), NOT a count of non-empty day-columns: checked
- * against every row in the sheet, the day-column count matches "จำนวนเคส"
- * for only 238/246 rows (some cases split their value across fewer/more day
- * cells than the row's own case count, e.g. a part-payment on one day and the
- * rest on another for what's still a single case) — so it's aggregated
- * directly from "จำนวนเคส" itself, by month + procedure, into casesByMonth.
- * This has no daily granularity (the sheet doesn't record which day within
- * the month each case closed, only which doctor+procedure+month), so it's a
- * whole-month figure, not filterable to a partial-month date range.
+ * Inbox & Bad Lead's "จำนวนเคสที่ปิด OR" card counts entries (one per
+ * non-empty day-column = one case's amount landing on that day) in the
+ * selected date range, per the user's explicit direction to filter by the
+ * day-columns (1-31) directly rather than trying to use the sheet's own
+ * "จำนวนเคส" column (whole-month, not filterable by day — checked once
+ * against a count of non-empty day-columns per row and found a small
+ * mismatch on 8/246 rows, since a case can occasionally split its amount
+ * across a different number of day cells than 1; day-filtering trades that
+ * ~3% imprecision for being filterable by date range like every other card).
  *
  * Doctor names get the same "หมอจิจ๊ะ" -> "หมอจิ๊จ๊ะ" normalization as
  * build-raw-tx.mjs (same typo appears in this sheet too). Surgery names map
@@ -109,12 +107,10 @@ function main() {
   const monthCol = findCol(header, (h) => h === "เดือน");
   const doctorCol = findCol(header, (h) => h === "แพทย์");
   const surgeryCol = findCol(header, (h) => h === "หัตถการ");
-  const casesCol = findCol(header, (h) => h === "จำนวนเคส");
   const totalCol = findCol(header, (h) => h.includes("รวม"));
   const firstDayCol = totalCol + 1; // คอลัมน์ถัดจาก "รวม (บาท)" คือวันที่ 1
 
   const entries = [];
-  const casesByMonth = {}; // "2026-08" -> { nose_open, nose_semi, breast_lipo, brow_hairline, other, all }
   const unmappedSurgeries = new Set();
   let mismatchCount = 0;
   let skippedRows = 0;
@@ -134,14 +130,6 @@ function main() {
     const surgeryKey = SURGERY_MAP[String(surgeryRaw).trim().toLowerCase()];
     if (!surgeryKey) unmappedSurgeries.add(String(surgeryRaw).trim());
     const proc = surgeryKey || "other";
-
-    const monthIso = `${YEAR}-${String(month).padStart(2, "0")}`;
-    const casesVal = r[casesCol];
-    if (typeof casesVal === "number" && casesVal > 0) {
-      const bucket = (casesByMonth[monthIso] ||= { nose_open: 0, nose_semi: 0, breast_lipo: 0, brow_hairline: 0, other: 0, all: 0 });
-      bucket[proc] = (bucket[proc] || 0) + casesVal;
-      bucket.all += casesVal;
-    }
 
     const totalDays = daysInMonth(YEAR, month);
     let daySum = 0;
@@ -177,7 +165,6 @@ function main() {
           '"Data S45 Clinic (5).xlsx" — the sales team\'s real-OR-closed ledger, exploded from ' +
           "monthly per-doctor/procedure rows into daily entries via their day-of-month columns.",
         entries,
-        casesByMonth,
       },
       null,
       2
