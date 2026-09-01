@@ -97,6 +97,24 @@ const WORKBOOKS = [
     sheets: ["Sheet1"],
   },
   {
+    key: "budget_allocate",
+    // "S45 - Budget Allocate.xlsx" — personal/digital_mkt_s45clinic_com/Documents/แอป/Microsoft Power
+    // Query/Uploaded Files/ (2026-09-01) — the real source for the Overview page's "สัดส่วนงบโฆษณาแยก
+    // ตามช่องทาง" chart (previously a hand-typed CHANNEL_MIX constant frozen on July's numbers,
+    // mislabeled as June — user pointed at the exact sheet name for the current month: "August26").
+    // One sheet per month; naming is inconsistent (2025 sheets abbreviate — "Oct25" confirmed to
+    // exist — 2026 sheets appear to spell the month out in full — "August26" confirmed by the user).
+    // Guess-list covers both conventions across the year; fetchSheetUsedRange's per-sheet try/catch
+    // (see main() below) skips whichever names don't exist without failing the whole pipeline.
+    driveId: "b!xxDvakZnBUOmKljZWLuYZ9g177OXvLtHthxJClpsEqA5xrnAHB8PRI3WaLvrDur8",
+    itemId: "01JXWUHPBPC7ZSQP2Z6FDJO4UQRWCH4AOI",
+    sheets: [
+      "Oct25", "Nov25", "Dec25",
+      "January26", "February26", "March26", "April26", "May26", "June26", "July26", "August26", "September26", "October26",
+      "Jan26", "Feb26", "Mar26", "Apr26", "May26", "Jun26", "Jul26", "Aug26", "Sep26", "Oct26",
+    ],
+  },
+  {
     key: "loa_broadcast",
     // "S45 - ยอดบลอดแคส LINE OA After Care.xlsx" — personal/digital_mkt_s45clinic_com/Documents/ (2026-08-25)
     // Daily LINE OA broadcast reach per procedure category, one "LOA- <month>" sheet per
