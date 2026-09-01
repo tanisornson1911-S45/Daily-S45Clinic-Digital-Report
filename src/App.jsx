@@ -1903,15 +1903,20 @@ export default function AdsDashboard() {
   const inboxDailyPointsRaw = inboxDates.map(({ monthKey, day, iso }) => {
     const src = funnelSourceForMonth(monthKey)?.[inboxDailyFilter];
     const hasData = src && day <= src.dailyInbox.length;
+    // consult/deposit/OR มาจาก RAW_TX (สดจริง ไม่มีความล่าช้าแบบชีต Ads/Inbox ที่กรอกมือ) จึงมีสิทธิ์ "มีข้อมูลจริง"
+    // ในวันที่ hasData (inbox) เป็น false ได้ (เช่น ชีต Ads ยังกรอกไม่ถึงวันที่ 31 แต่มีเคสปิดมัดจำ/OR จริงแล้ววันนั้น)
+    // เช็คความยาว dailyConsult ของตัวเองแยกต่างหาก ไม่ผูกกับ hasData ไม่งั้นยอดรวมจะขาดวันท้ายๆ ไปเงียบๆ
+    const hasSalesData = src && src.dailyConsult != null && day <= src.dailyConsult.length;
     return {
       iso,
       day,
       hasData,
+      hasSalesData,
       target: inboxDailyTargetPerDay,
       actual: hasData ? src.dailyInbox[day - 1] : null,
-      consult: hasData ? src.dailyConsult?.[day - 1] ?? null : null,
-      deposit: hasData ? src.dailyDeposit?.[day - 1] ?? null : null,
-      or: hasData ? src.dailyOrCases?.[day - 1] ?? null : null,
+      consult: hasSalesData ? src.dailyConsult[day - 1] : null,
+      deposit: hasSalesData ? src.dailyDeposit[day - 1] : null,
+      or: hasSalesData ? src.dailyOrCases[day - 1] : null,
     };
   });
   const inboxDaysWithData = inboxDailyPointsRaw.filter((p) => p.hasData).length;
@@ -1921,13 +1926,16 @@ export default function AdsDashboard() {
   })();
   const inboxDailyData = inboxDailyPointsRaw.filter((p) => p.hasData);
   const inboxChartData = inboxDailyPointsRaw;
-  const inboxDailyTotals = inboxDailyData.reduce(
+  // รวมยอด consult/deposit/or จากทุกวันที่มี "ข้อมูลปิดจริง" (hasSalesData) แยกจากยอด Inbox/target ที่รวมเฉพาะวันที่
+  // มีข้อมูล Inbox จริง (hasData) — สองเงื่อนไขนี้ไม่เท่ากันเสมอไป (ดูคอมเมนต์ที่ hasSalesData ด้านบน) ผลรวมทั้งสอง
+  // ชุดจึงต้องคำนวณแยกกัน ไม่พึ่ง filter ตัวเดียวเหมือนเดิม ไม่งั้นยอดปิดมัดจำ/OR รวมจะขาดหายไปตามวันที่ Inbox ไม่มา
+  const inboxDailyTotals = inboxDailyPointsRaw.reduce(
     (acc, r) => ({
-      target: acc.target + (r.target ?? 0),
-      actual: acc.actual + r.actual,
-      consult: acc.consult + r.consult,
-      deposit: acc.deposit + r.deposit,
-      or: acc.or + r.or,
+      target: acc.target + (r.hasData ? r.target ?? 0 : 0),
+      actual: acc.actual + (r.actual ?? 0),
+      consult: acc.consult + (r.consult ?? 0),
+      deposit: acc.deposit + (r.deposit ?? 0),
+      or: acc.or + (r.or ?? 0),
     }),
     { target: 0, actual: 0, consult: 0, deposit: 0, or: 0 }
   );

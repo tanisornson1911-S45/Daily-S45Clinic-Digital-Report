@@ -43,6 +43,7 @@ import path from "node:path";
 const MONTH_ISO = "2026-08";
 const SHEET_NAME = "ส.ค.69";
 const LABEL = "รวมทุกหัตถการ";
+const DAYS_IN_MONTH = new Date(Number(MONTH_ISO.slice(0, 4)), Number(MONTH_ISO.slice(5, 7)), 0).getDate();
 
 // Fixed block order in the sheet: label row, then "ยอดยิง Ads", then "Inbox".
 const BLOCK_KEYS = ["nose_open", "nose_semi", "breast_lipo", "brow_hairline", "inter", "all"];
@@ -161,15 +162,24 @@ function main() {
     }
 
     const catTx = monthTx.filter((t) => t.p === key);
-    const dailyConsult = new Array(daysWithData).fill(0);
-    const dailyDeposit = new Array(daysWithData).fill(0);
-    const dailyOr = new Array(daysWithData).fill(0);
-    const dailyOrCases = new Array(daysWithData).fill(0);
+    // ความยาวของ 4 array นี้ไม่ผูกกับ daysWithData (ความคืบหน้าของชีต Ads/Inbox ที่กรอกมือ ล่าช้ากว่าจริงเสมอ)
+    // อีกต่อไป — deposit/consult/OR มาจาก rawTx.json (ไฟล์ "มัดจำ 2026" ที่อัปเดตสดจริง ไม่มีความล่าช้าแบบนั้น)
+    // ใช้ DAYS_IN_MONTH (ครบทุกวันของเดือน) แทน ไม่งั้นวันท้ายๆ ที่มีเคสปิดมัดจำ/OR จริงแล้วจะถูกตัดทิ้งเงียบๆ
+    // แค่เพราะชีต Ads ยังกรอกไม่ถึงวันนั้น (พบจริง: 3 เคสวันที่ 31 ส.ค. หายไปจากยอดรวมเดิม)
+    const dailyConsult = new Array(DAYS_IN_MONTH).fill(0);
+    const dailyDeposit = new Array(DAYS_IN_MONTH).fill(0);
+    const dailyOr = new Array(DAYS_IN_MONTH).fill(0);
+    const dailyOrCases = new Array(DAYS_IN_MONTH).fill(0);
 
+    // ใช้กับ t.d (วันทัก) เท่านั้น — รับประกันอยู่ในเดือนนี้แล้วจาก monthTx filter ด้านบน
     const dayIndex = (iso) => {
       const day = Number(iso.slice(8, 10));
-      return day >= 1 && day <= daysWithData ? day - 1 : -1;
+      return day >= 1 && day <= DAYS_IN_MONTH ? day - 1 : -1;
     };
+    // ใช้กับ t.or (วันผ่าตัด) โดยเฉพาะ — ต้อง "อยู่ในเดือนนี้จริง" ก่อน ไม่ใช่แค่ตัวเลขวันที่ 1-31 ตรงกันโดยบังเอิญ
+    // (บั๊กเดิม: เคสที่ d อยู่ ส.ค. แต่นัดผ่าตัด (or) เดือนอื่น เช่น "2026-09-05" ถูกนับเป็นวันที่ 5 ของ ส.ค.
+    // ไปด้วย เพราะเช็คแค่ Number(iso.slice(8,10)) ไม่ได้เช็คเดือน — ทำให้ยอด "จำนวนเคสที่ปิด OR" พองเกือบ 2 เท่า)
+    const orDayIndex = (iso) => (iso.startsWith(MONTH_ISO) ? dayIndex(iso) : -1);
 
     let closedCount = 0;
     let sales = 0;
@@ -195,12 +205,14 @@ function main() {
         consultValue += amt;
       }
       if (t.or) {
-        const oi = dayIndex(t.or);
+        // นับเฉพาะเคสที่ "วันผ่าตัดจริง" (t.or) อยู่ในเดือนนี้จริงๆ — เคสที่ทักเข้ามาเดือนนี้แต่นัดผ่าตัดเดือนอื่น
+        // (พบเยอะมาก เพราะคิวผ่าตัดมักจองล่วงหน้าหลายสัปดาห์) ไม่นับเป็น "ปิด OR" ของเดือนนี้
+        const oi = orDayIndex(t.or);
         if (oi >= 0) {
           dailyOr[oi] += amt;
           dailyOrCases[oi]++;
+          orTotal += amt;
         }
-        orTotal += amt;
       }
       if (t.dep > 0 || t.cons) {
         closedCount++;
