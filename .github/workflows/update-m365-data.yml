@@ -6,9 +6,11 @@ name: Update M365 data (RAW_TX pipeline)
 # (LOA broadcast section), src/data/funnelAug.json (Inbox & Bad Lead page's สิงหาคม
 # option), src/data/badLead.json (Bad Lead cards), src/data/interSale.json (Inter แยกตามหมอ
 # + หัตถการ), src/data/orSales.json (ยอดขายรวมทุกช่องทางบนหน้าภาพรวม — จากชีต "ยอดORจริง+
-# Forecast (พี่เปา)") และ src/data/consultPipeline.json (ส่วนต่อยอดขายรวม Facebook จากเคสที่ยัง
-# ปรึกษาไม่ปิดมัดจำ — จากชีต "ปรึกษา 2026") ที่ App.jsx import ใช้จริง — Dashboard จึงอัปเดตข้อมูล
-# ธุรกรรม+LOA+Inbox+Bad Lead+Inter+ยอดขายรวม อัตโนมัติทุกวัน ไม่ต้อง paste มือแล้ว
+# Forecast (พี่เปา)"), src/data/consultPipeline.json (ส่วนต่อยอดขายรวม Facebook จากเคสที่ยัง
+# ปรึกษาไม่ปิดมัดจำ — จากชีต "ปรึกษา 2026") และ src/data/channelMix.json (สัดส่วนงบโฆษณาแยกตาม
+# ช่องทางบนหน้าภาพรวม — จาก Google Sheet "S45 - Budget Allocate") ที่ App.jsx import ใช้จริง —
+# Dashboard จึงอัปเดตข้อมูลธุรกรรม+LOA+Inbox+Bad Lead+Inter+ยอดขายรวม+งบโฆษณา อัตโนมัติทุกวัน
+# ไม่ต้อง paste มือแล้ว
 #
 # ต้องตั้ง repo secrets ที่ Settings → Secrets and variables → Actions →
 # New repository secret:
@@ -17,8 +19,9 @@ name: Update M365 data (RAW_TX pipeline)
 #   MS_CLIENT_SECRET — Client secret value (ต้อง grant admin consent
 #                      สิทธิ์ Files.Read.All (Application) แล้ว)
 #   GOOGLE_SERVICE_ACCOUNT_KEY — JSON key ทั้งไฟล์ของ Google Service Account
-#                      (ต้องแชร์ Google Sheet "S45 - สรุปค่าใช้จ่ายให้บัญชี"
-#                      ให้อีเมล client_email ของ Service Account เป็น Viewer)
+#                      (ใช้กับทั้ง Google Sheet "S45 - สรุปค่าใช้จ่ายให้บัญชี" และ
+#                      "S45 - Budget Allocate" — สอง sheet นี้แชร์แบบ "anyone with the
+#                      link" ไว้แล้ว จึง Service Account เข้าถึงได้โดยไม่ต้องแชร์เพิ่ม)
 
 on:
   schedule:
@@ -63,6 +66,11 @@ jobs:
           GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
         run: node scripts/fetch-loa-normal.mjs
 
+      - name: Fetch Budget Allocate channel-mix data from Google Sheets
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
+        run: node scripts/fetch-budget-allocate.mjs
+
       - name: Build August Inbox funnel data from M365 data + RAW_TX
         run: node scripts/build-funnel.mjs
 
@@ -82,12 +90,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json src/data/loaNormalData.json src/data/funnelAug.json src/data/badLead.json src/data/interSale.json src/data/orSales.json src/data/consultPipeline.json
-          if git diff --cached --quiet -- src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json src/data/loaNormalData.json src/data/funnelAug.json src/data/badLead.json src/data/interSale.json src/data/orSales.json src/data/consultPipeline.json; then
+          git add src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json src/data/loaNormalData.json src/data/funnelAug.json src/data/badLead.json src/data/interSale.json src/data/orSales.json src/data/consultPipeline.json src/data/channelMix.json
+          if git diff --cached --quiet -- src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json src/data/loaNormalData.json src/data/funnelAug.json src/data/badLead.json src/data/interSale.json src/data/orSales.json src/data/consultPipeline.json src/data/channelMix.json; then
             echo "No change — nothing to commit."
             exit 0
           fi
-          git commit -m "chore: update M365 data + rebuild RAW_TX + Bad Lead + Inter + OR sales + consult pipeline (automated)"
+          git commit -m "chore: update M365 data + rebuild RAW_TX + Bad Lead + Inter + OR sales + consult pipeline + channel mix (automated)"
           for attempt in 1 2 3 4 5; do
             if git push origin HEAD:main; then
               exit 0

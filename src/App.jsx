@@ -66,6 +66,7 @@ import ANT_ARMY_POSTS_DATA from "./data/antArmyPosts.json";
 import BAD_LEAD_DATA from "./data/badLead.json";
 import OR_SALES_DATA from "./data/orSales.json";
 import CONSULT_PIPELINE_DATA from "./data/consultPipeline.json";
+import CHANNEL_MIX_DATA from "./data/channelMix.json";
 import INTER_SALE_DATA from "./data/interSale.json";
 const loaDataByMonth = LOA_DATA.months;
 const loaNormalDataByMonth = LOA_NORMAL_DATA.months;
@@ -587,17 +588,20 @@ function loaRangeRows(channel, dateRange, defs) {
 }
 
 // ============================================================
-// สัดส่วนงบโฆษณาแยกตามช่องทาง (ชีต Budget Allocate July26, แถว Total บรรทัด 39) — ใช้สรุปว่าช่องทางไหนแทบไม่ได้ใช้งบ
-// ก.ค. ไม่มีงบ TikTok เลย (ต่างจาก มิ.ย. ที่มี 10,000) จึงไม่มีแถว TikTok ในเดือนนี้
-// ============================================================
-const CHANNEL_MIX = [
-  { key: "facebook", label: "Facebook", budget: 1385000 },
-  { key: "google", label: "Google", budget: 180000 },
-  { key: "line_broadcast", label: "Line Broadcast", budget: 121000 },
-  { key: "line_ads", label: "Line Ads", budget: 53000 },
-  { key: "tiktok", label: "TikTok", budget: 0 },
-];
-const CHANNEL_MIX_TOTAL = CHANNEL_MIX.reduce((s, c) => s + c.budget, 0);
+// สัดส่วนงบโฆษณาแยกตามช่องทาง — สดจาก Google Sheet "S45 - Budget Allocate" (ดึงโดย
+// scripts/fetch-budget-allocate.mjs, เขียนลง src/data/channelMix.json คีย์ด้วยเดือน ISO
+// เช่น "2026-08") แทนค่าคงที่พิมพ์มือเดิมที่ตรึงไว้ที่ ก.ค. — ดู computeChannelMixForMonth ด้านล่าง
+function computeChannelMixForMonth(monthIso) {
+  const m = CHANNEL_MIX_DATA.months?.[monthIso];
+  if (!m) return null;
+  return [
+    { key: "facebook", label: "Facebook", budget: m.facebook },
+    { key: "google", label: "Google", budget: m.google },
+    { key: "line_broadcast", label: "Line Broadcast", budget: m.line_broadcast },
+    { key: "line_ads", label: "Line Ads", budget: m.line_ads },
+    { key: "tiktok", label: "TikTok", budget: m.tiktok },
+  ];
+}
 // ============================================================
 // SOURCE 6 — Bad Lead จริงจาก Plus Connect (ทุกแชทที่ทีม Digital ติดแท็ก "คุณสมบัติไม่ครบ") ดึงอัตโนมัติ
 // ทุกคืนผ่าน scripts/build-bad-lead.mjs — แทนชุดตัวอย่าง 159 แชท/รูปหน้าจอคัดมือเดิมที่ตรึงไว้ที่ ก.ค. 2569
@@ -2203,9 +2207,25 @@ export default function AdsDashboard() {
   // ช่วงเดือนที่ช่องทางนี้มีข้อมูลรายวันจริงให้ Filter ได้ (ใช้ในข้อความ "ไม่มีข้อมูล...")
   const loaAvailableRangeLabel = loaChannel === "aftercare" ? "ก.ค. 2569 เป็นต้นไป" : "มิ.ย. 2569 เป็นต้นไป";
 
-  const channelMixSorted = [...CHANNEL_MIX].sort((a, b) => b.budget - a.budget);
-  const maxChannelBudget = Math.max(...CHANNEL_MIX.map((c) => c.budget));
-  const tiktokChannel = CHANNEL_MIX.find((c) => c.key === "tiktok");
+  // เลือกเดือนของ "สัดส่วนงบโฆษณาแยกตามช่องทาง" จากปลายช่วง Filter ก่อน (เหมือน activeMonthKey อื่นๆ) ถ้าเดือนนั้น
+  // ยังไม่มีชีตใน Google Sheet ต้นฉบับ ลองต้นช่วงแทน แล้วสุดท้ายค่อย fallback ไปเดือนล่าสุดที่มีข้อมูลจริง (แทนที่จะ
+  // โชว์ว่างเปล่าเงียบๆ) — ดู computeChannelMixForMonth
+  const channelMixAvailableMonths = Object.keys(CHANNEL_MIX_DATA.months || {}).sort();
+  const channelMixMonthIso =
+    [dateRange.end.slice(0, 7), dateRange.start.slice(0, 7)].find((m) => CHANNEL_MIX_DATA.months?.[m]) ??
+    channelMixAvailableMonths[channelMixAvailableMonths.length - 1] ??
+    null;
+  const channelMix = channelMixMonthIso ? computeChannelMixForMonth(channelMixMonthIso) : null;
+  const channelMixSorted = channelMix ? [...channelMix].sort((a, b) => b.budget - a.budget) : [];
+  const maxChannelBudget = channelMix ? Math.max(...channelMix.map((c) => c.budget)) : 1;
+  const channelMixTotal = channelMix ? channelMix.reduce((s, c) => s + c.budget, 0) : 0;
+  const THAI_MONTHS_FULL = [
+    "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+    "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
+  ];
+  const channelMixMonthLabel = channelMixMonthIso
+    ? `${THAI_MONTHS_FULL[Number(channelMixMonthIso.slice(5, 7)) - 1]} ${Number(channelMixMonthIso.slice(0, 4)) + 543}`
+    : null;
   // ยอดขายรวมทุกช่องทาง / Facebook / ROAS ในสรุปภาพรวม — ใช้ตัวเลขเดียวกับ Metric Cards ด้านบน (ตามช่วงวันที่ที่เลือกจริง, มุมมอง "รวมทุกหัตถการ")
   const summaryAllSales = execSales;
   const summaryFbSales = execFbSales;
@@ -3452,38 +3472,50 @@ export default function AdsDashboard() {
 
           {/* Channel budget mix */}
           <p className="text-xs font-medium text-slate-500 mb-2">
-            สัดส่วนงบโฆษณาแยกตามช่องทาง (ทุกหัตถการรวมกัน) — <span className="font-semibold">ข้อมูลเดือนกรกฎาคม 2569 เท่านั้น</span> (ยังไม่มีไฟล์ "Budget Allocate" ของเดือนอื่นให้ดึงสด)
+            สัดส่วนงบโฆษณาแยกตามช่องทาง (ทุกหัตถการรวมกัน)
+            {channelMixMonthLabel ? (
+              <>
+                {" "}— <span className="font-semibold">ข้อมูลเดือน{channelMixMonthLabel}</span>
+                {channelMixMonthIso !== dateRange.end.slice(0, 7) ? " (เดือนล่าสุดที่มีข้อมูลจริง ไม่ตรงกับช่วงวันที่ที่เลือก)" : ""}
+              </>
+            ) : (
+              " — ไม่มีข้อมูล"
+            )}
           </p>
-          <div className="space-y-3 mb-3">
-            {channelMixSorted.map((c) => {
-              const pct = (c.budget / CHANNEL_MIX_TOTAL) * 100;
-              const isTiktok = c.key === "tiktok";
-              return (
-                <div key={c.key} className="flex items-center gap-3">
-                  <div className="w-32 shrink-0">
-                    <p className={`text-sm font-semibold ${isTiktok ? "text-rose-600" : "text-slate-700"}`}>{c.label}</p>
+          {channelMix ? (
+            <div className="space-y-3 mb-3">
+              {channelMixSorted.map((c) => {
+                const pct = channelMixTotal > 0 ? (c.budget / channelMixTotal) * 100 : 0;
+                const isTiktok = c.key === "tiktok";
+                return (
+                  <div key={c.key} className="flex items-center gap-3">
+                    <div className="w-32 shrink-0">
+                      <p className={`text-sm font-semibold ${isTiktok ? "text-rose-600" : "text-slate-700"}`}>{c.label}</p>
+                    </div>
+                    <div className="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${isTiktok ? "bg-rose-400" : "bg-slate-400"}`}
+                        style={{ width: `${Math.max((c.budget / maxChannelBudget) * 100, 2)}%` }}
+                      />
+                    </div>
+                    <div className="w-32 text-right shrink-0">
+                      <p className={`text-xs font-semibold ${isTiktok ? "text-rose-600" : "text-slate-600"}`}>
+                        ฿{fmtTHB(c.budget)} ({pct.toFixed(1)}%)
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${isTiktok ? "bg-rose-400" : "bg-slate-400"}`}
-                      style={{ width: `${Math.max((c.budget / maxChannelBudget) * 100, 2)}%` }}
-                    />
-                  </div>
-                  <div className="w-32 text-right shrink-0">
-                    <p className={`text-xs font-semibold ${isTiktok ? "text-rose-600" : "text-slate-600"}`}>
-                      ฿{fmtTHB(c.budget)} ({pct.toFixed(1)}%)
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400 mb-3">ยังไม่มีข้อมูลงบโฆษณาแยกตามช่องทางสำหรับเดือนที่เลือก</p>
+          )}
 
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
             <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <p>
-              สัดส่วนงบตามช่องทางอ้างอิงจากชีต "Budget Allocate July26" (แถว Total ของ Facebook/Line Broadcast/Line Ads/Tiktok/Google) เท่านั้น — ยังไม่มีไฟล์เทียบเท่าของเดือนอื่น
+              สัดส่วนงบตามช่องทางอ้างอิงจาก Google Sheet "S45 - Budget Allocate"{channelMixMonthIso ? ` (เดือน ${channelMixMonthIso})` : ""} แถว
+              Total ของ Facebook/Line Broadcast/Line Ads/TikTok/Google — ดึงสดทุกวัน ครอบคลุมเฉพาะเดือนที่มีชีตเดี่ยวไม่กำกวมในไฟล์ต้นฉบับ
               ส่วนตัวเลขสรุปด้านบน (ยอดขาย/ค่าโฆษณา/ROAS/เคสมัดจำ) จะเปลี่ยนตามช่วงวันที่ที่เลือกจริง
             </p>
           </div>

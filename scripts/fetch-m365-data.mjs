@@ -97,27 +97,6 @@ const WORKBOOKS = [
     sheets: ["Sheet1"],
   },
   {
-    key: "budget_allocate",
-    // "S45 - Budget Allocate.xlsx" — personal/digital_mkt_s45clinic_com/Documents/แอป/Microsoft Power
-    // Query/Uploaded Files/ (2026-09-01) — the real source for the Overview page's "สัดส่วนงบโฆษณาแยก
-    // ตามช่องทาง" chart (previously a hand-typed CHANNEL_MIX constant frozen on July's numbers,
-    // mislabeled as June — user pointed at the exact sheet name for the current month: "August26").
-    // One sheet per month; naming is inconsistent (2025 sheets abbreviate — "Oct25" confirmed to
-    // exist — 2026 sheets appear to spell the month out in full — "August26" confirmed by the user).
-    // Guess-list covers both conventions across the year; fetchSheetUsedRange's per-sheet try/catch
-    // (see main() below) skips whichever names don't exist without failing the whole pipeline.
-    driveId: "b!xxDvakZnBUOmKljZWLuYZ9g177OXvLtHthxJClpsEqA5xrnAHB8PRI3WaLvrDur8",
-    itemId: "01JXWUHPBPC7ZSQP2Z6FDJO4UQRWCH4AOI",
-    // A guessed name list doesn't work here — the real naming is inconsistent
-    // enough (confirmed: "January26" fails but "May26"/"June26"/"July26" work;
-    // "Aug26" AND "August26" both 404 even though the user pointed at
-    // "August26" as the current sheet) that guessing can silently miss the
-    // current month. Fetch the real worksheet list from Graph instead (see
-    // listWorksheetNames/"auto" handling in main()) so every sheet in the
-    // workbook is pulled regardless of its name.
-    sheets: "auto",
-  },
-  {
     key: "loa_broadcast",
     // "S45 - ยอดบลอดแคส LINE OA After Care.xlsx" — personal/digital_mkt_s45clinic_com/Documents/ (2026-08-25)
     // Daily LINE OA broadcast reach per procedure category, one "LOA- <month>" sheet per
