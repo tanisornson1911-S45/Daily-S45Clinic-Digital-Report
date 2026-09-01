@@ -1966,6 +1966,21 @@ export default function AdsDashboard() {
   const inboxDepositMoM = prevInboxDailyTotals ? pctDelta(inboxDailyTotals.deposit, prevInboxDailyTotals.deposit) : null;
   const inboxOrMoM = prevInboxDailyTotals ? pctDelta(inboxDailyTotals.or, prevInboxDailyTotals.or) : null;
 
+  // "จำนวนเคสที่ปิด OR" การ์ดบนสุด — ต้องมาจากไฟล์ "ยอดORจริง+Forecast (พี่เปา)" (ตามที่ผู้ใช้แจ้ง) ไม่ใช่นับจาก
+  // OR Date ในไฟล์ธุรกรรม (มัดจำ 2026/RAW_TX) ที่พบว่าขาดเคสจริงไปเยอะ (ดูคอมเมนต์ใน build-or-sales.mjs) — ไฟล์
+  // พี่เปามีแค่ "จำนวนเคส" รายเดือนต่อหมอ/หัตถการ ไม่มีแยกรายวันในเดือน จึงเป็นยอดทั้งเดือน ไม่กรองตามวันในช่วงที่
+  // เลือกแบบละเอียดเหมือนตัวอื่น (เหมือนกับ MoM ด้านล่างที่เทียบทั้งเดือนกับเดือนก่อนเช่นกัน) · "inter" ไม่มีในไฟล์นี้
+  const MONTH_KEY_TO_ISO = { jun: "2026-06", jul: "2026-07", aug: "2026-08" };
+  const orCasesMonthIsos = [...new Set(inboxDates.map((d) => d.monthKey))].map((k) => MONTH_KEY_TO_ISO[k]).filter(Boolean);
+  const inboxOrCasesTotal =
+    inboxDailyFilter !== "inter"
+      ? orCasesMonthIsos.reduce((s, iso) => s + (OR_SALES_DATA.casesByMonth?.[iso]?.[inboxDailyFilter] ?? 0), 0)
+      : null;
+  const prevOrCasesMonthIso = prevMonthKey ? MONTH_KEY_TO_ISO[prevMonthKey] : null;
+  const prevOrCasesTotal =
+    prevOrCasesMonthIso && inboxDailyFilter !== "inter" ? OR_SALES_DATA.casesByMonth?.[prevOrCasesMonthIso]?.[inboxDailyFilter] ?? 0 : null;
+  const inboxOrCasesMoM = prevOrCasesTotal != null ? pctDelta(inboxOrCasesTotal, prevOrCasesTotal) : null;
+
   // "ปิดปรึกษา/ปิดมัดจำ แยกตามหัตถการ (เทียบ Inbox)" — คำนวณสดตามช่วงวันที่ที่เลือกจริงแล้ว (เดิมเป็นยอดรวมทั้งเดือน
   // เพราะไม่มีข้อมูล Inbox รายวันจริง ตอนนี้มีแล้วจาก adDaily.json) · เคสปิดแล้ว = dep>0 ตามมาตรฐานเดียวกับที่ใช้
   // ทั้งแอป (activeDoctors/activeFbSurgery/Sales Funnel Performance) · "ปิดปรึกษา" กว้างกว่า "ปิดมัดจำ" เล็กน้อย
@@ -3600,9 +3615,9 @@ export default function AdsDashboard() {
               <MoMBadge delta={inboxDepositMoM} />
             </div>
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
-              <p className="text-[11px] text-emerald-600 font-medium mb-0.5">จำนวนเคสที่ปิด OR (ตามช่วงที่เลือก)</p>
-              <p className="text-xl font-bold text-emerald-700">{inboxDaysWithData > 0 ? `${fmtTHB(inboxDailyTotals.or)} เคส` : "—"}</p>
-              <MoMBadge delta={inboxOrMoM} />
+              <p className="text-[11px] text-emerald-600 font-medium mb-0.5">จำนวนเคสที่ปิด OR (ทั้งเดือน — ยอดORจริง+Forecast)</p>
+              <p className="text-xl font-bold text-emerald-700">{inboxOrCasesTotal != null ? `${fmtTHB(inboxOrCasesTotal)} เคส` : "ไม่มีข้อมูล"}</p>
+              <MoMBadge delta={inboxOrCasesMoM} />
             </div>
           </div>
           ) : (
@@ -3696,7 +3711,7 @@ export default function AdsDashboard() {
             เป้าหมาย Inbox/วัน: Nose Open 120 แชท · Semi Open 35 แชท · ยกคิ้ว 130 แชท · เสริมหน้าอก 25 แชท · Inter 10 แชท (ตัวเลขจริงที่ทีมกำหนด) —
             "รวมทุกหัตถการ" ใช้ผลรวมของทั้ง 5 หัตถการ ({fmtTHB(INBOX_DAILY_TARGET_ALL)} แชท/วัน)
             {inboxHasSalesData
-              ? ` · ยอดปิดปรึกษา/ปิดมัดจำ มาจากไฟล์ Sales Funnel เดียวกับ Inbox (ไม่ได้แยกช่องทาง จึงเป็นยอดรวมทุกช่องทาง ไม่ใช่ Facebook อย่างเดียว) ส่วน "จำนวนเคสที่ปิด OR" นับจากวันที่ระบุในคอลัมน์ OR Date ของไฟล์ธุรกรรมจริง (Data_S45_Clinic) เดือนมิถุนายน 2569 — ก็ไม่ได้แยกช่องทางเช่นกัน`
+              ? ` · ยอดปิดปรึกษา/ปิดมัดจำ มาจากไฟล์ Sales Funnel เดียวกับ Inbox (ไม่ได้แยกช่องทาง จึงเป็นยอดรวมทุกช่องทาง ไม่ใช่ Facebook อย่างเดียว) ส่วนการ์ด "จำนวนเคสที่ปิด OR" ด้านบนนับจากคอลัมน์ "จำนวนเคส" ในไฟล์ "ยอดORจริง+Forecast (พี่เปา)" ทั้งเดือน (เส้นกราฟรายวันด้านล่างยังนับจากวันที่ OR Date ในไฟล์ธุรกรรม (Data_S45_Clinic) แทน เพราะไฟล์พี่เปาไม่มีข้อมูลแยกรายวัน — ใช้ดูแนวโน้มเท่านั้น ไม่ใช่ยอดรวมทางการ)`
               : " · Inbox รายวันมาจากไฟล์ \"ยอดขาย Online S45 Clinic\" ชีตกรกฎาคม 2569 (ไม่ได้แยกช่องทาง จึงเป็นยอดรวมทุกช่องทาง ไม่ใช่ Facebook อย่างเดียว)"}
           </p>
 
