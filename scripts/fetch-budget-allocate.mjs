@@ -116,7 +116,11 @@ async function listSheetTitles(accessToken) {
 }
 
 async function fetchSheetValues(accessToken, title) {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(title)}?valueRenderOption=UNFORMATTED_VALUE`;
+  // ห้ามส่งชื่อชีตเปล่าๆ เป็น range ตรงๆ — ถ้าชื่อชีตเป็นตัวอักษร+ตัวเลขล้วน (เช่น "Oct25") Sheets API จะตีความ
+  // เป็นการอ้างอิงเซลล์ A1 (คอลัมน์ OCT แถว 25) แทนชื่อชีต ทำให้ error "exceeds grid limits" — ต้องระบุ range
+  // เต็มแบบ "<ชื่อชีต>!A1:AC3000" ให้ชัดเจนไม่กำกวมเสมอ
+  const range = `${title}!A1:AC3000`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(range)}?valueRenderOption=UNFORMATTED_VALUE`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
   const json = await res.json();
   if (json.error) throw new Error(`Sheets values error (${title}): ${json.error.message}`);
