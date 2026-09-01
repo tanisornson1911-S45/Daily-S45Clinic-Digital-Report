@@ -98,18 +98,26 @@ function main() {
   const blocks = parseSheet(sheet);
 
   // Real coverage = the run of non-null daily values from day 1 (the sheet leaves
-  // future days blank until the team fills them in). The sheet's own "รวมหัตถการ"
-  // total row has broken #REF! formulas in places, so measure off the 5 real
-  // category rows instead and take the minimum — keeps every array the same length
-  // without fabricating a day none of the 5 actually has data for yet.
+  // future days blank until the team fills them in), measured PER CATEGORY — not
+  // the minimum across all 5, which used to force every category's daily array
+  // down to whichever one lagged furthest behind (usually "inter", the
+  // international-patient channel, which tends to get entered later than the
+  // domestic categories) even on days the other 4 categories already had real
+  // data for. That made the dashboard's date-range filter look unresponsive:
+  // picking a range into the second half of the month showed nothing new even
+  // though most categories' numbers existed. Each category now keeps its own
+  // real coverage; "all" sums whichever categories have data for each day,
+  // so a lagging category simply contributes 0 to just its own missing days
+  // instead of truncating everyone else's real numbers too.
   const realKeys = ["nose_open", "nose_semi", "breast_lipo", "brow_hairline", "inter"];
   const coverageOf = (arr) => {
     let n = 0;
     while (n < 31 && arr[n] != null) n++;
     return n;
   };
-  const daysWithData = Math.min(...realKeys.map((k) => coverageOf(blocks[k].dailyAdsFull)));
-  console.log(`Real daily coverage: ${daysWithData} day(s) of ${MONTH_ISO}.`);
+  const coverageByKey = Object.fromEntries(realKeys.map((k) => [k, coverageOf(blocks[k].dailyAdsFull)]));
+  const daysWithData = Math.max(...Object.values(coverageByKey)); // "all" array length — most any category has
+  console.log(`Per-category daily coverage for ${MONTH_ISO}:`, coverageByKey, `-> using ${daysWithData} day(s) for "all"`);
 
   const rawTxPath = path.resolve("src/data/rawTx.json");
   const rawTx = JSON.parse(readFileSync(rawTxPath, "utf8"));
@@ -119,8 +127,11 @@ function main() {
   const closeCounts = {};
   for (const key of realKeys) {
     const b = blocks[key];
-    const dailyAds = b.dailyAdsFull.slice(0, daysWithData);
-    const dailyInbox = b.dailyInboxFull.slice(0, daysWithData);
+    // เก็บความยาวจริงของหมวดนี้ไว้ (อาจสั้นกว่า daysWithData ถ้าหมวดนี้กรอกช้ากว่าหมวดอื่น) แพด 0 ต่อท้ายให้ยาว
+    // เท่า daysWithData เพื่อให้บวกรวมกับหมวดอื่นใน "all" ตรงตำแหน่งวันได้ — ไม่ใช่การเดาตัวเลข แค่ทำให้ยาวเท่ากัน
+    const ownCoverage = coverageByKey[key];
+    const dailyAds = Array.from({ length: daysWithData }, (_, i) => (i < ownCoverage ? b.dailyAdsFull[i] : 0));
+    const dailyInbox = Array.from({ length: daysWithData }, (_, i) => (i < ownCoverage ? b.dailyInboxFull[i] : 0));
 
     if (key === "inter") {
       // No separate "inter" tag in rawTx.json (Inter cases are folded into
