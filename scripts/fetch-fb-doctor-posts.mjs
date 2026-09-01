@@ -54,8 +54,11 @@ if (!FB_ACCESS_TOKEN) {
   process.exit(1);
 }
 
-// หมวดหมู่หมอ -> คำที่ค้นหาในแคปชั่นโพสต์ (ไม่บังคับต้องมี # นำหน้า เพราะโพสต์จริงบางอันติด
-// แฮชแท็กแบบไม่มีช่องว่าง เช่น "#หมอจิ๊จ๊ะs45clinic" — ใช้ substring match พอ)
+// หมวดหมู่หมอ -> ชื่อที่ต้องเจอ "ในแฮชแท็ก" ของโพสต์เท่านั้น (ต้องมี # นำหน้าอยู่ในตัวเดียวกัน เช่น
+// "#หมอจิ๊จ๊ะs45clinic", "#BaobeiNoseByหมอจิ๊จ๊ะ") — เดิม match แบบ substring อิสระ (ไม่บังคับ #) ทำให้ทุกโพสต์
+// ของเพจ "เข้าข่ายหมอตี้" หมดเพราะทุกโพสต์มีข้อความท้ายโพสต์ซ้ำกัน "Line : เสริมจมูก By หมอตี้" ติดมาด้วย (เป็นข้อความ
+// ติดต่อ/แบรนดิ้งท้ายเพจ ไม่ใช่การระบุหมอที่ทำเคสจริง) ผู้ใช้ยืนยันว่าต้องดูจากแฮชแท็ก #หมอตี้ เท่านั้น — ดู
+// hasDoctorHashtag() ด้านล่างที่บังคับให้ชื่อต้องอยู่ใน token ที่ขึ้นต้นด้วย # จริงๆ
 const DOCTORS = [
   { key: "doctor_tee", label: "หมอตี้", match: "หมอตี้" },
   { key: "doctor_rose", label: "หมอโรส", match: "หมอโรส" },
@@ -78,6 +81,13 @@ const PROCEDURES = [
 const MAX_POSTS = 300; // เพดานจำนวนโพสต์ที่ไล่ดู กันดึงย้อนหลังไม่มีที่สิ้นสุด
 const MAX_AGE_DAYS = 180; // ไม่ไล่ดูโพสต์เก่ากว่า 6 เดือน
 const TOP_N_PER_DOCTOR = 3; // เก็บ Top 3 ต่อหมอ ไว้ให้เลือกดูเพิ่มได้ในอนาคต ไม่ใช่แค่ 1 โพสต์
+
+// ต้องเจอชื่อหมอ "ภายในแฮชแท็กเดียวกัน" (token ที่ขึ้นต้นด้วย # ไม่มีช่องว่างคั่น) เท่านั้น — ไม่นับข้อความ
+// นอกแฮชแท็ก (เช่น ท้ายโพสต์ที่พิมพ์ "By หมอตี้" ธรรมดาไม่มี # ซึ่งเป็นข้อความติดต่อ/แบรนดิ้งซ้ำทุกโพสต์)
+function hasDoctorHashtag(message, name) {
+  const tags = message.match(/#\S+/g) || [];
+  return tags.some((t) => t.includes(name));
+}
 
 async function getPageAccessToken() {
   const url = new URL(`https://graph.facebook.com/${API_VERSION}/${PAGE_ID}`);
@@ -177,7 +187,7 @@ async function main() {
   const byDoctor = {};
   for (const { key, label, match } of DOCTORS) {
     const matches = posts
-      .filter((p) => p.message && p.message.includes(match))
+      .filter((p) => p.message && hasDoctorHashtag(p.message, match))
       .map((p) => {
         const { reactions, comments, shares, clicks, score } = engagementScoreOf(p, clicksMap[p.id]);
         return {
@@ -196,7 +206,7 @@ async function main() {
       .sort((a, b) => b.engagementScore - a.engagementScore)
       .slice(0, TOP_N_PER_DOCTOR);
     byDoctor[key] = { label, cases: matches };
-    console.log(`  ${label}: ${matches.length} เคส (จาก ${posts.filter((p) => p.message?.includes(match)).length} โพสต์ที่พบชื่อ)`);
+    console.log(`  ${label}: ${matches.length} เคส (จาก ${posts.filter((p) => p.message && hasDoctorHashtag(p.message, match)).length} โพสต์ที่พบแฮชแท็ก)`);
   }
 
   const outDir = path.resolve("src/data");

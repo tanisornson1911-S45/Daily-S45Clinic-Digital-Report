@@ -4400,7 +4400,7 @@ export default function AdsDashboard() {
 
           {selectedHeroDoctor.cases.length === 0 ? (
             <p className="text-sm text-slate-400 py-8 text-center">
-              ยังไม่พบโพสต์ที่มีชื่อ "{selectedHeroDoctor.label}" อยู่ในแคปชั่นช่วง 180 วันที่ผ่านมา — ลองแท็กชื่อคุณหมอในโพสต์ถัดไปเพื่อให้ระบบดึงมาแสดงได้
+              ยังไม่พบโพสต์ที่มีแฮชแท็ก "{selectedHeroDoctor.label}" (เช่น #{selectedHeroDoctor.label}s45clinic) ในช่วง 180 วันที่ผ่านมา — ลองแท็กแฮชแท็กคุณหมอในโพสต์ถัดไปเพื่อให้ระบบดึงมาแสดงได้
             </p>
           ) : (
           <div className="grid sm:grid-cols-2 gap-3">
