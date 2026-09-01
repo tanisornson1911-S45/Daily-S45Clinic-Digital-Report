@@ -635,9 +635,6 @@ const FUNNEL_CLOSE_COUNTS_JUL = {
 // (ดูคอมเมนต์ด้านบน) เพราะชีตต้นฉบับยังไม่กรอกตัวเลขกลุ่มนี้เหมือนกัน · inter ไม่มี key ใน
 // FUNNEL_CLOSE_COUNTS_AUG เหตุผลเดียวกับ FUNNEL_CLOSE_COUNTS_JUL
 const FUNNEL_DATA_AUG = FUNNEL_AUG_DATA.data;
-// จำนวนวันที่มีข้อมูลจริงครบทุกหัตถการของ ส.ค. (build-funnel.mjs คำนวณจาก MIN ของทุกหัตถการ กันไม่ให้ยอดรวม
-// รายวันของวันหลังๆ ต่ำผิดจริงเพราะบางหัตถการยังไม่กรอกข้อมูล) — ใช้เตือนผู้ใช้เวลาช่วงที่เลือกเลยวันนี้ไป
-const FUNNEL_AUG_DAYS_WITH_DATA = FUNNEL_AUG_DATA.daysWithData;
 const FUNNEL_CLOSE_COUNTS_AUG = FUNNEL_AUG_DATA.closeCounts;
 
 // ============================================================
@@ -2222,10 +2219,14 @@ export default function AdsDashboard() {
   const hasJulyOverlap = dateRange.start <= "2026-07-31" && dateRange.end >= "2026-07-01";
   const hasAugustOverlap = dateRange.start <= "2026-08-31" && dateRange.end >= "2026-08-01";
   const hasFunnelCoverage = hasJuneOverlap || hasJulyOverlap || hasAugustOverlap;
+  // ใช้ funnelSourceForMonth() เดียวกับหน้า Ads/โฆษณา และหน้า Inbox & Bad Lead (แทนการอ่าน FUNNEL_DATA*.all
+  // ตรงๆ) เพื่อให้ Inbox ตัวนี้เป็นตัวเลขเดียวกันทุกหน้า — funnelSourceForMonth ทับ dailyInbox ของ Excel ด้วยข้อมูล
+  // สดจาก Facebook Marketing API (adDaily.json, ดูคอมเมนต์ที่ liveDailyForMonth) เมื่อมี ซึ่งตรงกับระบบจริงของทีม
+  // แบบ bit-for-bit (ยืนยันแล้ว) และมักครอบคลุมครบทุกวันมากกว่าไฟล์ Excel ที่กรอกมือช้ากว่าจริง 1-3 วัน
   const summaryInboxTotal =
-    sumDailyOverlap(dateRange, "2026-06-01", "2026-06-30", FUNNEL_DATA.all.dailyInbox) +
-    sumDailyOverlap(dateRange, "2026-07-01", "2026-07-31", FUNNEL_DATA_JUL.all.dailyInbox) +
-    sumDailyOverlap(dateRange, "2026-08-01", "2026-08-31", FUNNEL_DATA_AUG.all.dailyInbox);
+    sumDailyOverlap(dateRange, "2026-06-01", "2026-06-30", funnelSourceForMonth("jun").all.dailyInbox) +
+    sumDailyOverlap(dateRange, "2026-07-01", "2026-07-31", funnelSourceForMonth("jul").all.dailyInbox) +
+    sumDailyOverlap(dateRange, "2026-08-01", "2026-08-31", funnelSourceForMonth("aug").all.dailyInbox);
   // OR มีข้อมูลรายวันครอบคลุม มิ.ย.-ส.ค. เท่านั้น — ถ้าช่วงที่เลือกไม่ทับซ้อนเดือนใดเลย ให้ถือว่า "ไม่มีข้อมูล" ไม่ใช่ 0
   const summaryOrTotal = hasFunnelCoverage
     ? sumDailyOverlap(dateRange, "2026-06-01", "2026-06-30", FUNNEL_DATA.all.dailyOr) +
@@ -2234,9 +2235,12 @@ export default function AdsDashboard() {
     : null;
   // ถ้าช่วงที่เลือกยื่นออกไปนอก มิ.ย.-ส.ค. (หรือเกินวันที่ 23 ส.ค.) ตัวเลข OR ด้านบน (ถ้ามี) จะไม่รวมส่วนที่ยื่นออกไปนั้น
   const summaryOrMissingRange = dateRange.start < "2026-06-01" || dateRange.end > "2026-08-23";
-  // Inbox ของ ส.ค. มีข้อมูลจริงครบทุกหัตถการแค่ถึงวันที่ FUNNEL_AUG_DAYS_WITH_DATA (ดูคอมเมนต์ที่ตัวแปรนั้น) —
-  // ถ้าช่วงที่เลือกยื่นไปถึง ส.ค. เกินวันนั้น ตัวเลข Inbox รวมด้านล่างจะนับได้ไม่ครบทุกวันจริง ต้องเตือนผู้ใช้
-  const funnelAugCutoffDate = `2026-08-${String(FUNNEL_AUG_DAYS_WITH_DATA).padStart(2, "0")}`;
+  // Inbox ของ ส.ค. (จาก funnelSourceForMonth ด้านบน) มีข้อมูลจริงครบแค่ถึงวันที่ตามความยาว dailyInbox จริง — ปกติ
+  // เท่ากับ FUNNEL_AUG_DAYS_WITH_DATA (จากไฟล์ Excel) เว้นแต่มีข้อมูลสดจาก adDaily.json ซึ่งมักครอบคลุมมากกว่า
+  // (บางครั้งครบทั้งเดือน) จึงคำนวณความครอบคลุมจริงสดแทนใช้ค่าคงที่ตรงๆ — ถ้าช่วงที่เลือกยื่นไปถึง ส.ค. เกินวันนั้น
+  // ตัวเลข Inbox รวมด้านล่างจะนับได้ไม่ครบทุกวันจริง ต้องเตือนผู้ใช้
+  const summaryInboxAugCoverageDays = funnelSourceForMonth("aug").all.dailyInbox.length;
+  const funnelAugCutoffDate = `2026-08-${String(summaryInboxAugCoverageDays).padStart(2, "0")}`;
   const summaryInboxMissingRange = hasAugustOverlap && dateRange.end > funnelAugCutoffDate;
   // Bad Lead — คำนวณสดจาก BAD_LEAD_LEADS (Plus Connect) ตามช่วงวันที่ที่เลือกจริง เทียบ % กับ summaryInboxTotal
   // เดียวกับที่ใช้ทั้งหน้า (มีความหมายเฉพาะตอนช่วงที่เลือกทับซ้อน มิ.ย.-ส.ค. ที่มีข้อมูล Inbox รายวัน)
@@ -3416,7 +3420,7 @@ export default function AdsDashboard() {
             </div>
             <div className="bg-sky-50 rounded-xl p-3">
               <p className="text-[11px] text-sky-600 font-medium mb-0.5">
-                Inbox (Funnel){summaryInboxMissingRange ? ` · ข้อมูล ส.ค. ถึงวันที่ ${FUNNEL_AUG_DAYS_WITH_DATA} เท่านั้น` : ""}
+                Inbox (Funnel){summaryInboxMissingRange ? ` · ข้อมูล ส.ค. ถึงวันที่ ${summaryInboxAugCoverageDays} เท่านั้น` : ""}
               </p>
               <p className="text-base font-bold text-sky-700">{hasFunnelCoverage ? fmtTHB(summaryInboxTotal) : "—"}</p>
             </div>
