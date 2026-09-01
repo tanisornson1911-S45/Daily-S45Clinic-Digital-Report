@@ -108,11 +108,14 @@ const WORKBOOKS = [
     // (see main() below) skips whichever names don't exist without failing the whole pipeline.
     driveId: "b!xxDvakZnBUOmKljZWLuYZ9g177OXvLtHthxJClpsEqA5xrnAHB8PRI3WaLvrDur8",
     itemId: "01JXWUHPBPC7ZSQP2Z6FDJO4UQRWCH4AOI",
-    sheets: [
-      "Oct25", "Nov25", "Dec25",
-      "January26", "February26", "March26", "April26", "May26", "June26", "July26", "August26", "September26", "October26",
-      "Jan26", "Feb26", "Mar26", "Apr26", "May26", "Jun26", "Jul26", "Aug26", "Sep26", "Oct26",
-    ],
+    // A guessed name list doesn't work here — the real naming is inconsistent
+    // enough (confirmed: "January26" fails but "May26"/"June26"/"July26" work;
+    // "Aug26" AND "August26" both 404 even though the user pointed at
+    // "August26" as the current sheet) that guessing can silently miss the
+    // current month. Fetch the real worksheet list from Graph instead (see
+    // listWorksheetNames/"auto" handling in main()) so every sheet in the
+    // workbook is pulled regardless of its name.
+    sheets: "auto",
   },
   {
     key: "loa_broadcast",
@@ -160,6 +163,18 @@ async function getAccessToken() {
   return json.access_token;
 }
 
+async function listWorksheetNames(token, driveId, itemId) {
+  const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${itemId}/workbook/worksheets?$select=name,position`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(`Worksheet list fetch failed: ${json.error?.message || res.status}`);
+  }
+  return json.value.sort((a, b) => a.position - b.position).map((w) => w.name);
+}
+
 async function fetchSheetUsedRange(token, driveId, itemId, sheetName) {
   const encodedSheet = encodeURIComponent(sheetName);
   const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${itemId}/workbook/worksheets('${encodedSheet}')/usedRange(valuesOnly=true)`;
@@ -178,8 +193,13 @@ async function main() {
   const token = await getAccessToken();
 
   const workbooks = {};
-  for (const { key, driveId, itemId, sheets: sheetNames } of WORKBOOKS) {
+  for (const { key, driveId, itemId, sheets: sheetsSpec } of WORKBOOKS) {
     console.log(`Workbook "${key}":`);
+    let sheetNames = sheetsSpec;
+    if (sheetsSpec === "auto") {
+      sheetNames = await listWorksheetNames(token, driveId, itemId);
+      console.log(`  Real worksheet list: ${sheetNames.join(", ")}`);
+    }
     const sheets = {};
     for (const sheetName of sheetNames) {
       console.log(`  Fetching sheet "${sheetName}"...`);
