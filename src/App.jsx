@@ -3399,7 +3399,7 @@ export default function AdsDashboard() {
             </div>
             <div className="bg-amber-50 rounded-xl p-3">
               <p className="text-[11px] text-amber-600 font-medium mb-0.5">
-                ยอด OR จริง (Funnel){summaryOrTotal != null && summaryOrMissingRange ? " · ไม่รวมช่วงนอก มิ.ย.-ก.ค." : ""}
+                ยอด OR จริง (Funnel){summaryOrTotal != null && summaryOrMissingRange ? " · ไม่รวมช่วงนอก มิ.ย.-ส.ค. (ถึง 23 ส.ค.)" : ""}
               </p>
               <p className="text-base font-bold text-amber-700">{summaryOrTotal != null ? `฿${fmtTHB(summaryOrTotal)}` : "—"}</p>
             </div>
@@ -3431,7 +3431,7 @@ export default function AdsDashboard() {
 
           {/* Channel budget mix */}
           <p className="text-xs font-medium text-slate-500 mb-2">
-            สัดส่วนงบโฆษณาแยกตามช่องทาง (ทุกหัตถการรวมกัน) — <span className="font-semibold">ข้อมูลเดือนมิถุนายน 2569 เท่านั้น</span> (ยังไม่มีข้อมูลสัดส่วนช่องทางของเดือนอื่น)
+            สัดส่วนงบโฆษณาแยกตามช่องทาง (ทุกหัตถการรวมกัน) — <span className="font-semibold">ข้อมูลเดือนกรกฎาคม 2569 เท่านั้น</span> (ยังไม่มีไฟล์ "Budget Allocate" ของเดือนอื่นให้ดึงสด)
           </p>
           <div className="space-y-3 mb-3">
             {channelMixSorted.map((c) => {
@@ -3462,7 +3462,7 @@ export default function AdsDashboard() {
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
             <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <p>
-              สัดส่วนงบตามช่องทางอ้างอิงจากชีต "June26" (แถว Total ของ Facebook/Line Broadcast/Line Ads/Tiktok/Google) เท่านั้น — ยังไม่มีไฟล์เทียบเท่าของเดือนอื่น
+              สัดส่วนงบตามช่องทางอ้างอิงจากชีต "Budget Allocate July26" (แถว Total ของ Facebook/Line Broadcast/Line Ads/Tiktok/Google) เท่านั้น — ยังไม่มีไฟล์เทียบเท่าของเดือนอื่น
               ส่วนตัวเลขสรุปด้านบน (ยอดขาย/ค่าโฆษณา/ROAS/เคสมัดจำ) จะเปลี่ยนตามช่วงวันที่ที่เลือกจริง
             </p>
           </div>
