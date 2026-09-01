@@ -64,6 +64,7 @@ import AD_DAILY from "./data/adDaily.json";
 import DOCTOR_HERO_POSTS_DATA from "./data/doctorHeroPosts.json";
 import ANT_ARMY_POSTS_DATA from "./data/antArmyPosts.json";
 import BAD_LEAD_DATA from "./data/badLead.json";
+import INTER_SALE_DATA from "./data/interSale.json";
 const loaDataByMonth = LOA_DATA.months;
 const loaNormalDataByMonth = LOA_NORMAL_DATA.months;
 
@@ -345,15 +346,19 @@ const DOCTOR_TOTAL = DOCTOR_PROC.reduce(
 // deposit (ยอดมัดจำ) = Online Price + Medical check up Etc. (ไม่รวม Top up)
 // total (ยอด OR / Total) = คอลัมน์ Total ในไฟล์ต้นฉบับ
 // ============================================================
-// เดือนที่แสดงผลตอนนี้ผูกกับ Filter วันที่หลักของหน้า (ดู interMonthKey/interMonthDataKey ใน component)
-// ไม่มี Dropdown เดือนแยกอีกต่อไป — มีข้อมูลจริงแค่ มิ.ย./ก.ค. 2569 เท่านั้น (INTER_BY_DOCTOR_MONTH ด้านล่าง)
+// เดือนอื่นนอกจาก มิ.ย. คำนวณสดจาก INTER_SALE_DATA (src/data/interSale.json — สร้างอัตโนมัติทุกคืนโดย
+// scripts/build-inter.mjs จากไฟล์ "Inter S45 2026 - Sale part.xlsx" จริง) กรองตามช่วงวันที่ที่เลือกได้อิสระ
+// เหมือน RAW_TX แล้ว · มิ.ย. ยังคงใช้ INTER_BY_DOCTOR_MONTH.jun26 (พิมพ์มือ ยืนยันแล้ว) เพราะไฟล์ต้นฉบับไม่มีชีต
+// ของเดือนนี้ให้ดึงสด (ดูคอมเมนต์ใน build-inter.mjs)
 const INTER_PROC_LABELS = {
   nose_open: "Nose Open",
+  nose_semi: "Semi Open",
   breast: "Breast",
   endotine: "Endotine",
   etc: "ETC. (ดูดไขมันหน้า/ตัดกระพุ้งแก้ม)",
   brow_lift: "Brow Lift",
   lipo_face: "Lipo (Face)",
+  other: "อื่นๆ (Filler/Forehead/Eye/Fat transfer/Lips)",
 };
 const INTER_PROC_OPTIONS = [["all", "ทุกหัตถการ"], ...Object.entries(INTER_PROC_LABELS)];
 const INTER_DOCTOR_LABELS = {
@@ -366,6 +371,11 @@ const INTER_DOCTOR_LABELS = {
   ped: "หมอ Ped",
   terng: "หมอ Terng",
 };
+// เพิ่มโค้ดหมอใหม่ที่เจอในข้อมูลสดแต่ไม่มีในลิสต์ข้างบน (พิมพ์มือไว้แค่ 7 คนแรกจากยุค มิ.ย./ก.ค.) — ตั้งชื่อ
+// ป้ายแบบเดียวกัน "หมอ <CODE>" ไม่พยายามเดาว่าโค้ดไหนตรงกับหมอชื่อไทยคนไหนในระบบอื่น (ดูคอมเมนต์ build-inter.mjs)
+for (const [code, raw] of Object.entries(INTER_SALE_DATA.doctorLabels)) {
+  if (!(code in INTER_DOCTOR_LABELS)) INTER_DOCTOR_LABELS[code] = `หมอ ${raw}`;
+}
 const INTER_DOCTOR_OPTIONS = Object.entries(INTER_DOCTOR_LABELS);
 const INTER_BY_DOCTOR_MONTH = {
   jun26: {
@@ -384,22 +394,48 @@ const INTER_BY_DOCTOR_MONTH = {
     ped: [{ key: "etc", label: "ETC. (ดูดไขมันหน้า/ตัดกระพุ้งแก้ม)", cases: 1, deposit: 124960, total: 124960 }],
     terng: [{ key: "brow_lift", label: "Brow Lift", cases: 1, deposit: 100000, total: 100000 }],
   },
-  // ก.ค. 2026: 7 เคส (HN012410, 013091, 013166, 013033, 013031, 013304 + เคสเสริม Lipo Face ของหมอ Pek ที่ไม่มี HN แยกในไฟล์)
-  // ยอดรวมตรงกับแถว "รวม" ท้ายไฟล์เป๊ะ (Online 3,493,380 + Top up 701,450 + Medical check up 42,050 = Total 4,236,880)
-  jul26: {
-    all: [
-      { key: "nose_open", label: "Nose Open (OPEN RHINO)", cases: 6, deposit: 3530840, total: 4086820 },
-      { key: "lipo_face", label: "Lipo (Face)", cases: 1, deposit: 4590, total: 150060 },
-    ],
-    ty: [{ key: "nose_open", label: "Nose Open (OPEN RHINO)", cases: 5, deposit: 2983150, total: 3473150 }],
-    big: [{ key: "nose_open", label: "Nose Open (OPEN RHINO)", cases: 1, deposit: 547690, total: 613670 }],
-    pek: [{ key: "lipo_face", label: "Lipo (Face)", cases: 1, deposit: 4590, total: 150060 }],
-    norn: [],
-    boy: [],
-    ped: [],
-    terng: [],
-  },
+  // ก.ค. 2569 เอาออกแล้ว — เดี๋ยวนี้คำนวณสดจาก INTER_SALE_DATA (ยืนยันแล้วว่ายอดรวมตรงกับที่เคยพิมพ์มือไว้ที่นี่
+  // เป๊ะ: nose_open 6 เคส deposit 3,530,840/total 4,086,820 + lipo_face 1 เคส deposit 4,590/total 150,060)
 };
+
+// รวม case rows ของ Inter (จาก INTER_SALE_DATA.cases) ให้เป็น array แบบเดียวกับ INTER_BY_DOCTOR_MONTH เดิม
+// (จัดกลุ่มตามหัตถการ) — ใช้ทั้งกับ dateRange หลักและ compareRange (pure function เหมือน computeFbTotalsForRange)
+function interRowsFromCases(cases, doctorFilter) {
+  const filtered = doctorFilter === "all" ? cases : cases.filter((c) => c.doctor === doctorFilter);
+  const byProc = new Map();
+  for (const c of filtered) {
+    const e = byProc.get(c.proc) || { key: c.proc, label: INTER_PROC_LABELS[c.proc] || c.proc, cases: 0, deposit: 0, total: 0 };
+    e.cases += 1;
+    e.deposit += c.deposit;
+    e.total += c.total;
+    byProc.set(c.proc, e);
+  }
+  return [...byProc.values()];
+}
+function mergeInterRows(a, b) {
+  const byProc = new Map();
+  for (const r of [...a, ...b]) {
+    const e = byProc.get(r.key) || { key: r.key, label: r.label, cases: 0, deposit: 0, total: 0 };
+    e.cases += r.cases;
+    e.deposit += r.deposit;
+    e.total += r.total;
+    byProc.set(r.key, e);
+  }
+  return [...byProc.values()];
+}
+// ช่วงที่เลือกไม่ว่าจะเป็นอะไรก็ตาม ดึงเคสสด (Jan/Feb/Mar/Apr/May/Jul/Aug) ที่ตรงเงื่อนไขมาก่อน แล้วถ้าช่วงนั้น
+// ครอบคลุมทั้งเดือน มิ.ย. เต็มเดือนพอดี ค่อยรวมยอด มิ.ย. แบบพิมพ์มือ (INTER_BY_DOCTOR_MONTH.jun26) เข้าไปด้วย —
+// ไม่มีความเสี่ยงนับซ้ำเพราะ INTER_SALE_DATA ไม่มีเคสเดือน มิ.ย. อยู่แล้ว (ไม่มีชีตต้นฉบับ)
+function computeInterRowsForRange(range, doctorFilter) {
+  const liveCases = INTER_SALE_DATA.cases.filter((c) => c.d >= range.start && c.d <= range.end);
+  let rows = interRowsFromCases(liveCases, doctorFilter);
+  const juneFullyIncluded = range.start <= "2026-06-01" && range.end >= "2026-06-30";
+  if (juneFullyIncluded) {
+    const juneRows = INTER_BY_DOCTOR_MONTH.jun26?.[doctorFilter] || [];
+    rows = mergeInterRows(rows, juneRows);
+  }
+  return rows;
+}
 
 // ============================================================
 // SOURCE 4 — Ads → Inbox → Sales funnel รายวัน มิ.ย. 2026 แยกตามหัตถการ
@@ -1764,32 +1800,25 @@ export default function AdsDashboard() {
   const INBOX_DAILY_TARGET_ALL = Object.values(INBOX_DAILY_TARGET).reduce((s, v) => s + v, 0); // รวมทุกหัตถการ รวม Inter แล้ว
   const inboxDailyOptions = Object.entries(FUNNEL_DATA).map(([k, v]) => [k, v.label]);
   const heroCaseOptions = Object.entries(DOCTOR_HERO_POSTS).map(([k, v]) => [k, v.label]);
-  // Inter แยกตามหมอ — ผูกกับ Filter วันที่หลักด้านบน (activeMonthKey) แทน Dropdown เดือนแยกเดิม (มีข้อมูลแค่
-  // มิ.ย./ก.ค. 2569 เท่านั้น) · interProcFilter กรองตารางที่ปกติแสดงทุกหัตถการของหมอคนนั้นให้เหลือหัตถการเดียว
-  const interMonthKey = activeMonthKey === "jun" || activeMonthKey === "jul" ? activeMonthKey : null;
-  const interMonthDataKey = interMonthKey === "jun" ? "jun26" : interMonthKey === "jul" ? "jul26" : null;
-  const interDoctorRowsAll = interMonthDataKey ? INTER_BY_DOCTOR_MONTH[interMonthDataKey]?.[interDoctorFilter] || [] : [];
+  // Inter แยกตามหมอ — คำนวณสดจาก INTER_SALE_DATA ตามช่วงวันที่ที่เลือกจริง (เหมือน RAW_TX แล้ว ไม่ล็อกแค่ มิ.ย./
+  // ก.ค. อีกต่อไป) รวม มิ.ย. แบบยอดพิมพ์มือเข้าไปเมื่อช่วงที่เลือกครอบคลุมทั้งเดือนนั้นเต็มเดือน (ดู
+  // computeInterRowsForRange) · interProcFilter กรองตารางที่ปกติแสดงทุกหัตถการของหมอคนนั้นให้เหลือหัตถการเดียว
+  const interDoctorRowsAll = computeInterRowsForRange(dateRange, interDoctorFilter);
   const interDoctorRows = interProcFilter === "all" ? interDoctorRowsAll : interDoctorRowsAll.filter((r) => r.key === interProcFilter);
   const interDoctorTotal = interDoctorRows.reduce(
     (acc, r) => ({ cases: acc.cases + r.cases, deposit: acc.deposit + r.deposit, total: acc.total + r.total }),
     { cases: 0, deposit: 0, total: 0 }
   );
-  // % เทียบกับ compareRange (การ์ดสรุป "Inter แยกตามหมอ + หัตถการ") — Inter มีข้อมูลแค่ยอดรวมทั้งเดือน มิ.ย./ก.ค.
-  // เท่านั้น (ไม่มีรายวัน) จึงเทียบได้เฉพาะตอน compareRange ตกอยู่ในเดือนใดเดือนหนึ่งใน 2 เดือนนี้พอดี
-  const interCompareMonthKey = (() => {
-    const k = monthKeyFromRange(compareRange);
-    return k === "jun" || k === "jul" ? k : null;
-  })();
-  const interCompareDataKey = interCompareMonthKey === "jun" ? "jun26" : interCompareMonthKey === "jul" ? "jul26" : null;
-  const interCompareRowsAll = interCompareDataKey ? INTER_BY_DOCTOR_MONTH[interCompareDataKey]?.[interDoctorFilter] || [] : [];
+  // % เทียบกับ compareRange (การ์ดสรุป "Inter แยกตามหมอ + หัตถการ") — คำนวณสดแบบเดียวกันทั้งสองช่วงแล้ว
+  const interCompareRowsAll = computeInterRowsForRange(compareRange, interDoctorFilter);
   const interCompareRows = interProcFilter === "all" ? interCompareRowsAll : interCompareRowsAll.filter((r) => r.key === interProcFilter);
   const interCompareTotal = interCompareRows.reduce(
     (acc, r) => ({ cases: acc.cases + r.cases, deposit: acc.deposit + r.deposit, total: acc.total + r.total }),
     { cases: 0, deposit: 0, total: 0 }
   );
-  const interCasesMoM = compareEnabled && interCompareDataKey ? pctDelta(interDoctorTotal.cases, interCompareTotal.cases) : null;
-  const interDepositMoM = compareEnabled && interCompareDataKey ? pctDelta(interDoctorTotal.deposit, interCompareTotal.deposit) : null;
-  const interTotalMoM = compareEnabled && interCompareDataKey ? pctDelta(interDoctorTotal.total, interCompareTotal.total) : null;
+  const interCasesMoM = compareEnabled ? pctDelta(interDoctorTotal.cases, interCompareTotal.cases) : null;
+  const interDepositMoM = compareEnabled ? pctDelta(interDoctorTotal.deposit, interCompareTotal.deposit) : null;
+  const interTotalMoM = compareEnabled ? pctDelta(interDoctorTotal.total, interCompareTotal.total) : null;
   const selectedHeroDoctor = DOCTOR_HERO_POSTS[heroCaseFilter];
   const antArmyProcOptions = [["all", "ทุกหัตถการ"], ...Object.entries(ANT_ARMY_POSTS).map(([k, v]) => [k, v.label])];
   // "ทุกหัตถการ" รวมโพสต์จากทุกหมวดแล้ว dedupe ด้วย postId (โพสต์เดียวอาจเข้าได้หลายหัตถการ) กรองด้วย
@@ -2494,8 +2523,7 @@ export default function AdsDashboard() {
             </div>
           </div>
           <p className="text-xs text-slate-400 mb-4 ml-10">
-            จากไฟล์ Inter Sale เดือน{interMonthKey === "jul" ? "กรกฎาคม (ถึง 29/7) 2569" : interMonthKey === "jun" ? "มิถุนายน 2569" : "— ไม่มีข้อมูลสำหรับช่วงวันที่นี้"}{" "}
-            · {INTER_DOCTOR_LABELS[interDoctorFilter]} · รวม {interDoctorTotal.cases} เคส
+            จากไฟล์ Inter Sale ช่วง {rangeLabel} · {INTER_DOCTOR_LABELS[interDoctorFilter]} · รวม {interDoctorTotal.cases} เคส
           </p>
 
           <div className="grid grid-cols-3 gap-3 mb-5">
@@ -2527,9 +2555,7 @@ export default function AdsDashboard() {
 
           {interDoctorRows.length === 0 ? (
             <p className="text-sm text-slate-400 py-4 text-center">
-              {interMonthKey == null
-                ? "ไม่มีข้อมูล Inter สำหรับช่วงวันที่ที่เลือก (มีข้อมูลเฉพาะ มิ.ย.–ก.ค. 2569) — เปลี่ยนช่วงวันที่ด้านบนเพื่อดูข้อมูล"
-                : "ไม่มีเคสของหมอคนนี้ (ตามหัตถการที่เลือก) ในเดือนนี้"}
+              ไม่มีเคส Inter ของหมอ/หัตถการที่เลือกในช่วงวันที่นี้ — ลองเปลี่ยนตัวกรองหรือขยายช่วงวันที่ดู
             </p>
           ) : (
             <div className="overflow-x-auto">
