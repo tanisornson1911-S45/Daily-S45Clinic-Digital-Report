@@ -81,22 +81,6 @@ const WORKBOOKS = [
     sheets: ["ม.ค.69", "ก.พ.69", "มี.ค.69", "เม.ย.69", "พ.ค.69", "มิ.ย.69", "ก.ค.69", "ส.ค.69"],
   },
   {
-    key: "bad_lead_plus_connect",
-    // "Bad Lead [Plus Connect].xlsx" — personal/digital_mkt_s45clinic_com/Documents/ (2026-08-31)
-    // Live export from Plus Connect (the team's chat/CRM tool) of every contact marked with the
-    // "คุณสมบัติไม่ครบ" tag (= how the Digital team flags a Bad Lead per the process in App.jsx's
-    // "แผนการดำเนินงานของ Digital ต่อการลดจำนวน Bad Lead" section) — one row per lead, with a real
-    // created_at timestamp and a free-form tags column (junk/spam marker, procedure/campaign hints,
-    // plus some auto-added calendar-component tags like "2026"/"Aug"/day numbers that
-    // scripts/build-bad-lead.mjs filters out). Replaces the old hand-curated 159-chat/July-only
-    // static sample. Row also carries PII (name/phone/email/profile picture/social links) that
-    // build-bad-lead.mjs deliberately drops — only non-identifying fields (date, platform, channel,
-    // tags, assignee) make it into src/data/badLead.json.
-    driveId: "b!xxDvakZnBUOmKljZWLuYZ9g177OXvLtHthxJClpsEqA5xrnAHB8PRI3WaLvrDur8",
-    itemId: "01JXWUHPFW5KXNXGMQU5HLR4MIKMX74OWJ",
-    sheets: ["Sheet1"],
-  },
-  {
     key: "loa_broadcast",
     // "S45 - ยอดบลอดแคส LINE OA After Care.xlsx" — personal/digital_mkt_s45clinic_com/Documents/ (2026-08-25)
     // Daily LINE OA broadcast reach per procedure category, one "LOA- <month>" sheet per
@@ -121,6 +105,94 @@ const WORKBOOKS = [
     ],
   },
 ];
+
+// ไฟล์ CSV ธรรมดา (ไม่ใช่ Excel workbook) — ดึงผ่าน Graph "/content" (โหลดไฟล์ดิบ) แทน
+// "/workbook/worksheets" ที่ใช้กับ WORKBOOKS ด้านบน แล้ว parse เป็น 2D array รูปแบบเดียวกับที่ sheet
+// จาก Excel คืนมา (row 0 = header) เพื่อให้ build script ฝั่งปลายทางใช้ร่วมกับโค้ดเดิมได้โดยไม่ต้องแก้เยอะ
+const CSV_SOURCES = [
+  {
+    key: "lead_plus_connect",
+    // "[Lead] Plus Connect.csv" — personal/digital_mkt_s45clinic_com/Documents/ (2026-09-02)
+    // Export "Contacts" เต็มจาก Plus Connect (ทุก contact บนเพจ ไม่ใช่แค่ที่ติดแท็ก Bad Lead) — แทนที่
+    // "Bad Lead [Plus Connect].xlsx" เดิมซึ่งพบว่าเป็นไฟล์ที่กรองมาแล้วและตกหล่นบางแถว ผู้ใช้ยืนยันให้ใช้ไฟล์นี้
+    // แทน — scripts/build-bad-lead.mjs กรองเหลือเฉพาะแถวที่ติดแท็ก "คุณสมบัติไม่ครบ" เอง (เหมือนที่
+    // scripts/import-bad-lead-csv.mjs ทำกับไฟล์ CSV ตัวอย่างที่ผู้ใช้ส่งมาก่อนหน้านี้) คอลัมน์เดียวกันทุก
+    // ประการกับไฟล์เดิม (created_at, platform, channel_name, tags, assignees, blocked, ฯลฯ) บวกคอลัมน์ PII
+    // ที่ build-bad-lead.mjs ทิ้งอยู่แล้วเหมือนเดิม
+    driveId: "b!xxDvakZnBUOmKljZWLuYZ9g177OXvLtHthxJClpsEqA5xrnAHB8PRI3WaLvrDur8",
+    itemId: "01JXWUHPB7EVK3IYCQMZD3VSCB562DMNRD",
+    sheetLabel: "Sheet1", // ชื่อ virtual "sheet" ให้ตรงกับที่ workbooks.bad_lead_plus_connect.Sheet1 เคยใช้
+  },
+];
+
+// RFC4180-ish CSV parser (รองรับฟิลด์ quoted ที่มี comma/quote/newline ข้างในได้ — คอลัมน์ "contactslink"/
+// "page_configs" ของไฟล์นี้เป็น JSON ที่มี comma อยู่ในเครื่องหมายคำพูด ถ้า split(",") ตรงๆ แถวจะพังหมด)
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+  let i = 0;
+  const n = text.length;
+  while (i < n) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i += 2;
+          continue;
+        }
+        inQuotes = false;
+        i++;
+        continue;
+      }
+      field += c;
+      i++;
+      continue;
+    }
+    if (c === '"') {
+      inQuotes = true;
+      i++;
+      continue;
+    }
+    if (c === ",") {
+      row.push(field);
+      field = "";
+      i++;
+      continue;
+    }
+    if (c === "\r") {
+      i++;
+      continue;
+    }
+    if (c === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+      i++;
+      continue;
+    }
+    field += c;
+    i++;
+  }
+  if (field !== "" || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows;
+}
+
+async function fetchCsvFileAsRows(token, driveId, itemId) {
+  const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${itemId}/content`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) {
+    throw new Error(`CSV content fetch failed: ${res.status} ${await res.text()}`);
+  }
+  const text = (await res.text()).replace(/^﻿/, ""); // strip BOM
+  return parseCsv(text);
+}
 
 async function getAccessToken() {
   const url = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`;
@@ -194,6 +266,17 @@ async function main() {
       }
     }
     workbooks[key] = sheets;
+  }
+
+  for (const { key, driveId, itemId, sheetLabel } of CSV_SOURCES) {
+    console.log(`CSV "${key}":`);
+    try {
+      const values = await fetchCsvFileAsRows(token, driveId, itemId);
+      workbooks[key] = { [sheetLabel]: values };
+      console.log(`  ${values.length} rows`);
+    } catch (err) {
+      console.warn(`  ! Skipping "${key}": ${err.message}`);
+    }
   }
 
   const outDir = path.resolve("src/data");

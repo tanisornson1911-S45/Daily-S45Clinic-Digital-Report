@@ -2290,9 +2290,18 @@ export default function AdsDashboard() {
   // เดียวกับที่ใช้ทั้งหน้า (มีความหมายเฉพาะตอนช่วงที่เลือกทับซ้อน มิ.ย.-ส.ค. ที่มีข้อมูล Inbox รายวัน) · badLeadTagFilter
   // กรองซ้ำอีกชั้นด้วยแท็กที่เลือกจาก Dropdown (ทั้งสอง filter ทำงานร่วมกัน — เปลี่ยนช่วงวันที่หรือแท็กก็อัพเดตทันที)
   const badLeadAllTagsTally = tallyBy(BAD_LEAD_LEADS.flatMap((l) => l.tags), (t) => t); // ทุกแท็กที่เคยเกิดขึ้น (ไม่จำกัดช่วงวันที่) ใช้ทำตัวเลือกใน Dropdown ให้รายการคงที่
-  const badLeadTagOptions = [["all", `ทุกแท็ก (${badLeadAllTagsTally.reduce((s, [, c]) => s + c, 0)})`], ...badLeadAllTagsTally.map(([tag, count]) => [tag, `${tag} (${count})`])];
+  const badLeadNoTagCount = BAD_LEAD_LEADS.filter((l) => l.tags.length === 0).length; // แชทที่ไม่เคยติดแท็กอะไรเลยนอกจากแท็กปี/เดือน/วันอัตโนมัติ
+  const BAD_LEAD_NO_TAG = "__no_tag__";
+  const badLeadTagOptions = [
+    ["all", `ทุกแท็ก (${badLeadAllTagsTally.reduce((s, [, c]) => s + c, 0)})`],
+    [BAD_LEAD_NO_TAG, `ไม่มีแท็ก (${badLeadNoTagCount})`],
+    ...badLeadAllTagsTally.map(([tag, count]) => [tag, `${tag} (${count})`]),
+  ];
   const badLeadInRange = BAD_LEAD_LEADS.filter(
-    (l) => l.d >= dateRange.start && l.d <= dateRange.end && (badLeadTagFilter === "all" || l.tags.includes(badLeadTagFilter))
+    (l) =>
+      l.d >= dateRange.start &&
+      l.d <= dateRange.end &&
+      (badLeadTagFilter === "all" || (badLeadTagFilter === BAD_LEAD_NO_TAG ? l.tags.length === 0 : l.tags.includes(badLeadTagFilter)))
   );
   const badLeadTotal = badLeadInRange.length;
   const badLeadJunkCount = badLeadInRange.filter((l) => l.junk).length;
@@ -4208,7 +4217,7 @@ export default function AdsDashboard() {
 
           {badLeadTotal === 0 ? (
             <p className="text-sm text-slate-400 py-8 text-center">
-              ไม่มี Bad Lead {badLeadTagFilter !== "all" ? `แท็ก "${badLeadTagFilter}" ` : ""}ในช่วงวันที่เลือก
+              ไม่มี Bad Lead {badLeadTagFilter === BAD_LEAD_NO_TAG ? "ที่ไม่มีแท็ก " : badLeadTagFilter !== "all" ? `แท็ก "${badLeadTagFilter}" ` : ""}ในช่วงวันที่เลือก
             </p>
           ) : (
           <div className="grid sm:grid-cols-2 gap-4">
