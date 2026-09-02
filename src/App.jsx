@@ -4626,33 +4626,37 @@ export default function AdsDashboard() {
         </div>
 )}
 
-        {/* ---- NEW: แผนเพิ่มเติม Nose Open หมอจิ๊จ๊ะ ---- */}
+        {/* ---- NEW: แผนเพิ่มเติม Digital Team ---- */}
 {activePage === "ads" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center">
               <Megaphone size={16} />
             </div>
-            <h2 className="text-sm font-semibold text-slate-700">แผนเพิ่มเติม Nose Open หมอจิ๊จ๊ะ</h2>
+            <h2 className="text-sm font-semibold text-slate-700">แผนเพิ่มเติม Digital Team</h2>
           </div>
-          <p className="text-xs text-slate-400 mb-5 ml-10">Funnel Ads ใหม่ทั้งหมดสำหรับคุณหมอจิ๊จ๊ะ — สิงหาคม 2026</p>
+          <p className="text-xs text-slate-400 mb-5 ml-10">
+            ทีม Digital มีการวางแผนเรื่องการทำ Ads เพื่อแก้ไขสถานการณ์ที่เกิดขึ้น หาก Ads เริ่มรันช้า หรือต้องการดันเคสของคุณหมอท่านไหน หรือหัตถการไหน
+          </p>
 
           <div className="rounded-xl border border-pink-100 bg-pink-50/50 p-4">
-            <ul className="space-y-1.5 text-sm text-slate-600 list-disc list-inside">
+            <ul className="space-y-2 text-sm text-slate-600 list-disc list-inside">
               <li>
-                ทำ <span className="font-semibold">Funnel Ads ใหม่ทั้งหมด</span> ของหมอจิ๊จ๊ะ โดยเริ่มจาก{" "}
-                <span className="font-semibold">Engagement Post</span> เพื่อดึงให้คนเข้าถึงราคา{" "}
-                <span className="font-semibold text-pink-600">79,000 บาท</span> เนื่องจากยังไม่มีคนรู้จักราคานี้
+                จัดสรรงบประมาณเพื่อแยก Ads ออกเป็น <span className="font-semibold">Objective หลายตัว</span> โดยใช้ Creative ตัวเดียวกัน เช่น Sale,
+                Engage, Awareness เพื่อให้การเข้าถึงโพสต์และความถี่ของโพสต์ที่แสดงมีสูงขึ้น
               </li>
               <li>
-                นำ Creative ของคุณหมอจิ๊จ๊ะที่เป็น <span className="font-semibold">Vlog</span> และ{" "}
-                <span className="font-semibold">เปิดตัวหมอ</span> เข้ามาทำ Engagement เพิ่ม
+                ทีม Digital มีการเพิ่มเติมแผนของ Ads ด้านการ <span className="font-semibold">Re-new ใหม่</span> หากหลังจากการ Re-new แล้วราคาต่อ CPR
+                ยังสูง จะมีการพิจารณาเลือก Creative ของหมอท่านนั้นๆหรือหัตถการนั้นๆ ตาม Funnel TOF, MOF, BOF แล้วนำมาปล่อยใหม่แทนทันที
               </li>
               <li>
-                ทำ Engagement Post ของ <span className="font-semibold">Dark Post Ads</span> ราคา 79,000 บาท
+                วาง <span className="font-semibold">Funnel การทำ Ads ทุกรูปแบบใหม่</span> ตั้งแต่ TOF, MOF, BOF โดยเริ่มที่ MOF ในรูปแบบภาพรีวิว B/A
+                เพื่อให้คนเห็นเคสของคุณหมอท่านนั้นๆ หรือหัตถการนั้นๆ ก่อน แล้วค่อยแทรก TOF เกี่ยวกับตัวตนของหมอ Vlog แนวคิด แนะนำตัว
+                หรือภาพรวมของคุณหมอ หรือหัตถการนั้นๆ
               </li>
               <li>
-                ปล่อยอัดโพสต์เคสเด่นของคุณหมอจิ๊จ๊ะเพิ่ม พร้อม <span className="font-semibold">Ads Messenger</span>
+                และเมื่อสถานการณ์ถึงวิกฤต จะมีการแก้ไขด้วย Ads ที่ใช้กลุ่มกว้าง + <span className="font-semibold">Exclude Bad Lead</span> และ
+                Engage Page ออกทั้งหมด เพื่อให้ Ads รันเข้าไปทุกกลุ่มความสนใจโดยไม่เจาะจง
               </li>
             </ul>
           </div>
