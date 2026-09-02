@@ -1086,7 +1086,7 @@ const NAV_ITEMS = [
   { key: "sales", label: "ยอดขาย", icon: TrendingUp },
   { key: "doctors", label: "หมอ", icon: Stethoscope },
   { key: "ads", label: "Ads / โฆษณา", icon: Megaphone },
-  { key: "inbox", label: "Inbox & Bad Lead", icon: MessageCircle },
+  { key: "inbox", label: "Inbox & Lead", icon: MessageCircle },
 ];
 
 function Sidebar({ activePage, setActivePage, mobileOpen, setMobileOpen, collapsed, setCollapsed }) {
@@ -1529,7 +1529,7 @@ export default function AdsDashboard() {
     return result;
   })();
 
-  // เดือนที่ใช้แสดงผลทั้งหน้า Ads/โฆษณา และหน้า Inbox & Bad Lead มาจาก Filter วันที่หลักด้านบนโดยตรง
+  // เดือนที่ใช้แสดงผลทั้งหน้า Ads/โฆษณา และหน้า Inbox & Lead มาจาก Filter วันที่หลักด้านบนโดยตรง
   // ไม่มี Dropdown เดือนแยกของแต่ละหน้าอีกต่อไป — เลือกเดือนจากปลายช่วงวันที่ก่อน ถ้าปลายไม่อยู่ใน 3
   // เดือนที่มีข้อมูล (มิ.ย.-ส.ค. 2569) ลองต้นช่วงแทน ถ้ายังไม่เจอถือว่าไม่มีข้อมูลสำหรับช่วงที่เลือก
   const monthKeyFromRange = (range) => {
@@ -1616,7 +1616,7 @@ export default function AdsDashboard() {
   // (ads/inbox = null) แทนที่จะหายไปจากแกนจนกราฟดูเหมือนแสดงผลไม่ครบ
   const funnelChartData = funnelDailyPoints;
 
-  // ระยะเวลาปิด OR สำหรับ "หน้า Inbox & Bad Lead" — ใช้ activeLeadTime ที่คำนวณสดจาก txInRange อยู่แล้ว
+  // ระยะเวลาปิด OR สำหรับ "หน้า Inbox & Lead" — ใช้ activeLeadTime ที่คำนวณสดจาก txInRange อยู่แล้ว
   // (กรองตามช่วงวันที่ Filter หลักด้านบนจริง ไม่ผูกกับ มิ.ย.-ส.ค.เท่านั้น เพราะ RAW_TX มีข้อมูลย้อนไปถึง ม.ค. 2569)
   const funnelLeadTime = activeLeadTime;
 
@@ -2263,7 +2263,7 @@ export default function AdsDashboard() {
   const hasJulyOverlap = dateRange.start <= "2026-07-31" && dateRange.end >= "2026-07-01";
   const hasAugustOverlap = dateRange.start <= "2026-08-31" && dateRange.end >= "2026-08-01";
   const hasFunnelCoverage = hasJuneOverlap || hasJulyOverlap || hasAugustOverlap;
-  // ใช้ funnelSourceForMonth() เดียวกับหน้า Ads/โฆษณา และหน้า Inbox & Bad Lead (แทนการอ่าน FUNNEL_DATA*.all
+  // ใช้ funnelSourceForMonth() เดียวกับหน้า Ads/โฆษณา และหน้า Inbox & Lead (แทนการอ่าน FUNNEL_DATA*.all
   // ตรงๆ) เพื่อให้ Inbox ตัวนี้เป็นตัวเลขเดียวกันทุกหน้า — funnelSourceForMonth ทับ dailyInbox ของ Excel ด้วยข้อมูล
   // สดจาก Facebook Marketing API (adDaily.json, ดูคอมเมนต์ที่ liveDailyForMonth) เมื่อมี ซึ่งตรงกับระบบจริงของทีม
   // แบบ bit-for-bit (ยืนยันแล้ว) และมักครอบคลุมครบทุกวันมากกว่าไฟล์ Excel ที่กรอกมือช้ากว่าจริง 1-3 วัน
