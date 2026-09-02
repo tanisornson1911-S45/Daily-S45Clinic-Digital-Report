@@ -40,6 +40,7 @@ import {
   ChevronRight,
   ArrowUp,
   ArrowDown,
+  Tag,
 } from "lucide-react";
 import {
   BarChart,
@@ -1427,6 +1428,7 @@ export default function AdsDashboard() {
   const [antArmyProcFilter, setAntArmyProcFilter] = useState("all");
   const [antArmyVisibleCount, setAntArmyVisibleCount] = useState(ANT_ARMY_PAGE_SIZE);
   const [interDoctorFilter, setInterDoctorFilter] = useState("all");
+  const [badLeadTagFilter, setBadLeadTagFilter] = useState("all");
   const [interProcFilter, setInterProcFilter] = useState("all");
   // ดูคอมเมนต์ที่ defaultDateRanges() ด้านบน — ปกติเป็น "เดือนนี้" เสมอ ยกเว้นตอนเพิ่งขึ้นเดือนใหม่แล้ว RAW_TX
   // ยังไม่มีข้อมูลเลยจะ fallback ไปเดือนที่แล้วชั่วคราว
@@ -2285,12 +2287,17 @@ export default function AdsDashboard() {
   const funnelAugCutoffDate = `2026-08-${String(summaryInboxAugCoverageDays).padStart(2, "0")}`;
   const summaryInboxMissingRange = hasAugustOverlap && dateRange.end > funnelAugCutoffDate;
   // Bad Lead — คำนวณสดจาก BAD_LEAD_LEADS (Plus Connect) ตามช่วงวันที่ที่เลือกจริง เทียบ % กับ summaryInboxTotal
-  // เดียวกับที่ใช้ทั้งหน้า (มีความหมายเฉพาะตอนช่วงที่เลือกทับซ้อน มิ.ย.-ส.ค. ที่มีข้อมูล Inbox รายวัน)
-  const badLeadInRange = BAD_LEAD_LEADS.filter((l) => l.d >= dateRange.start && l.d <= dateRange.end);
+  // เดียวกับที่ใช้ทั้งหน้า (มีความหมายเฉพาะตอนช่วงที่เลือกทับซ้อน มิ.ย.-ส.ค. ที่มีข้อมูล Inbox รายวัน) · badLeadTagFilter
+  // กรองซ้ำอีกชั้นด้วยแท็กที่เลือกจาก Dropdown (ทั้งสอง filter ทำงานร่วมกัน — เปลี่ยนช่วงวันที่หรือแท็กก็อัพเดตทันที)
+  const badLeadAllTagsTally = tallyBy(BAD_LEAD_LEADS.flatMap((l) => l.tags), (t) => t); // ทุกแท็กที่เคยเกิดขึ้น (ไม่จำกัดช่วงวันที่) ใช้ทำตัวเลือกใน Dropdown ให้รายการคงที่
+  const badLeadTagOptions = [["all", `ทุกแท็ก (${badLeadAllTagsTally.reduce((s, [, c]) => s + c, 0)})`], ...badLeadAllTagsTally.map(([tag, count]) => [tag, `${tag} (${count})`])];
+  const badLeadInRange = BAD_LEAD_LEADS.filter(
+    (l) => l.d >= dateRange.start && l.d <= dateRange.end && (badLeadTagFilter === "all" || l.tags.includes(badLeadTagFilter))
+  );
   const badLeadTotal = badLeadInRange.length;
   const badLeadJunkCount = badLeadInRange.filter((l) => l.junk).length;
   const badLeadPct = hasFunnelCoverage && summaryInboxTotal > 0 ? (badLeadTotal / summaryInboxTotal) * 100 : null;
-  const badLeadTagTally = tallyBy(badLeadInRange.flatMap((l) => l.tags), (t) => t).slice(0, 8);
+  const badLeadTagTally = tallyBy(badLeadInRange.flatMap((l) => l.tags), (t) => t); // แสดงครบทุกแท็กที่เกิดขึ้นจริงในช่วง+ตัวกรองที่เลือก ไม่ตัดเหลือ 8 อันเหมือนเดิม
   const badLeadPlatformTally = tallyBy(
     badLeadInRange,
     (l) => (l.platform === "FACEBOOKFANPAGE" ? "Facebook" : l.platform === "INSTAGRAM" ? "Instagram" : l.platform || "ไม่ระบุ")
@@ -4161,13 +4168,19 @@ export default function AdsDashboard() {
         {/* ---- NEW: Bad Lead รวมทุกหัตถการ — คำนวณสดจาก Plus Connect ---- */}
 {activePage === "inbox" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
-              <XCircle size={16} />
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+                <XCircle size={16} />
+              </div>
+              <h2 className="text-sm font-semibold text-slate-700">Bad Lead (แชทคุณสมบัติไม่ครบ) รวมทุกหัตถการ — {rangeLabel}</h2>
             </div>
-            <h2 className="text-sm font-semibold text-slate-700">Bad Lead (แชทคุณสมบัติไม่ครบ) รวมทุกหัตถการ — {rangeLabel}</h2>
+            <Select icon={Tag} value={badLeadTagFilter} onChange={setBadLeadTagFilter} options={badLeadTagOptions} />
           </div>
-          <p className="text-xs text-slate-400 mb-5 ml-10">รวมทุกหัตถการ ไม่แยกตามหัตถการ (ไฟล์ต้นฉบับไม่ได้ระบุหัตถการต่อแชท)</p>
+          <p className="text-xs text-slate-400 mb-5 ml-10">
+            รวมทุกหัตถการ ไม่แยกตามหัตถการ (ไฟล์ต้นฉบับไม่ได้ระบุหัตถการต่อแชท) — กรองได้ทั้งตามแท็ก (Dropdown ด้านบน) และช่วงวันที่ (Filter บนสุดของแดชบอร์ด)
+            พร้อมกัน
+          </p>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
             <div className="bg-rose-50 rounded-xl p-3">
@@ -4194,15 +4207,19 @@ export default function AdsDashboard() {
           </div>
 
           {badLeadTotal === 0 ? (
-            <p className="text-sm text-slate-400 py-8 text-center">ไม่มี Bad Lead ในช่วงวันที่เลือก</p>
+            <p className="text-sm text-slate-400 py-8 text-center">
+              ไม่มี Bad Lead {badLeadTagFilter !== "all" ? `แท็ก "${badLeadTagFilter}" ` : ""}ในช่วงวันที่เลือก
+            </p>
           ) : (
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="rounded-xl border border-slate-100 p-4">
-              <h3 className="text-sm font-semibold text-slate-700 mb-2">แท็กที่พบบ่อย (นอกเหนือจากแท็กปี/เดือน/วัน)</h3>
+              <h3 className="text-sm font-semibold text-slate-700 mb-2">
+                แท็กที่พบทั้งหมด (นอกเหนือจากแท็กปี/เดือน/วัน) — {badLeadTagTally.length} แท็ก
+              </h3>
               {badLeadTagTally.length === 0 ? (
                 <p className="text-sm text-slate-400">ไม่มีแท็กเพิ่มเติมนอกจาก "คุณสมบัติไม่ครบ" ในช่วงนี้</p>
               ) : (
-                <ul className="space-y-1.5">
+                <ul className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
                   {badLeadTagTally.map(([tag, count]) => (
                     <li key={tag} className="flex items-center justify-between text-sm">
                       <span className="text-slate-600 truncate mr-2">{tag}</span>
