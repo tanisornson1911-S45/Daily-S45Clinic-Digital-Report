@@ -2313,7 +2313,9 @@ export default function AdsDashboard() {
     badLeadInRange,
     (l) => (l.platform === "FACEBOOKFANPAGE" ? "Facebook" : l.platform === "INSTAGRAM" ? "Instagram" : l.platform || "ไม่ระบุ")
   );
-  const badLeadAssigneeTally = tallyBy(badLeadInRange, (l) => l.assignee || "ยังไม่มอบหมาย").slice(0, 6);
+  // ไม่ตัดเหลือ 6 อันแรกเหมือนเดิม — ตอนนี้ badLeadInRange คือ Lead ทั้งหมด (ไม่ใช่แค่ Bad Lead) มีผู้รับผิดชอบจริง
+  // มากกว่าเดิมมาก การตัดเหลือ 6 ทำให้บางคน (เช่น Sales Center 5:ข้าวสุก อันดับ 7) หายไปจากรายการทั้งที่มีเคสเยอะจริง
+  const badLeadAssigneeTally = tallyBy(badLeadInRange, (l) => l.assignee || "ยังไม่มอบหมาย");
   // LOA (LINE OA Broadcast) สรุปช่องทาง "ปกติ" ตามช่วงวันที่ที่เลือกจริง (เหมือนการ์ดบนหน้า Ads)
   const loaSummarySource = loaRangeRows("normal", dateRange, LOA_NORMAL_DEFS);
   const loaSummaryTotal = loaSummarySource
@@ -4245,8 +4247,8 @@ export default function AdsDashboard() {
               )}
             </div>
             <div className="rounded-xl border border-slate-100 p-4">
-              <h3 className="text-sm font-semibold text-slate-700 mb-2">ผู้รับผิดชอบแชท (Assignee)</h3>
-              <ul className="space-y-1.5">
+              <h3 className="text-sm font-semibold text-slate-700 mb-2">ผู้รับผิดชอบแชท (Assignee) — {badLeadAssigneeTally.length} คน</h3>
+              <ul className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
                 {badLeadAssigneeTally.map(([name, count]) => (
                   <li key={name} className="flex items-center justify-between text-sm">
                     <span className="text-slate-600 truncate mr-2">{name}</span>
