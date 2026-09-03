@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-02T21:11:16.417Z",
+  "generatedAt": "2026-09-03T21:11:04.741Z",
   "daysWithData": 31,
   "data": {
     "nose_open": {
@@ -634,10 +634,10 @@
       "ads": 470656.80999999994,
       "inbox": 3243,
       "or": 1157500,
-      "sales": 4341470,
-      "basket": 135670.9375,
+      "sales": 4411470,
+      "basket": 137858.4375,
       "closeRate": 0.009867406722170829,
-      "adsCost": 0.10840955022146875,
+      "adsCost": 0.1066893371143859,
       "adsCostOr": 0.40661495464362846,
       "dailyAds": [
         6613.46,
@@ -924,10 +924,10 @@
       "ads": 1630767.34,
       "inbox": 7677,
       "or": 4071000,
-      "sales": 13699740,
-      "basket": 135640.9900990099,
+      "sales": 13769740,
+      "basket": 136334.05940594058,
       "closeRate": 0.013156180799791585,
-      "adsCost": 0.11903637149318162,
+      "adsCost": 0.11843123690062413,
       "adsCostOr": 0.40058151314173424,
       "dailyAds": [
         24090.789999999997,
@@ -1151,14 +1151,14 @@
     "brow_hairline": {
       "consult": 32,
       "deposit": 31,
-      "consultValue": 4341470,
-      "depositValue": 4261570
+      "consultValue": 4411470,
+      "depositValue": 4331570
     },
     "all": {
       "consult": 101,
       "deposit": 100,
-      "consultValue": 13699740,
-      "depositValue": 13619840
+      "consultValue": 13769740,
+      "depositValue": 13689840
     }
   }
 }
