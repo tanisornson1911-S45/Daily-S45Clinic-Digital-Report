@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-06T20:33:53.176Z",
+  "generatedAt": "2026-09-07T21:38:20.707Z",
   "daysWithData": 31,
   "data": {
     "nose_open": {
@@ -216,10 +216,10 @@
       "ads": 106756.36000000002,
       "inbox": 901,
       "or": 168600,
-      "sales": 742700,
-      "basket": 29708,
+      "sales": 749700,
+      "basket": 29988,
       "closeRate": 0.02774694783573807,
-      "adsCost": 0.14374089134239937,
+      "adsCost": 0.14239877284247035,
       "adsCostOr": 0.6331931198102018,
       "dailyAds": [
         2133.2,
@@ -634,10 +634,10 @@
       "ads": 470656.80999999994,
       "inbox": 3243,
       "or": 1157500,
-      "sales": 4411470,
-      "basket": 137858.4375,
+      "sales": 4521470,
+      "basket": 141295.9375,
       "closeRate": 0.009867406722170829,
-      "adsCost": 0.1066893371143859,
+      "adsCost": 0.10409375933048322,
       "adsCostOr": 0.40661495464362846,
       "dailyAds": [
         6613.46,
@@ -924,10 +924,10 @@
       "ads": 1630767.34,
       "inbox": 7677,
       "or": 4071000,
-      "sales": 13769740,
-      "basket": 136334.05940594058,
+      "sales": 13886740,
+      "basket": 137492.47524752477,
       "closeRate": 0.013156180799791585,
-      "adsCost": 0.11843123690062413,
+      "adsCost": 0.11743341777839868,
       "adsCostOr": 0.40058151314173424,
       "dailyAds": [
         24090.789999999997,
@@ -1139,8 +1139,8 @@
     "nose_semi": {
       "consult": 25,
       "deposit": 25,
-      "consultValue": 742700,
-      "depositValue": 742700
+      "consultValue": 749700,
+      "depositValue": 749700
     },
     "breast_lipo": {
       "consult": 5,
@@ -1151,14 +1151,14 @@
     "brow_hairline": {
       "consult": 32,
       "deposit": 31,
-      "consultValue": 4411470,
-      "depositValue": 4331570
+      "consultValue": 4521470,
+      "depositValue": 4441570
     },
     "all": {
       "consult": 101,
       "deposit": 100,
-      "consultValue": 13769740,
-      "depositValue": 13689840
+      "consultValue": 13886740,
+      "depositValue": 13806840
     }
   }
 }
