@@ -2038,7 +2038,10 @@ export default function AdsDashboard() {
       const src = funnelSourceForMonth(monthKey)?.[procKey];
       if (src) return src.label.replace(/\s*\(.*\)/, "");
     }
-    return procKey === "inter" ? "Inter" : procKey;
+    // ช่วงวันที่เลือกไม่ทับซ้อนเดือนใดใน FUNNEL_MONTHS เลย (เช่น เดือนที่ funnelByMonth.json ยังไม่มีชีตต้นทาง) —
+    // fallback ไปใช้ label จาก CATEGORIES แทน (ค่าคงที่ระดับโมดูล มีครบทุก DAILY_CATEGORY_KEYS เสมอ ไม่ขึ้นกับ
+    // ช่วงวันที่) กันไม่ให้ตารางที่ใช้ฟังก์ชันนี้โชว์ชื่อ key ภายในดิบๆ (เช่น "nose_open") แทนชื่อหัตถการจริง
+    return procKey === "inter" ? "Inter" : CATEGORIES[procKey]?.label ?? procKey;
   };
 
   // ทีม Online: 5 คน ตอบทุกหัตถการหลัก + 1 คน ตอบเฉพาะ Inter
@@ -2049,7 +2052,10 @@ export default function AdsDashboard() {
   const avgChatsPerAgentPerMonth = inboxDailyTotals.actual / onlineStaffCount;
 
   // ============================================================
-  // Option การกระตุ้นยอดขาย
+  // Option การกระตุ้นยอดขาย — คำนวณสดจากช่วงวันที่ที่เลือก (closeCountsLive/closeTableInboxByProc ด้านบน — เดิม
+  // ตรึงไว้ที่ FUNNEL_DATA/FUNNEL_CLOSE_COUNTS เดือน มิ.ย. 2569 ตรงๆ ไม่ขยับตาม Filter เลย ตามที่ผู้ใช้ระบุ) — ใช้
+  // เฉพาะ DAILY_CATEGORY_KEYS (ไม่รวม "inter" เหมือนส่วนอื่นๆ ที่คำนวณสดจาก RAW_TX เพราะไฟล์ธุรกรรมไม่ได้แท็ก
+  // Inter แยกเป็นหัตถการของตัวเอง — ดูคอมเมนต์ FUNNEL_CLOSE_COUNTS_JUL/_AUG ด้านบน)
   // Option 1a: เพิ่มงบโฆษณาอย่างเดียว (คนตอบคงที่ 5 คน) — Inbox โตตาม %งบ แต่ภาระงาน/คนเพิ่มขึ้น
   //            ทำให้ Close Rate ลดลงบ้างตาม elasticity ⇒ ยอดปิดโตน้อยกว่า %งบที่เพิ่มเล็กน้อย (diminishing returns)
   // Option 1b: เพิ่มคนตอบอย่างเดียว (งบ/Inbox คงที่) — ภาระงาน/คนลดลง ⇒ Close Rate เพิ่มขึ้นตาม elasticity
@@ -2057,27 +2063,28 @@ export default function AdsDashboard() {
   // Option 2: ไม่เพิ่มงบ แต่ย้ายทีม Online ไปตอบเฉพาะกลุ่ม — Nose Open+Semi Open = 4 คน, ยกคิ้ว+เสริมหน้าอก = 4 คน
   // ============================================================
   const REALLOC_ELASTICITY = 0.4;
+  // ช่วงวันที่ไม่มีข้อมูล Inbox จริงเลย (เช่น เดือนที่ FUNNEL_MONTHS ยังไม่ครอบคลุม) จะทำให้ตัวหาร (currentMainInbox/
+  // consultNow/depositNow) เป็น 0 — ใช้ตัวนี้กันหารด้วยศูนย์ตอนคำนวณ % เปลี่ยนแปลงใน JSX ด้านล่าง
+  const pctChangeStr = (now, next) => (now > 0 ? (((next - now) / now) * 100).toFixed(1) : "0.0");
 
-  const budgetOnlyRows = Object.entries(FUNNEL_DATA)
-    .filter(([k]) => k !== "all")
-    .map(([k, v]) => {
-      const c = FUNNEL_CLOSE_COUNTS[k];
-      const volumeMult = 1 + budgetBoostPct / 100;
-      const closeRateMult = Math.pow(volumeMult, -REALLOC_ELASTICITY); // ภาระงาน/คนเพิ่มขึ้น (คนตอบคงที่) ⇒ Close Rate ลดลงเล็กน้อย
-      const netMult = volumeMult * closeRateMult;
-      return {
-        key: k,
-        label: v.label.replace(/\s*\(.*\)/, ""),
-        consultNow: c.consult,
-        depositNow: c.deposit,
-        consultNew: c.consult * netMult,
-        depositNew: c.deposit * netMult,
-        consultValueNow: c.consultValue,
-        depositValueNow: c.depositValue,
-        consultValueNew: c.consultValue * netMult,
-        depositValueNew: c.depositValue * netMult,
-      };
-    });
+  const budgetOnlyRows = DAILY_CATEGORY_KEYS.map((k) => {
+    const c = closeCountsLive[k];
+    const volumeMult = 1 + budgetBoostPct / 100;
+    const closeRateMult = Math.pow(volumeMult, -REALLOC_ELASTICITY); // ภาระงาน/คนเพิ่มขึ้น (คนตอบคงที่) ⇒ Close Rate ลดลงเล็กน้อย
+    const netMult = volumeMult * closeRateMult;
+    return {
+      key: k,
+      label: closeTableLabelFor(k),
+      consultNow: c.consult,
+      depositNow: c.deposit,
+      consultNew: c.consult * netMult,
+      depositNew: c.deposit * netMult,
+      consultValueNow: c.consultValue,
+      depositValueNow: c.depositValue,
+      consultValueNew: c.consultValue * netMult,
+      depositValueNew: c.depositValue * netMult,
+    };
+  });
   const budgetOnlyTotal = budgetOnlyRows.reduce(
     (acc, r) => ({
       consultNow: acc.consultNow + r.consultNow,
@@ -2092,25 +2099,23 @@ export default function AdsDashboard() {
     { consultNow: 0, depositNow: 0, consultNew: 0, depositNew: 0, consultValueNow: 0, depositValueNow: 0, consultValueNew: 0, depositValueNew: 0 }
   );
 
-  const staffOnlyRows = Object.entries(FUNNEL_DATA)
-    .filter(([k]) => k !== "all")
-    .map(([k, v]) => {
-      const c = FUNNEL_CLOSE_COUNTS[k];
-      const staffMult = 1 + staffBoostPct / 100;
-      const closeRateMult = Math.pow(staffMult, REALLOC_ELASTICITY); // คนตอบเพิ่ม ภาระงาน/คนลดลง ⇒ Close Rate เพิ่มขึ้น, Inbox เท่าเดิม
-      return {
-        key: k,
-        label: v.label.replace(/\s*\(.*\)/, ""),
-        consultNow: c.consult,
-        depositNow: c.deposit,
-        consultNew: c.consult * closeRateMult,
-        depositNew: c.deposit * closeRateMult,
-        consultValueNow: c.consultValue,
-        depositValueNow: c.depositValue,
-        consultValueNew: c.consultValue * closeRateMult,
-        depositValueNew: c.depositValue * closeRateMult,
-      };
-    });
+  const staffOnlyRows = DAILY_CATEGORY_KEYS.map((k) => {
+    const c = closeCountsLive[k];
+    const staffMult = 1 + staffBoostPct / 100;
+    const closeRateMult = Math.pow(staffMult, REALLOC_ELASTICITY); // คนตอบเพิ่ม ภาระงาน/คนลดลง ⇒ Close Rate เพิ่มขึ้น, Inbox เท่าเดิม
+    return {
+      key: k,
+      label: closeTableLabelFor(k),
+      consultNow: c.consult,
+      depositNow: c.deposit,
+      consultNew: c.consult * closeRateMult,
+      depositNew: c.deposit * closeRateMult,
+      consultValueNow: c.consultValue,
+      depositValueNow: c.depositValue,
+      consultValueNew: c.consultValue * closeRateMult,
+      depositValueNew: c.depositValue * closeRateMult,
+    };
+  });
   const staffOnlyTotal = staffOnlyRows.reduce(
     (acc, r) => ({
       consultNow: acc.consultNow + r.consultNow,
@@ -2127,7 +2132,7 @@ export default function AdsDashboard() {
 
   const currentAgentsMain = ONLINE_TEAM_MAIN; // 5 คนตอบทุกหัตถการหลักรวมกันในปัจจุบัน
   const currentMainInbox =
-    FUNNEL_DATA.nose_open.inbox + FUNNEL_DATA.nose_semi.inbox + FUNNEL_DATA.brow_hairline.inbox + FUNNEL_DATA.breast_lipo.inbox;
+    closeTableInboxByProc.nose_open + closeTableInboxByProc.nose_semi + closeTableInboxByProc.brow_hairline + closeTableInboxByProc.breast_lipo;
   const currentWorkloadPerAgent = currentMainInbox / currentAgentsMain;
 
   const option2Groups = [
@@ -2135,25 +2140,27 @@ export default function AdsDashboard() {
       key: "groupA",
       label: "Nose Open + Semi Open",
       agents: 4,
-      inbox: FUNNEL_DATA.nose_open.inbox + FUNNEL_DATA.nose_semi.inbox,
-      consultNow: FUNNEL_CLOSE_COUNTS.nose_open.consult + FUNNEL_CLOSE_COUNTS.nose_semi.consult,
-      depositNow: FUNNEL_CLOSE_COUNTS.nose_open.deposit + FUNNEL_CLOSE_COUNTS.nose_semi.deposit,
-      consultValueNow: FUNNEL_CLOSE_COUNTS.nose_open.consultValue + FUNNEL_CLOSE_COUNTS.nose_semi.consultValue,
-      depositValueNow: FUNNEL_CLOSE_COUNTS.nose_open.depositValue + FUNNEL_CLOSE_COUNTS.nose_semi.depositValue,
+      inbox: closeTableInboxByProc.nose_open + closeTableInboxByProc.nose_semi,
+      consultNow: closeCountsLive.nose_open.consult + closeCountsLive.nose_semi.consult,
+      depositNow: closeCountsLive.nose_open.deposit + closeCountsLive.nose_semi.deposit,
+      consultValueNow: closeCountsLive.nose_open.consultValue + closeCountsLive.nose_semi.consultValue,
+      depositValueNow: closeCountsLive.nose_open.depositValue + closeCountsLive.nose_semi.depositValue,
     },
     {
       key: "groupB",
       label: "ยกคิ้ว + เสริมหน้าอก",
       agents: 4,
-      inbox: FUNNEL_DATA.brow_hairline.inbox + FUNNEL_DATA.breast_lipo.inbox,
-      consultNow: FUNNEL_CLOSE_COUNTS.brow_hairline.consult + FUNNEL_CLOSE_COUNTS.breast_lipo.consult,
-      depositNow: FUNNEL_CLOSE_COUNTS.brow_hairline.deposit + FUNNEL_CLOSE_COUNTS.breast_lipo.deposit,
-      consultValueNow: FUNNEL_CLOSE_COUNTS.brow_hairline.consultValue + FUNNEL_CLOSE_COUNTS.breast_lipo.consultValue,
-      depositValueNow: FUNNEL_CLOSE_COUNTS.brow_hairline.depositValue + FUNNEL_CLOSE_COUNTS.breast_lipo.depositValue,
+      inbox: closeTableInboxByProc.brow_hairline + closeTableInboxByProc.breast_lipo,
+      consultNow: closeCountsLive.brow_hairline.consult + closeCountsLive.breast_lipo.consult,
+      depositNow: closeCountsLive.brow_hairline.deposit + closeCountsLive.breast_lipo.deposit,
+      consultValueNow: closeCountsLive.brow_hairline.consultValue + closeCountsLive.breast_lipo.consultValue,
+      depositValueNow: closeCountsLive.brow_hairline.depositValue + closeCountsLive.breast_lipo.depositValue,
     },
   ].map((g) => {
     const newWorkloadPerAgent = g.inbox / g.agents;
-    const multiplier = Math.pow(currentWorkloadPerAgent / newWorkloadPerAgent, REALLOC_ELASTICITY);
+    // กันหารด้วยศูนย์ (0/0 = NaN) ตอนช่วงวันที่เลือกไม่มีข้อมูล Inbox เลย — ไม่มีภาระงานให้เทียบก็ไม่ปรับ Close Rate (multiplier = 1)
+    const multiplier =
+      newWorkloadPerAgent > 0 && currentWorkloadPerAgent > 0 ? Math.pow(currentWorkloadPerAgent / newWorkloadPerAgent, REALLOC_ELASTICITY) : 1;
     return {
       ...g,
       workloadPerAgent: newWorkloadPerAgent,
@@ -3925,7 +3932,7 @@ export default function AdsDashboard() {
           <div className="rounded-xl border border-violet-100 bg-violet-50/40 p-4 mb-5">
             <div className="flex items-center gap-2 mb-3">
               <Rocket size={14} className="text-violet-500" />
-              <h3 className="text-sm font-semibold text-slate-700">Option การกระตุ้นยอดขายให้มากขึ้น</h3>
+              <h3 className="text-sm font-semibold text-slate-700">Option การกระตุ้นยอดขายให้มากขึ้น — {rangeLabel}</h3>
             </div>
 
             {/* Option 1: เพิ่มงบ / เพิ่มคน แยกแท็บ */}
@@ -4006,7 +4013,7 @@ export default function AdsDashboard() {
                           <td className="py-2 text-right font-semibold text-violet-700">
                             <p>
                               {budgetOnlyTotal.consultNow} → {budgetOnlyTotal.consultNew.toFixed(1)} (
-                              {(((budgetOnlyTotal.consultNew - budgetOnlyTotal.consultNow) / budgetOnlyTotal.consultNow) * 100).toFixed(1)}%)
+                              {pctChangeStr(budgetOnlyTotal.consultNow, budgetOnlyTotal.consultNew)}%)
                             </p>
                             <p className="text-[11px] font-normal text-violet-400">
                               ฿{fmtTHB(budgetOnlyTotal.consultValueNow)} → ฿{fmtTHB(budgetOnlyTotal.consultValueNew)} (+฿
@@ -4016,7 +4023,7 @@ export default function AdsDashboard() {
                           <td className="py-2 text-right font-semibold text-violet-700">
                             <p>
                               {budgetOnlyTotal.depositNow} → {budgetOnlyTotal.depositNew.toFixed(1)} (
-                              {(((budgetOnlyTotal.depositNew - budgetOnlyTotal.depositNow) / budgetOnlyTotal.depositNow) * 100).toFixed(1)}%)
+                              {pctChangeStr(budgetOnlyTotal.depositNow, budgetOnlyTotal.depositNew)}%)
                             </p>
                             <p className="text-[11px] font-normal text-violet-400">
                               ฿{fmtTHB(budgetOnlyTotal.depositValueNow)} → ฿{fmtTHB(budgetOnlyTotal.depositValueNew)} (+฿
@@ -4083,7 +4090,7 @@ export default function AdsDashboard() {
                           <td className="py-2 text-right font-semibold text-violet-700">
                             <p>
                               {staffOnlyTotal.consultNow} → {staffOnlyTotal.consultNew.toFixed(1)} (
-                              {(((staffOnlyTotal.consultNew - staffOnlyTotal.consultNow) / staffOnlyTotal.consultNow) * 100).toFixed(1)}%)
+                              {pctChangeStr(staffOnlyTotal.consultNow, staffOnlyTotal.consultNew)}%)
                             </p>
                             <p className="text-[11px] font-normal text-violet-400">
                               ฿{fmtTHB(staffOnlyTotal.consultValueNow)} → ฿{fmtTHB(staffOnlyTotal.consultValueNew)} (+฿
@@ -4093,7 +4100,7 @@ export default function AdsDashboard() {
                           <td className="py-2 text-right font-semibold text-violet-700">
                             <p>
                               {staffOnlyTotal.depositNow} → {staffOnlyTotal.depositNew.toFixed(1)} (
-                              {(((staffOnlyTotal.depositNew - staffOnlyTotal.depositNow) / staffOnlyTotal.depositNow) * 100).toFixed(1)}%)
+                              {pctChangeStr(staffOnlyTotal.depositNow, staffOnlyTotal.depositNew)}%)
                             </p>
                             <p className="text-[11px] font-normal text-violet-400">
                               ฿{fmtTHB(staffOnlyTotal.depositValueNow)} → ฿{fmtTHB(staffOnlyTotal.depositValueNew)} (+฿
@@ -4164,7 +4171,7 @@ export default function AdsDashboard() {
                       <td className="py-2 text-right font-semibold text-emerald-600">
                         <p>
                           {option2Total.consultNow.toFixed(0)} → {option2Total.consultNew.toFixed(1)} (
-                          {(((option2Total.consultNew - option2Total.consultNow) / option2Total.consultNow) * 100).toFixed(1)}%)
+                          {pctChangeStr(option2Total.consultNow, option2Total.consultNew)}%)
                         </p>
                         <p className="text-[11px] font-normal text-emerald-500">
                           ฿{fmtTHB(option2Total.consultValueNow)} → ฿{fmtTHB(option2Total.consultValueNew)} (+฿
@@ -4174,7 +4181,7 @@ export default function AdsDashboard() {
                       <td className="py-2 text-right font-semibold text-emerald-600">
                         <p>
                           {option2Total.depositNow.toFixed(0)} → {option2Total.depositNew.toFixed(1)} (
-                          {(((option2Total.depositNew - option2Total.depositNow) / option2Total.depositNow) * 100).toFixed(1)}%)
+                          {pctChangeStr(option2Total.depositNow, option2Total.depositNew)}%)
                         </p>
                         <p className="text-[11px] font-normal text-emerald-500">
                           ฿{fmtTHB(option2Total.depositValueNow)} → ฿{fmtTHB(option2Total.depositValueNew)} (+฿
@@ -4186,9 +4193,17 @@ export default function AdsDashboard() {
                 </table>
               </div>
               <p className="text-[11px] text-slate-400">
-                ทั้งสองกลุ่มมีภาระงานต่อคนต่ำกว่าค่าเฉลี่ยเดิม (1,440 Inbox/คน) จึง Close Rate เพิ่มขึ้นทั้งคู่ — กลุ่ม Nose Open+Semi Open เหลือ
-                ~978 Inbox/คน และกลุ่มยกคิ้ว+เสริมหน้าอก เหลือ ~822 Inbox/คน รวมสุทธิ (8 คน) คาดว่ายอดปิดปรึกษาเพิ่มขึ้น ~19% และปิดมัดจำเพิ่มขึ้น
-                ~20%
+                {option2Groups.every((g) => g.workloadPerAgent < currentWorkloadPerAgent)
+                  ? "ทั้งสองกลุ่มมีภาระงานต่อคนต่ำกว่าค่าเฉลี่ยเดิม จึง Close Rate เพิ่มขึ้นทั้งคู่ — "
+                  : ""}
+                {option2Groups.map((g, i) => (
+                  <span key={g.key}>
+                    {i > 0 && " และ"}กลุ่ม {g.label} เหลือ ~{fmtTHB(g.workloadPerAgent)} Inbox/คน
+                  </span>
+                ))}
+                {" "}รวมสุทธิ ({option2Groups.reduce((s, g) => s + g.agents, 0)} คน) คาดว่ายอดปิดปรึกษาเปลี่ยนแปลง{" "}
+                {pctChangeStr(option2Total.consultNow, option2Total.consultNew)}% และปิดมัดจำเปลี่ยนแปลง{" "}
+                {pctChangeStr(option2Total.depositNow, option2Total.depositNew)}%
               </p>
             </div>
           </div>
