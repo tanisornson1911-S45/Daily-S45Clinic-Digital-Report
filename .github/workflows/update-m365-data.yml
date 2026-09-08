@@ -5,7 +5,10 @@ name: Update M365 data (RAW_TX pipeline)
 # (src/data/m365Raw.json) แล้วแปลงเป็น src/data/rawTx.json (RAW_TX), src/data/loaData.json
 # (LOA broadcast section), src/data/funnelByMonth.json (Ads/โฆษณา + Inbox & Lead page's
 # Sales Funnel รายวัน — คีย์ด้วยเดือน ISO ทุกเดือนตั้งแต่ ส.ค. 2569 เป็นต้นไป โตขึ้นเองเมื่อทีมเพิ่มชีต
-# เดือนใหม่ในไฟล์ต้นฉบับ ไม่ต้องแก้โค้ดเพิ่มทุกเดือน), src/data/badLead.json (Bad Lead/Lead cards),
+# เดือนใหม่ในไฟล์ต้นฉบับ ไม่ต้องแก้โค้ดเพิ่มทุกเดือน — เดือนที่ยังไม่มีชีตในไฟล์ต้นฉบับ (เช่นเพิ่งขึ้นเดือนใหม่)
+# ดึง Ads/Inbox รายวันจาก src/data/adDaily.json (Facebook Marketing API สด, จาก
+# update-dashboard-data.yml) แทนแบบอัตโนมัติ ไม่ต้องรอไฟล์ SharePoint), src/data/badLead.json
+# (Bad Lead/Lead cards),
 # src/data/interSale.json (Inter แยกตามหมอ
 # + หัตถการ), src/data/orSales.json (ยอดขายรวมทุกช่องทางบนหน้าภาพรวม — จากชีต "ยอดORจริง+
 # Forecast (พี่เปา)"), src/data/consultPipeline.json (ส่วนต่อยอดขายรวม Facebook จากเคสที่ยัง

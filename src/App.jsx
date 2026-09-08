@@ -632,11 +632,13 @@ const FUNNEL_CLOSE_COUNTS_JUL = {
   all: { consult: 121, deposit: 120, consultValue: 18719527, depositValue: 18631407 },
 };
 // FUNNEL_BY_MONTH_DATA — ส.ค. 2569 เป็นต้นไป (src/data/funnelByMonth.json, สร้างสดทุกคืนโดย
-// scripts/build-funnel.mjs ซึ่งวนสร้างให้ทุกเดือนที่มีชีตในไฟล์ "ยอดขาย Online S45 Clinic" จริง โดยไม่ต้อง
-// แก้โค้ดเพิ่มทุกครั้งที่ขึ้นเดือนใหม่ — ต่างจาก FUNNEL_DATA/FUNNEL_DATA_JUL ด้านบนที่ยังคงเป็นค่าคงที่ตรึงไว้):
-// dailyAds/dailyInbox มาจากไฟล์ "ยอดขาย Online S45 Clinic" (ชีตของเดือนนั้นๆ) ตรงๆ — consult/deposit/OR
-// รายวันคำนวณจาก RAW_TX ด้วยนิยามเดียวกับ FUNNEL_DATA_JUL (ดูคอมเมนต์ด้านบน) เพราะชีตต้นฉบับยังไม่กรอกตัวเลข
-// กลุ่มนี้เหมือนกัน · inter ไม่มี key ใน closeCounts เหตุผลเดียวกับ FUNNEL_CLOSE_COUNTS_JUL
+// scripts/build-funnel.mjs ซึ่งวนสร้างให้ทุกเดือนที่มีข้อมูลจริง โดยไม่ต้องแก้โค้ดเพิ่มทุกครั้งที่ขึ้นเดือนใหม่ —
+// ต่างจาก FUNNEL_DATA/FUNNEL_DATA_JUL ด้านบนที่ยังคงเป็นค่าคงที่ตรึงไว้): dailyAds/dailyInbox มาจากไฟล์
+// "ยอดขาย Online S45 Clinic" (ชีตของเดือนนั้นๆ) ถ้ามี ไม่งั้น fallback ไปข้อมูลสดจาก Facebook Marketing API
+// (src/data/adDaily.json) แทนทันที ไม่ต้องรอให้ทีมสร้างชีต SharePoint ก่อน (ดูคอมเมนต์หัวไฟล์
+// build-funnel.mjs) — consult/deposit/OR รายวันคำนวณจาก RAW_TX เสมอไม่ว่า Ads/Inbox จะมาจากแหล่งไหน ด้วย
+// นิยามเดียวกับ FUNNEL_DATA_JUL (ดูคอมเมนต์ด้านบน) · inter ไม่มี key ใน closeCounts เหตุผลเดียวกับ
+// FUNNEL_CLOSE_COUNTS_JUL
 // FUNNEL_MONTHS_DATA/FUNNEL_CLOSE_COUNTS_BY_MONTH รวม 2 เดือนคงที่ (มิ.ย./ก.ค.) เข้ากับทุกเดือนที่ดึงสดจากไฟล์นี้
 // เป็น map เดียวคีย์ด้วย ISO month ("2026-06","2026-07","2026-08",...) — ดู funnelSourceForMonth ด้านล่าง
 const FUNNEL_MONTHS_DATA = {
@@ -648,6 +650,14 @@ const FUNNEL_CLOSE_COUNTS_BY_MONTH = {
   "2026-06": FUNNEL_CLOSE_COUNTS,
   "2026-07": FUNNEL_CLOSE_COUNTS_JUL,
   ...Object.fromEntries(Object.entries(FUNNEL_BY_MONTH_DATA.months || {}).map(([iso, m]) => [iso, m.closeCounts])),
+};
+// แหล่งที่มาจริงของ dailyAds/dailyInbox แต่ละเดือน ("excel" = ชีตในไฟล์ "ยอดขาย Online S45 Clinic",
+// "facebook_api" = src/data/adDaily.json ตอนที่ยังไม่มีชีตของเดือนนั้น — ดูคอมเมนต์หัวไฟล์ build-funnel.mjs)
+// ใช้บอกผู้ใช้ให้ตรงความจริงว่าเดือนนี้ตัวเลขมาจากไหน ไม่ใช่เดาว่าเป็นไฟล์ Excel เสมอ
+const FUNNEL_MONTH_SOURCE_KIND = {
+  "2026-06": "excel",
+  "2026-07": "excel",
+  ...Object.fromEntries(Object.entries(FUNNEL_BY_MONTH_DATA.months || {}).map(([iso, m]) => [iso, m.sourceKind || "excel"])),
 };
 // เดือนทั้งหมดที่มีข้อมูล Sales Funnel รายวันจริง เรียง ISO จากเก่าไปใหม่ — โตขึ้นเองเมื่อทีมเพิ่มชีตเดือนใหม่ในไฟล์
 // ต้นฉบับ ไม่ต้องแก้โค้ดเพิ่มทุกเดือน (ดูคอมเมนต์ที่ FUNNEL_MONTHS_DATA ด้านบน)
@@ -3117,10 +3127,11 @@ export default function AdsDashboard() {
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
             <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <p>
-              ข้อมูลชุดนี้มาจากไฟล์ "ยอดขาย Online S45 Clinic" ชีตเดือน
               {activeMonthKey === "2026-06"
-                ? "มิถุนายน 2569 เท่านั้น · \"ยอดขาย (มัดจำ+ปรึกษา)\" คือมูลค่าบิลที่ปิดได้ (ไม่เท่ากับยอด OR ซึ่งเป็นรายรับจากการผ่าตัดจริง)"
-                : `${funnelMonthLabel} (มีเฉพาะยอดยิง Ads กับ Inbox รายวันจากไฟล์นี้ตรงๆ ส่วนยอดขาย/OR แยกรายวันคำนวณจากไฟล์ธุรกรรม Data S45 Clinic แทน)`}
+                ? `ข้อมูลชุดนี้มาจากไฟล์ "ยอดขาย Online S45 Clinic" ชีตเดือนมิถุนายน 2569 เท่านั้น · "ยอดขาย (มัดจำ+ปรึกษา)" คือมูลค่าบิลที่ปิดได้ (ไม่เท่ากับยอด OR ซึ่งเป็นรายรับจากการผ่าตัดจริง)`
+                : FUNNEL_MONTH_SOURCE_KIND[activeMonthKey] === "facebook_api"
+                ? `ยอดยิง Ads/Inbox รายวันของ${funnelMonthLabel} มาจาก Facebook Marketing API ตรงๆ (ทีมยังไม่ได้สร้างชีตเดือนนี้ในไฟล์ "ยอดขาย Online S45 Clinic" — พอสร้างแล้วระบบจะสลับไปใช้ไฟล์นั้นแทนอัตโนมัติ) ส่วนยอดขาย/OR แยกรายวันคำนวณจากไฟล์ธุรกรรม Data S45 Clinic`
+                : `ข้อมูลชุดนี้มาจากไฟล์ "ยอดขาย Online S45 Clinic" ชีตเดือน${funnelMonthLabel} (มีเฉพาะยอดยิง Ads กับ Inbox รายวันจากไฟล์นี้ตรงๆ ส่วนยอดขาย/OR แยกรายวันคำนวณจากไฟล์ธุรกรรม Data S45 Clinic แทน)`}
             </p>
           </div>
           </>
