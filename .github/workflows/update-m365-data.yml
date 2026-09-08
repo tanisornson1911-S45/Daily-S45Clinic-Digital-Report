@@ -1,10 +1,12 @@
 name: Update M365 data (RAW_TX pipeline)
 
 # ดึงข้อมูลดิบจากไฟล์ Excel บน SharePoint/OneDrive (Data S45 Clinic, Inter Sale Part,
-# LINE OA Broadcast, ยอดขาย Online S45 Clinic, Bad Lead [Plus Connect]) ผ่าน Microsoft Graph API
+# LINE OA Broadcast, ยอดขาย Online S45 Clinic, [Lead] Plus Connect) ผ่าน Microsoft Graph API
 # (src/data/m365Raw.json) แล้วแปลงเป็น src/data/rawTx.json (RAW_TX), src/data/loaData.json
-# (LOA broadcast section), src/data/funnelAug.json (Inbox & Bad Lead page's สิงหาคม
-# option), src/data/badLead.json (Bad Lead cards), src/data/interSale.json (Inter แยกตามหมอ
+# (LOA broadcast section), src/data/funnelByMonth.json (Ads/โฆษณา + Inbox & Lead page's
+# Sales Funnel รายวัน — คีย์ด้วยเดือน ISO ทุกเดือนตั้งแต่ ส.ค. 2569 เป็นต้นไป โตขึ้นเองเมื่อทีมเพิ่มชีต
+# เดือนใหม่ในไฟล์ต้นฉบับ ไม่ต้องแก้โค้ดเพิ่มทุกเดือน), src/data/badLead.json (Bad Lead/Lead cards),
+# src/data/interSale.json (Inter แยกตามหมอ
 # + หัตถการ), src/data/orSales.json (ยอดขายรวมทุกช่องทางบนหน้าภาพรวม — จากชีต "ยอดORจริง+
 # Forecast (พี่เปา)"), src/data/consultPipeline.json (ส่วนต่อยอดขายรวม Facebook จากเคสที่ยัง
 # ปรึกษาไม่ปิดมัดจำ — จากชีต "ปรึกษา 2026") และ src/data/channelMix.json (สัดส่วนงบโฆษณาแยกตาม
@@ -90,8 +92,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json src/data/loaNormalData.json src/data/funnelAug.json src/data/badLead.json src/data/interSale.json src/data/orSales.json src/data/consultPipeline.json src/data/channelMix.json
-          if git diff --cached --quiet -- src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json src/data/loaNormalData.json src/data/funnelAug.json src/data/badLead.json src/data/interSale.json src/data/orSales.json src/data/consultPipeline.json src/data/channelMix.json; then
+          git add src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json src/data/loaNormalData.json src/data/funnelByMonth.json src/data/badLead.json src/data/interSale.json src/data/orSales.json src/data/consultPipeline.json src/data/channelMix.json
+          if git diff --cached --quiet -- src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json src/data/loaNormalData.json src/data/funnelByMonth.json src/data/badLead.json src/data/interSale.json src/data/orSales.json src/data/consultPipeline.json src/data/channelMix.json; then
             echo "No change — nothing to commit."
             exit 0
           fi
