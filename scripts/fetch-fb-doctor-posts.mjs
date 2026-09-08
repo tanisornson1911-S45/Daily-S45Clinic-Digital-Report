@@ -54,11 +54,11 @@ if (!FB_ACCESS_TOKEN) {
   process.exit(1);
 }
 
-// หมวดหมู่หมอ -> ชื่อที่ต้องเจอ "ในแฮชแท็ก" ของโพสต์เท่านั้น (ต้องมี # นำหน้าอยู่ในตัวเดียวกัน เช่น
-// "#หมอจิ๊จ๊ะs45clinic", "#BaobeiNoseByหมอจิ๊จ๊ะ") — เดิม match แบบ substring อิสระ (ไม่บังคับ #) ทำให้ทุกโพสต์
-// ของเพจ "เข้าข่ายหมอตี้" หมดเพราะทุกโพสต์มีข้อความท้ายโพสต์ซ้ำกัน "Line : เสริมจมูก By หมอตี้" ติดมาด้วย (เป็นข้อความ
-// ติดต่อ/แบรนดิ้งท้ายเพจ ไม่ใช่การระบุหมอที่ทำเคสจริง) ผู้ใช้ยืนยันว่าต้องดูจากแฮชแท็ก #หมอตี้ เท่านั้น — ดู
-// hasDoctorHashtag() ด้านล่างที่บังคับให้ชื่อต้องอยู่ใน token ที่ขึ้นต้นด้วย # จริงๆ
+// หมวดหมู่หมอ -> ชื่อที่ใช้จับคู่โพสต์ (ดู matchesDoctor() ด้านล่าง: เช็คจากชื่อในวงเล็บท้ายบรรทัด "โดย ... (หมอX)"
+// ก่อนถ้ามี ถ้าไม่มีค่อย fallback ไปแฮชแท็ก — ต้องมี # นำหน้าอยู่ในตัวเดียวกัน เช่น "#หมอจิ๊จ๊ะs45clinic",
+// "#BaobeiNoseByหมอจิ๊จ๊ะ") — เดิม match แบบ substring อิสระในทั้งข้อความ (ไม่บังคับ #) ทำให้ทุกโพสต์ของเพจ
+// "เข้าข่ายหมอตี้" หมดเพราะทุกโพสต์มีข้อความท้ายโพสต์ซ้ำกัน "Line : เสริมจมูก By หมอตี้" ติดมาด้วย (เป็นข้อความ
+// ติดต่อ/แบรนดิ้งท้ายเพจ ไม่ใช่การระบุหมอที่ทำเคสจริง) ผู้ใช้ยืนยันว่าต้องดูจากแฮชแท็ก #หมอตี้ เท่านั้น
 const DOCTORS = [
   { key: "doctor_tee", label: "หมอตี้", match: "หมอตี้" },
   { key: "doctor_rose", label: "หมอโรส", match: "หมอโรส" },
@@ -87,6 +87,22 @@ const TOP_N_PER_DOCTOR = 3; // เก็บ Top 3 ต่อหมอ ไว้�
 function hasDoctorHashtag(message, name) {
   const tags = message.match(/#\S+/g) || [];
   return tags.some((t) => t.includes(name));
+}
+
+// ชื่อหมอในวงเล็บท้ายบรรทัด "โดย นพ./พญ. ชื่อจริง (หมอเล่นชื่อ)" ที่ทุกโพสต์เคสจริงมีกำกับ — แม่นกว่าแฮชแท็ก
+// ท้ายโพสต์ เพราะพบเคสจริงที่แฮชแท็กพิมพ์ผิด/ก็อปเทมเพลตโพสต์อื่นมาไม่แก้ (เช่นโพสต์ 27 ส.ค. 69 เนื้อหาระบุ
+// "โดย นพ. อรรถวัฒน์ ละออง (หมอไบร์ท)" ชัดเจน แต่แฮชแท็กท้ายโพสต์ดันเป็น #หมอจิ๊จ๊ะs45clinic ทำให้เคสของหมอไบร์ท
+// ไปโผล่ในการ์ด "เคสเด่นคุณหมอ" ของหมอจิ๊จ๊ะแทน) — ตรวจสอบกับโพสต์ย้อนหลังจริง 253 โพสต์ พบมี byline นี้ 216 โพสต์
+// และมีแค่โพสต์เดียวที่ byline กับแฮชแท็กขัดกัน (โพสต์ข้างต้น) จึงใช้ byline เป็นหลักเมื่อมี ถ้าไม่มี (โพสต์รีวิวสั้นๆ
+// บางโพสต์ไม่มีชื่อหมอกำกับ) จึงกลับไปใช้แฮชแท็กแบบเดิม
+function bylineDoctorText(message) {
+  const m = message.match(/\(([^)]*หมอ[^)]*)\)/);
+  return m ? m[1] : null;
+}
+function matchesDoctor(message, name) {
+  const byline = bylineDoctorText(message);
+  if (byline) return byline.includes(name);
+  return hasDoctorHashtag(message, name);
 }
 
 async function getPageAccessToken() {
@@ -187,7 +203,7 @@ async function main() {
   const byDoctor = {};
   for (const { key, label, match } of DOCTORS) {
     const matches = posts
-      .filter((p) => p.message && hasDoctorHashtag(p.message, match))
+      .filter((p) => p.message && matchesDoctor(p.message, match))
       .map((p) => {
         const { reactions, comments, shares, clicks, score } = engagementScoreOf(p, clicksMap[p.id]);
         return {
@@ -206,7 +222,7 @@ async function main() {
       .sort((a, b) => b.engagementScore - a.engagementScore)
       .slice(0, TOP_N_PER_DOCTOR);
     byDoctor[key] = { label, cases: matches };
-    console.log(`  ${label}: ${matches.length} เคส (จาก ${posts.filter((p) => p.message && hasDoctorHashtag(p.message, match)).length} โพสต์ที่พบแฮชแท็ก)`);
+    console.log(`  ${label}: ${matches.length} เคส (จาก ${posts.filter((p) => p.message && matchesDoctor(p.message, match)).length} โพสต์ที่ match)`);
   }
 
   const outDir = path.resolve("src/data");
