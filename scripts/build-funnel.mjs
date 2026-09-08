@@ -9,30 +9,29 @@
  *
  * dailyAds/dailyInbox for a month come from ONE of two sources, in this
  * priority order:
- *   1. workbooks.online_sales_daily in src/data/m365Raw.json — that
+ *   1. src/data/adDaily.json — real daily spend/Inbox pulled directly from
+ *      the Facebook Marketing API (scripts/fetch-fb-daily.mjs).
+ *   2. workbooks.online_sales_daily in src/data/m365Raw.json — that
  *      month's own sheet in "ยอดขาย Online S45 Clinic.xlsx" (e.g. "ส.ค.69"),
- *      when the team has created it.
- *   2. src/data/adDaily.json — real daily spend/Inbox pulled directly from
- *      the Facebook Marketing API (scripts/fetch-fb-daily.mjs), used when
- *      the Excel sheet for that month doesn't exist yet.
+ *      used only when adDaily.json doesn't have that month at all.
  *
- * Per user direction (2026-09-08): "ส่วนนั้นเคยบอกแล้วว่าให้ดึงด้วย MCP Meta
- * สำหรับข้อมูล Inbox ที่ไปรอไฟล์ Sharepoint" — the dashboard's Inbox/Sales
- * Funnel cards were showing "no data" for September 2026 because the team
- * hadn't created that month's SharePoint sheet yet, even though real
+ * Per user direction (2026-09-08, two messages): the dashboard's Inbox/
+ * Sales Funnel cards were showing "no data" for September 2026 because the
+ * team hadn't created that month's SharePoint sheet yet, even though real
  * September ad spend + Inbox numbers were already available live from the
- * Facebook Marketing API the whole time (adDaily.json already covers the
- * current month + 2 prior, refreshed daily by the OTHER pipeline —
- * .github/workflows/update-dashboard-data.yml). There's no reason to make
- * the dashboard wait on a hand-maintained Excel tab when the same numbers
- * already exist as real API data — fetch-fb-daily.mjs's own header comment
- * says as much ("This replaces the Excel sheet as the source for daily
- * Ads/Inbox numbers"), it just hadn't been wired in as a fallback here yet.
- * The Excel sheet is still preferred when both exist for the same month
- * (it's the longer-established, cross-verified source) — adDaily.json only
- * fills the gap for months the Excel sheet doesn't cover yet. Once the team
- * adds that month's sheet, the next pipeline run switches back to it
- * automatically.
+ * Facebook Marketing API the whole time (adDaily.json, refreshed daily by
+ * the OTHER pipeline — .github/workflows/update-dashboard-data.yml). First
+ * fix wired the API in as a fallback for months missing an Excel sheet,
+ * preferring Excel when both existed. User then said not to prefer Excel
+ * at all — "ข้อมูล MCP แม่นยำกว่า และครบถ้วนมากกว่า" (the Meta/Facebook API data
+ * is more accurate AND more complete) — confirmed by comparing the two
+ * sources for August 2026, a month both already covered: the Excel sheet's
+ * brow_hairline row was only filled in through day 28 of 31 (a real gap —
+ * someone hadn't finished entering it for the month), while adDaily.json
+ * had all 31 days for every category, sourced straight from the ad
+ * accounts. The API is now the default for every month; the Excel sheet is
+ * kept only as a fallback for a month adDaily.json doesn't have at all
+ * (e.g. if the other pipeline's fetch ever fails for a stretch).
  *
  * MIN_MONTH_ISO = "2026-08": June and July are NOT included here — they
  * stay as the hand-verified FUNNEL_DATA / FUNNEL_DATA_JUL constants in
@@ -54,12 +53,11 @@
  * sales/closedCount; closeRate = closedCount/inbox; adsCost = ads/sales;
  * adsCostOr = ads/or.
  *
- * A month whose Excel sheet doesn't match the expected 6-block layout
- * (label row + "ยอดยิง Ads" + "Inbox", once per category) falls through to
- * the adDaily.json source instead of failing outright — e.g. "ม.ค.69" is
- * missing one category block AND predates the Facebook Marketing API
- * pipeline, so it's skipped with a warning either way (expected, shouldn't
- * take the nightly pipeline down).
+ * A month present in adDaily.json but with an incomplete/malformed entry
+ * falls through to the Excel sheet if one exists (e.g. "ม.ค.69" predates
+ * the Facebook Marketing API pipeline and its Excel sheet is also missing
+ * a category block — skipped with a warning either way, expected,
+ * shouldn't take the nightly pipeline down).
  *
  * Run manually (after fetch-m365-data.mjs + build-raw-tx.mjs):
  *   node scripts/build-funnel.mjs
@@ -366,24 +364,27 @@ function main() {
     let blocks = null;
     let source = null;
     let sourceKind = null; // "excel" | "facebook_api" — machine-readable, App.jsx uses this to word the footnote accurately
-    if (excelIsoToName[iso]) {
+    // Facebook Marketing API ก่อนเสมอ (แม่นยำ+ครบถ้วนกว่าไฟล์ Excel ที่กรอกมือ — ยืนยันจากผู้ใช้ 2569-09-08 และ
+    // พิสูจน์แล้วจากข้อมูลจริง: ส.ค. 2569 ชีต Excel กรอก brow_hairline ถึงแค่วันที่ 28/31 แต่ adDaily.json มีครบ
+    // ทั้ง 31 วันทุกหมวด) — ใช้ชีต Excel เป็น fallback เฉพาะเดือนที่ adDaily.json ไม่มี/ไม่ครบข้อมูลเท่านั้น
+    if (adDaily[iso]) {
+      blocks = blocksFromAdDaily(adDaily[iso]);
+      if (blocks) {
+        source = "adDaily.json (Facebook Marketing API)";
+        sourceKind = "facebook_api";
+      }
+    }
+    if (!blocks && excelIsoToName[iso]) {
       try {
         blocks = blocksFromExcelSheet(sheets[excelIsoToName[iso]], excelIsoToName[iso]);
-        source = `sheet "${excelIsoToName[iso]}"`;
+        source = `sheet "${excelIsoToName[iso]}" (adDaily.json ไม่มีเดือนนี้)`;
         sourceKind = "excel";
       } catch (err) {
         console.warn(`  ! Excel sheet for ${iso} ("${excelIsoToName[iso]}") didn't parse: ${err.message}`);
       }
     }
-    if (!blocks && adDaily[iso]) {
-      blocks = blocksFromAdDaily(adDaily[iso]);
-      if (blocks) {
-        source = "adDaily.json (Facebook Marketing API — no Excel sheet yet)";
-        sourceKind = "facebook_api";
-      }
-    }
     if (!blocks) {
-      console.warn(`  ! Skipping ${iso}: no usable source (Excel sheet missing/malformed, adDaily.json missing/incomplete).`);
+      console.warn(`  ! Skipping ${iso}: no usable source (adDaily.json missing/incomplete, Excel sheet missing/malformed).`);
       continue;
     }
     try {

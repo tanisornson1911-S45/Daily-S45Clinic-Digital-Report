@@ -651,9 +651,10 @@ const FUNNEL_CLOSE_COUNTS_BY_MONTH = {
   "2026-07": FUNNEL_CLOSE_COUNTS_JUL,
   ...Object.fromEntries(Object.entries(FUNNEL_BY_MONTH_DATA.months || {}).map(([iso, m]) => [iso, m.closeCounts])),
 };
-// แหล่งที่มาจริงของ dailyAds/dailyInbox แต่ละเดือน ("excel" = ชีตในไฟล์ "ยอดขาย Online S45 Clinic",
-// "facebook_api" = src/data/adDaily.json ตอนที่ยังไม่มีชีตของเดือนนั้น — ดูคอมเมนต์หัวไฟล์ build-funnel.mjs)
-// ใช้บอกผู้ใช้ให้ตรงความจริงว่าเดือนนี้ตัวเลขมาจากไหน ไม่ใช่เดาว่าเป็นไฟล์ Excel เสมอ
+// แหล่งที่มาจริงของ dailyAds/dailyInbox แต่ละเดือน ("facebook_api" = src/data/adDaily.json — ค่าเริ่มต้นเสมอ
+// เพราะแม่นยำ+ครบถ้วนกว่าไฟล์ Excel ตามที่ผู้ใช้ยืนยัน 2569-09-08, "excel" = ชีตในไฟล์ "ยอดขาย Online S45
+// Clinic" ใช้เฉพาะเดือนที่ adDaily.json ไม่มีข้อมูลเท่านั้น — ดูคอมเมนต์หัวไฟล์ build-funnel.mjs) ใช้บอกผู้ใช้ให้
+// ตรงความจริงว่าเดือนนี้ตัวเลขมาจากไหน
 const FUNNEL_MONTH_SOURCE_KIND = {
   "2026-06": "excel",
   "2026-07": "excel",
@@ -3130,8 +3131,8 @@ export default function AdsDashboard() {
               {activeMonthKey === "2026-06"
                 ? `ข้อมูลชุดนี้มาจากไฟล์ "ยอดขาย Online S45 Clinic" ชีตเดือนมิถุนายน 2569 เท่านั้น · "ยอดขาย (มัดจำ+ปรึกษา)" คือมูลค่าบิลที่ปิดได้ (ไม่เท่ากับยอด OR ซึ่งเป็นรายรับจากการผ่าตัดจริง)`
                 : FUNNEL_MONTH_SOURCE_KIND[activeMonthKey] === "facebook_api"
-                ? `ยอดยิง Ads/Inbox รายวันของ${funnelMonthLabel} มาจาก Facebook Marketing API ตรงๆ (ทีมยังไม่ได้สร้างชีตเดือนนี้ในไฟล์ "ยอดขาย Online S45 Clinic" — พอสร้างแล้วระบบจะสลับไปใช้ไฟล์นั้นแทนอัตโนมัติ) ส่วนยอดขาย/OR แยกรายวันคำนวณจากไฟล์ธุรกรรม Data S45 Clinic`
-                : `ข้อมูลชุดนี้มาจากไฟล์ "ยอดขาย Online S45 Clinic" ชีตเดือน${funnelMonthLabel} (มีเฉพาะยอดยิง Ads กับ Inbox รายวันจากไฟล์นี้ตรงๆ ส่วนยอดขาย/OR แยกรายวันคำนวณจากไฟล์ธุรกรรม Data S45 Clinic แทน)`}
+                ? `ยอดยิง Ads/Inbox รายวันของ${funnelMonthLabel} มาจาก Facebook Marketing API ตรงๆ (แม่นยำ+ครบถ้วนกว่าไฟล์ Excel ที่กรอกมือ) ส่วนยอดขาย/OR แยกรายวันคำนวณจากไฟล์ธุรกรรม Data S45 Clinic`
+                : `ข้อมูลชุดนี้มาจากไฟล์ "ยอดขาย Online S45 Clinic" ชีตเดือน${funnelMonthLabel} (Facebook Marketing API ยังไม่มีข้อมูลเดือนนี้ จึงใช้ไฟล์นี้แทน — มีเฉพาะยอดยิง Ads กับ Inbox รายวันจากไฟล์นี้ตรงๆ ส่วนยอดขาย/OR แยกรายวันคำนวณจากไฟล์ธุรกรรม Data S45 Clinic แทน)`}
             </p>
           </div>
           </>
