@@ -91,8 +91,32 @@ function liveMonthTotal(monthKey, fallback) {
   const categoryValues = Object.values(month).filter((v) => typeof v === "number");
   return categoryValues.length ? categoryValues.reduce((a, b) => a + b, 0) : fallback;
 }
-// MONTHLY_DATA ใช้ key แบบ oct25/nov25/... ส่วน adSpend.json ใช้ ISO "YYYY-MM" — แมประหว่างสองแบบตรงนี้
-const MONTH_ISO = { oct25: "2025-10", nov25: "2025-11", dec25: "2025-12", jan26: "2026-01", feb26: "2026-02", mar26: "2026-03", apr26: "2026-04", may26: "2026-05", jun26: "2026-06", jul26: "2026-07", aug26: "2026-08" };
+// SPEND_MONTHS — ทุกเดือนที่มีข้อมูลจริงใน adSpend.json (คีย์ ISO "YYYY-MM" ตรงๆ) เรียงเก่าไปใหม่ พร้อม
+// ขอบเขตวันที่ใช้เฉลี่ยยอดโฆษณา/เป้าหมายรายวันใน categorySpendForRange()/computeProratedTarget() ด้านล่าง
+// แทนตาราง MONTH_BOUNDS/MONTH_ISO/MONTHLY_DATA เดิมที่พิมพ์มือตรึงไว้ถึง ส.ค. 2569 เท่านั้น (ทำให้ค่าโฆษณา/
+// เป้าหมาย/ROAS ของช่วงวันที่ใดๆ ที่แตะเดือน ก.ย. 2569 เป็นต้นไปตกเป็น 0 อย่างเงียบๆ — พบจากผู้ใช้รายงานว่า
+// "ตรวจสอบด้วยดึงผิดคุณหมอนะ" นำไปสู่การตรวจทั้งไฟล์ 2569-09-08 แล้วพบบั๊กนี้เป็นจุดที่กระทบมากที่สุด เพราะ
+// ค่าเริ่มต้นของ Dashboard คือ "เดือนนี้ถึงวันนี้" เสมอ — วันนี้อยู่ในเดือน ก.ย. พอดี) — เดือนใหม่จะปรากฏเองใน
+// SPEND_MONTHS ทันทีที่ fetch-fb-spend.mjs ดึงมาเพิ่มใน adSpend.json ไม่ต้องแก้โค้ดตรงนี้อีกทุกเดือน
+//
+// end ของเดือนปัจจุบัน (เดือนเดียวกับวันนี้) ใช้ min(สิ้นเดือนปฏิทิน, วันนี้) แทนสิ้นเดือนปฏิทินเสมอ — เพราะยอด
+// "total" ของเดือนที่ยังไม่จบใน adSpend.json คือยอดสะสม "ถึงวันที่ fetch ล่าสุด" ไม่ใช่ยอดเต็มเดือน ถ้าหารเฉลี่ย
+// ด้วยจำนวนวันเต็มเดือน (รวมวันที่ยังไม่เกิดขึ้น) ยอด/วันจะต่ำเกินจริง — ตรงกับที่โค้ดเดิมเคยแก้มือไว้ครั้งเดียว
+// (bound เดือน ส.ค. เคยถูกพิมพ์เป็น "2026-08-25" แทน "2026-08-31" ตอน ส.ค.ยังไม่จบ) แต่ไม่เคยมีการอัปเดตต่อ —
+// วิธีนี้คำนวณเองทุกครั้ง ไม่ต้องจำไปแก้มือทุกเดือนอีก เดือนที่จบแล้วไม่กระทบ (end = สิ้นเดือนปฏิทินตามปกติ)
+function isoTodayForSpendMonths() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+const SPEND_MONTHS = Object.keys(adSpendData?.months || {})
+  .sort()
+  .map((iso) => {
+    const [y, m] = iso.split("-").map(Number);
+    const calendarEnd = `${iso}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`;
+    const todayIso = isoTodayForSpendMonths();
+    const end = calendarEnd < todayIso ? calendarEnd : todayIso;
+    return { iso, start: `${iso}-01`, end, spend: liveMonthTotal(iso, 0) };
+  });
 
 // ============================================================
 // RAW_TX — ข้อมูลธุรกรรมจริงทุกแถว (ชีท "มัดจำ 2026" ใน Data S45 Clinic (5).xlsx) มาจาก
@@ -103,6 +127,9 @@ const MONTH_ISO = { oct25: "2025-10", nov25: "2025-11", dec25: "2025-12", jan26:
 // or = OR Date จริง (null ถ้ายังไม่ระบุ/ยกเลิก) · tot = Total price จริงเท่านั้น (0 ถ้ายังไม่ปิด ไม่ประมาณจาก Online price)
 // ============================================================
 const RAW_TX = RAW_TX_DATA;
+// วันที่ล่าสุดที่มีแถวธุรกรรมจริงใน RAW_TX — ใช้แสดงข้อความ "ไฟล์ธุรกรรมครอบคลุมถึงวันที่ ... " แบบสด แทนวันที่
+// พิมพ์มือตรึงไว้ (เช่น "25 ส.ค. 2026") ที่จะเก่าทันทีที่ pipeline ดึงข้อมูลใหม่มาเพิ่มในวันถัดไป
+const RAW_TX_LATEST_DATE = RAW_TX.reduce((max, t) => (t.d > max ? t.d : max), "");
 
 // เดือนที่ใช้เป็น "ค่าเริ่มต้น/ปัจจุบัน" ของหน้าแรก — แก้ตรงนี้เดือนเดียวเวลาเลื่อนเดือน
 // (CATEGORIES/FB_SURGERY/OTHER_CHANNEL_DATA/DOCTOR_PROC/OR_LEAD_TIME_DAYS ทั้งหมดคำนวณจาก
@@ -166,41 +193,14 @@ const GRAND_TOTAL = {
   sales: GRAND_TOTAL_SALES_CATEGORIES.reduce((sum, k) => sum + (CATEGORIES[k].sales || 0), 0),
 };
 
-// ============================================================
-// ข้อมูลรายเดือน (ต.ค. 2025 – ส.ค. 2026) สำหรับ Filter เลือกเดือน
-// spend: ดึงสดจาก Facebook Ads MCP จริง (6 บัญชี รวม Nose Open 01-03, Semi Open, เสริมหน้าอก, ยกคิ้ว-ดึงหน้า)
-// deposit/online/sales: คำนวณจาก RAW_TX ทั้งเดือน (อัปเดต 25 ส.ค. 2026 จากชีท "มัดจำ 2026" ใน
-// Data S45 Clinic (5).xlsx ผ่าน M365 pipeline — ยืนยันเป็น master ledger จริงที่ RAW_TX สร้างมาจากตั้งแต่แรก)
-// ไฟล์นี้ไม่ครอบคลุมย้อนไปถึง ต.ค.-ธ.ค. 2025 จึงไม่มียอดขายให้เดือนเหล่านั้น
-// นิยาม (ยืนยันกับทีม 25 ส.ค. 2026): deposit = ยอดมัดจำ (ลูกค้าจองคิว+จ่ายมัดจำล็อคสิทธิ์),
-// online = ราคาที่คาดการณ์ไว้สำหรับหัตถการที่ลูกค้าเลือก (ไม่ใช่ยอดขายจริง),
-// sales = ผลรวม Total price เท่านั้น (ยอดขายจริงที่ลูกค้าจ่ายจริง เคสที่ยังไม่ปิด OR นับเป็น 0 ไม่ใช้ Online
-// price มาประมาณแทน) — เดือนที่ยังไม่จบ (ส.ค.) ยอด sales จึงต่ำกว่ายอด deposit/online ตามสัดส่วนเคสที่ยังไม่ปิด
-// หมายเหตุ: มิ.ย. 2026 ใช้ตัวเลข deposit/online/sales จากชีต Budget Allocate (แหล่งทางการที่ใช้ทั้ง Dashboard) — เดือนอื่นคำนวณจาก
-// RAW_TX โดยตรง อาจมีนิยาม/ขอบเขตต่างจากมิ.ย.เล็กน้อย
-// ============================================================
-const MONTHLY_DATA = {
-  oct25: { label: "ตุลาคม 2025", spend: liveMonthTotal(MONTH_ISO.oct25, 849372), deposit: null, online: null, sales: null },
-  nov25: { label: "พฤศจิกายน 2025", spend: liveMonthTotal(MONTH_ISO.nov25, 843033), deposit: null, online: null, sales: null },
-  dec25: { label: "ธันวาคม 2025", spend: liveMonthTotal(MONTH_ISO.dec25, 1002106), deposit: null, online: null, sales: null },
-  jan26: { label: "มกราคม 2026", spend: liveMonthTotal(MONTH_ISO.jan26, 1081752), deposit: 3061630, online: 16386430, sales: 10617920 },
-  feb26: { label: "กุมภาพันธ์ 2026", spend: liveMonthTotal(MONTH_ISO.feb26, 1418462), deposit: 1749390, online: 12370740, sales: 9233500 },
-  mar26: { label: "มีนาคม 2026", spend: liveMonthTotal(MONTH_ISO.mar26, 1191297), deposit: 3156361, online: 19166790, sales: 14987720 },
-  apr26: { label: "เมษายน 2026", spend: liveMonthTotal(MONTH_ISO.apr26, 1048204), deposit: 2028990, online: 10430890, sales: 11281413 },
-  may26: { label: "พฤษภาคม 2026", spend: liveMonthTotal(MONTH_ISO.may26, 1430197), deposit: 3298481, online: 12855190, sales: 14065500 },
-  // spend: เท่ากับ GRAND_TOTAL.spend เสมอ (คำนวณจาก adSpend.json เดือน 2026-06 ถ้ามี)
-  jun26: { label: "มิถุนายน 2026", spend: GRAND_TOTAL.spend, deposit: 2678980, online: 11608200, sales: 10448010 },
-  // สเปนด์ ก.ค. 2026 อัปเดต 13 ส.ค. 2026 เป็น 1,673,928.18 บาท (ปัดเป็น 1673928) ตามตัวเลขที่ทีมยืนยันมา ครอบคลุม
-  // ทุกบัญชีและทุกแคมเปญทั้งที่ปิด/ลบ/รันอยู่ — สูงกว่ายอดที่ดึงจาก Facebook Ads MCP account-level ตรงๆ (1,550,958)
-  // เพราะ MCP ดึงยอดระดับบัญชีไม่ครบทุกแคมเปญที่ถูกลบ (ดู comment ใน src/data/adSpend.json "UPDATE 2026-08-13")
-  // sales อัปเดต 25 ส.ค. 2026: 16,281,890 (Total price จริงเท่านั้น) แทน 19,544,667 เดิมที่ประมาณเคสยังไม่ปิดด้วย
-  // Online price แทน — ทีมยืนยันแล้วว่ายอดขายรวมต้องนับจาก Total price จริงเท่านั้น ไม่ใช้ Online price มาประมาณ
-  jul26: { label: "กรกฎาคม 2026", spend: liveMonthTotal(MONTH_ISO.jul26, 1673928), deposit: 3609892, online: 11298798, sales: 16281890 },
-  // สเปนด์สดถึงวันนี้จาก Facebook Ads MCP · deposit/online/sales จาก RAW_TX ครอบคลุมถึงวันที่ล่าสุดที่ pipeline ดึงมาได้
-  // (ไม่ระบุช่วงวันที่ในป้ายชื่อ เพราะระบบนี้อัปเดตต่อเนื่องไปเรื่อยๆ ทุกเดือน ไม่ใช่หยุดที่วันใดวันหนึ่งตายตัว)
-  aug26: { label: "สิงหาคม 2026", spend: liveMonthTotal(MONTH_ISO.aug26, 1246200), deposit: 1053986, online: 6508500, sales: 6125600 },
-};
-const MONTH_OPTIONS = Object.entries(MONTHLY_DATA).map(([k, v]) => [k, v.label]);
+// หมายเหตุ: ตารางข้อมูลรายเดือนพิมพ์มือเดิม (MONTHLY_DATA/MONTH_OPTIONS, ต.ค. 2025 – ส.ค. 2026, deposit/
+// online/sales รายเดือนคัดมาครั้งเดียวตอน 25 ส.ค. 2026) ถูกลบออก — ไม่มีจุดไหนในแอปอ่านฟิลด์ deposit/online/
+// sales ของตารางนี้เลย (ตรวจสอบแล้ว 2569-09-08) และ MONTH_OPTIONS ก็ไม่ถูก import ไปใช้ที่ไหน มีแต่ .spend
+// ที่ categorySpendForRange()/computeProratedTarget() อ่าน ซึ่งตอนนี้อ่านจาก SPEND_MONTHS (ด้านบน, สดจาก
+// adSpend.json ทุกเดือนจริง) แทนแล้ว — เดือน jun26 ในตารางเดิมยังมีบั๊กซ้อนอยู่ด้วย: spend ตั้งเป็น
+// GRAND_TOTAL.spend ตรงๆ ซึ่งจริงๆ คือยอดของเดือน CURRENT_SPEND_MONTH (ก.ค. 2569 ไม่ใช่ มิ.ย.) ทำให้ช่วงวันที่
+// บางส่วนที่เลือกทับซ้อนกับ มิ.ย. 2569 (แบบไม่เต็มเดือน) ได้ยอดโฆษณาของเดือน ก.ค. ไปเฉลี่ยผิดเดือน — SPEND_MONTHS
+// อ่านแยกตาม ISO month จริงจาก adSpend.json จึงไม่มีปัญหานี้อีก
 
 
 
@@ -501,9 +501,6 @@ const LOA_AFTERCARE_DEFS = [
   { sourceKey: "brow", key: "brow_ac", label: "ยกคิ้ว (Aftercare)" },
   { sourceKey: "skin", key: "skin_ac", label: "สกิน (Aftercare)" },
 ];
-// LOA_JUNE — ใช้เฉพาะการ์ด Insight เดือนมิถุนายนบนหน้าภาพรวม (ตั้งใจให้คงที่ ไม่ผูกกับ Filter วันที่หลัก
-// ดูการ์ด LOA Broadcast บนหน้า Ads/loaRangeRows() ด้านล่างสำหรับเวอร์ชัน Filter ตามวันที่จริง)
-const LOA_JUNE = buildLoaRows("2026-06", LOA_NORMAL_DEFS, 39000);
 const LOA_MONTHLY_BUDGET = 120000; // ยอดบลอดต่อเดือน
 const LOA_MONTHLY_QUOTA = 2000000; // จำนวนบลอดต่อเดือน
 const LOA_PEOPLE_PER_BROADCAST = 39000; // ตามชีตต้นฉบับ: * 39000 คนต่อการบลอด 1 ครั้ง
@@ -827,49 +824,35 @@ function MoMCaption({ delta }) {
 // บริสุทธิ์ (pure function) รับ range เข้ามาแทนการอิง dateRange ตรงๆ เพื่อให้เรียกซ้ำ
 // ได้ทั้งช่วงหลักและช่วงเทียบ (compare) โดยไม่ต้องแตะโค้ดเดิม
 // ============================================================
-const MONTH_BOUNDS = {
-  oct25: ["2025-10-01", "2025-10-31"],
-  nov25: ["2025-11-01", "2025-11-30"],
-  dec25: ["2025-12-01", "2025-12-31"],
-  jan26: ["2026-01-01", "2026-01-31"],
-  feb26: ["2026-02-01", "2026-02-28"],
-  mar26: ["2026-03-01", "2026-03-31"],
-  apr26: ["2026-04-01", "2026-04-30"],
-  may26: ["2026-05-01", "2026-05-31"],
-  jun26: ["2026-06-01", "2026-06-30"],
-  jul26: ["2026-07-01", "2026-07-31"],
-  aug26: ["2026-08-01", "2026-08-25"],
-};
-
 // ============================================================
 // ค่าโฆษณาแยกตามหัตถการ สำหรับช่วงวันที่ใดๆ — ใช้ร่วมกันทั้ง rangeSpend, activeFbSurgery
 // (การ์ด "ต้นทุนต่อการซื้อ") และ computeExecMetricsForRange เพื่อไม่ให้ตัวเลขเพี้ยนกันระหว่างจุดต่างๆ
-// เดือนที่ adSpend.json มี breakdown รายหัตถการจริง (มิ.ย.-ส.ค. 2026) ใช้ตัวเลขจริงเฉลี่ยตามสัดส่วนวันที่
-// ทับซ้อน · เดือนอื่นที่มีแค่ยอดรวม ประมาณโดยใช้สัดส่วนหัตถการของเดือนมิ.ย. (CATEGORIES) แทน
+// เดือนที่ adSpend.json มี breakdown รายหัตถการจริง (มิ.ย. 2026 เป็นต้นไป) ใช้ตัวเลขจริงเฉลี่ยตามสัดส่วนวันที่
+// ทับซ้อน · เดือนอื่นที่มีแค่ยอดรวม ประมาณโดยใช้สัดส่วนหัตถการของเดือนอ้างอิง (CATEGORIES) แทน
 // ============================================================
-// "inter" ไม่ใช่บัญชีโฆษณาแยก แต่เป็นแคมเปญย่อยในบัญชี Nose Open 02 อยู่แล้ว (ดูคอมเมนต์ jul26 ด้านบน)
-// ดังนั้น "all" ต้องอิงยอดรวมเดือนจริง (MONTHLY_DATA[mk].spend อ่านจากฟิลด์ "total" ใน adSpend.json) ตรงๆ
-// ห้ามเอา perCategory มาบวกกันเอง เพราะจะนับ Inter ซ้ำเข้าไปในยอด Nose Open อีกที
+// "inter" ไม่ใช่บัญชีโฆษณาแยก แต่เป็นแคมเปญย่อยในบัญชี Nose Open 02 อยู่แล้ว — ดังนั้น "all" ต้องอิงยอดรวม
+// เดือนจริง (SPEND_MONTHS[].spend อ่านจากฟิลด์ "total" ใน adSpend.json) ตรงๆ ห้ามเอา perCategory มาบวกกันเอง
+// เพราะจะนับ Inter ซ้ำเข้าไปในยอด Nose Open อีกที
 const SPEND_CATEGORY_KEYS = ["nose_open", "nose_semi", "breast_lipo", "brow_hairline", "inter"];
 function categorySpendForRange(range) {
   const result = Object.fromEntries(SPEND_CATEGORY_KEYS.map((k) => [k, 0]));
   let all = 0;
-  Object.entries(MONTH_BOUNDS).forEach(([mk, [monthStart, monthEnd]]) => {
+  SPEND_MONTHS.forEach(({ iso, start: monthStart, end: monthEnd, spend: monthSpend }) => {
     const overlapStart = range.start > monthStart ? range.start : monthStart;
     const overlapEnd = range.end < monthEnd ? range.end : monthEnd;
     if (overlapStart > overlapEnd) return;
     const overlapDays = Math.round((new Date(overlapEnd) - new Date(overlapStart)) / 86400000) + 1;
     const totalDaysInMonth = Math.round((new Date(monthEnd) - new Date(monthStart)) / 86400000) + 1;
     const frac = overlapDays / totalDaysInMonth;
-    all += (MONTHLY_DATA[mk]?.spend || 0) * frac;
-    const monthCat = adSpendData?.months?.[MONTH_ISO[mk]];
+    all += monthSpend * frac;
+    const monthCat = adSpendData?.months?.[iso];
     const hasBreakdown = monthCat && SPEND_CATEGORY_KEYS.some((k) => typeof monthCat[k] === "number");
     SPEND_CATEGORY_KEYS.forEach((k) => {
       if (hasBreakdown) {
         result[k] += (monthCat[k] || 0) * frac;
       } else {
         const ratio = CATEGORIES[k].spend / GRAND_TOTAL.spend;
-        result[k] += (MONTHLY_DATA[mk]?.spend || 0) * frac * ratio;
+        result[k] += monthSpend * frac * ratio;
       }
     });
   });
@@ -938,18 +921,33 @@ function computeExecMetricsForRange(range, proc) {
 }
 
 // เป้าหมายยอดขายรายเดือน (CATEGORIES[key].target) เป็นตัวเลขต่อ 1 เดือนเต็ม — ประมาณค่าเป้าหมายสำหรับช่วงวันที่ใดๆ
-// โดยเฉลี่ยตามสัดส่วนวันที่ทับซ้อนกับแต่ละเดือนปฏิทิน (วิธีเดียวกับที่ใช้ประมาณ fbSpend ด้านบน)
+// โดยเฉลี่ยตามสัดส่วนวันที่ทับซ้อนกับแต่ละเดือนปฏิทิน (วิธีเดียวกับที่ใช้ประมาณ fbSpend ด้านบน) — สร้างรายชื่อ
+// เดือนปฏิทินที่ต้องพิจารณาสดจากช่วง range เอง (เดือนของ range.start ถึงเดือนของ range.end) แทนการวนตารางเดือน
+// ที่ต้องคอยเพิ่มมือทุกเดือน (แบบ MONTH_BOUNDS เดิม ซึ่งเคยตรึงไว้ถึง ส.ค. 2569 ทำให้ % เทียบเป้าหมายของช่วงวันที่
+// ก.ย.เป็นต้นไปเพี้ยน — ไม่ใช้ SPEND_MONTHS ตรงนี้เพราะ SPEND_MONTHS ตัด end ของเดือนปัจจุบันไว้ที่ "วันนี้" สำหรับ
+// เฉลี่ยยอดใช้จ่ายสะสม ซึ่งเป็นคนละความหมายกับ "สัดส่วนวันปฏิทินของเป้าหมายทั้งเดือน" ที่ต้องใช้เดือนเต็มเสมอ)
 function computeProratedTarget(range, monthlyTarget) {
   let total = 0;
-  Object.values(MONTH_BOUNDS).forEach(([monthStart, monthEnd]) => {
+  let y = Number(range.start.slice(0, 4));
+  let m = Number(range.start.slice(5, 7));
+  const endY = Number(range.end.slice(0, 4));
+  const endM = Number(range.end.slice(5, 7));
+  while (y < endY || (y === endY && m <= endM)) {
+    const monthStart = `${y}-${String(m).padStart(2, "0")}-01`;
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const monthEnd = `${y}-${String(m).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
     const overlapStart = range.start > monthStart ? range.start : monthStart;
     const overlapEnd = range.end < monthEnd ? range.end : monthEnd;
     if (overlapStart <= overlapEnd) {
       const overlapDays = Math.round((new Date(overlapEnd) - new Date(overlapStart)) / 86400000) + 1;
-      const totalDaysInMonth = Math.round((new Date(monthEnd) - new Date(monthStart)) / 86400000) + 1;
-      total += monthlyTarget * (overlapDays / totalDaysInMonth);
+      total += monthlyTarget * (overlapDays / daysInMonth);
     }
-  });
+    m++;
+    if (m > 12) {
+      m = 1;
+      y++;
+    }
+  }
   return Math.round(total);
 }
 
@@ -2180,33 +2178,7 @@ export default function AdsDashboard() {
     { consultNow: 0, depositNow: 0, consultNew: 0, depositNew: 0, consultValueNow: 0, depositValueNow: 0, consultValueNew: 0, depositValueNew: 0 }
   );
 
-  const loaTotal = LOA_JUNE.reduce(
-    (acc, r) => ({ budgetUsed: acc.budgetUsed + r.budgetUsed, budgetLeft: acc.budgetLeft + r.budgetLeft, quotaLeft: acc.quotaLeft + r.quotaLeft }),
-    { budgetUsed: 0, budgetLeft: 0, quotaLeft: 0 }
-  );
-  const loaWithTimesUsed = LOA_JUNE.map((r) => ({ ...r, timesUsed: r.broadcastReach / LOA_PEOPLE_PER_BROADCAST }));
-  const loaByUsedDesc = [...loaWithTimesUsed].sort((a, b) => b.budgetUsed - a.budgetUsed);
-  const loaByTimesUsedDesc = [...loaWithTimesUsed].sort((a, b) => b.timesUsed - a.timesUsed);
-  const loaMostUsed = loaByUsedDesc[0];
-  const loaLeastUsed = loaByUsedDesc[loaByUsedDesc.length - 1];
-  const loaMostTimesUsed = loaByTimesUsedDesc[0];
-  const loaMostLeft = [...LOA_JUNE].sort((a, b) => b.budgetLeft - a.budgetLeft)[0];
-  const loaMostUrgent = [...LOA_JUNE].sort((a, b) => a.timesLeft - b.timesLeft)[0];
-  const maxLoaBudget = Math.max(...LOA_JUNE.map((r) => r.budgetUsed + r.budgetLeft));
-
-  // จำนวนครั้งการ Broadcast: ใช้จริง vs ทำได้ทั้งหมด (ใช้จริง + เหลือ) แยกตามหัตถการ
-  const loaCountCompare = LOA_JUNE.map((r) => {
-    const used = Math.round(r.broadcastReach / LOA_PEOPLE_PER_BROADCAST);
-    const left = Math.round(r.timesLeft);
-    return { key: r.key, label: r.label, used, left, total: used + left };
-  }).sort((a, b) => b.total - a.total);
-  const loaCountTotals = loaCountCompare.reduce(
-    (acc, r) => ({ used: acc.used + r.used, left: acc.left + r.left, total: acc.total + r.total }),
-    { used: 0, left: 0, total: 0 }
-  );
-  const maxLoaCountTotal = Math.max(...loaCountCompare.map((r) => r.total));
-
-  // ---- เลือกช่องทาง LOA สำหรับการ์ด Broadcast บนหน้า Ads (แยกจาก loaTotal/LOA_JUNE ด้านบนซึ่งใช้เฉพาะสรุปมิถุนายนบนหน้าภาพรวม) ----
+  // ---- เลือกช่องทาง LOA สำหรับการ์ด Broadcast บนหน้า Ads ----
   // Filter ตามช่วงวันที่ที่เลือกจริง (loaRangeRows รวม dailyReach ข้ามเดือนได้) ไม่ใช่แค่ยอดรวมทั้งเดือนอีกต่อไป
   const loaChannelMeta = LOA_CHANNEL_META[loaChannel];
   const loaDefs = loaChannel === "aftercare" ? LOA_AFTERCARE_DEFS : LOA_NORMAL_DEFS;
@@ -2513,10 +2485,12 @@ export default function AdsDashboard() {
             <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
               <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
               <p>
-                กล่องนี้และอีกหลายส่วนด้านล่าง (Facebook breakdown, ช่องทางอื่น, สรุปหมอ, ระยะเวลาปิด OR) คำนวณสดตามช่วงวันที่ที่เลือกแล้ว แต่บางส่วนของ
-                Dashboard (Sales Funnel รายวัน, Inbox เป้าหมายรายวัน, LINE OA Broadcast, Bad Lead) ยังคงแสดงเฉพาะข้อมูลเดือนมิถุนายน
-                2026 เท่านั้น เนื่องจากเป็นไฟล์ที่มีข้อมูลรายวันของเดือนนั้นเดือนเดียว
-                {txInRange.length === 0 && " (ไม่พบข้อมูลธุรกรรมในช่วงวันที่นี้ — ไฟล์ธุรกรรมครอบคลุม ม.ค.–25 ส.ค. 2026 เท่านั้น)"}
+                กล่องนี้และอีกหลายส่วนด้านล่าง (Facebook breakdown, ช่องทางอื่น, สรุปหมอ, ระยะเวลาปิด OR, Bad Lead)
+                คำนวณสดตามช่วงวันที่ที่เลือกแล้ว แต่บางส่วนของ Dashboard (Sales Funnel รายวัน, Inbox เป้าหมายรายวัน,
+                LINE OA Broadcast) ยังคงมีข้อมูลรายวันจริงเฉพาะบางเดือนเท่านั้น (ปัจจุบันคือ {funnelMonthsRangeLabelShort})
+                เนื่องจากไฟล์ต้นทางมีข้อมูลรายวันของเดือนเหล่านั้นเท่านั้น
+                {txInRange.length === 0 &&
+                  ` (ไม่พบข้อมูลธุรกรรมในช่วงวันที่นี้ — ไฟล์ธุรกรรมครอบคลุมถึงวันที่ ${fmtDateTh(RAW_TX_LATEST_DATE)})`}
               </p>
             </div>
           )}
@@ -3435,36 +3409,56 @@ export default function AdsDashboard() {
         <div className="mt-6 rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
           <div className="flex items-center gap-2 mb-2">
             <Lightbulb size={16} className="text-blue-500" />
-            <h3 className="text-sm font-semibold text-slate-700">คำแนะนำเกี่ยวกับการ Broadcast</h3>
+            <h3 className="text-sm font-semibold text-slate-700">คำแนะนำเกี่ยวกับการ Broadcast — {rangeLabel}</h3>
           </div>
-          <ul className="space-y-1.5 text-sm text-slate-600 list-disc list-inside">
-            <li>
-              <span className="font-semibold">Open</span> บลอดไปแล้ว {Math.round(loaWithTimesUsed.find((r) => r.key === "open").timesUsed)} ครั้ง
-              (มากที่สุด) ใช้งบไปแล้ว {((loaMostUsed.budgetUsed / loaTotal.budgetUsed) * 100).toFixed(0)}% ของงบ Broadcast ทั้งหมดในเดือนนี้
-              แต่ยังเหลือพอส่งได้อีก {Math.round(LOA_JUNE.find((r) => r.key === "open").timesLeft)}x —
-              ควรกระจายรอบการส่งให้พอดีจนถึงสิ้นเดือน ไม่ยิงรัวจนงบหมดเร็วเกินไป
-            </li>
-            <li>
-              <span className="font-semibold text-rose-600">ยกคิ้ว/เลื่อนไรผม</span> บลอดไปแล้ว{" "}
-              {Math.round(loaWithTimesUsed.find((r) => r.key === "brow").timesUsed)} ครั้ง (มากเป็นอันดับ 2)
-              แต่เหลืองบไม่พอส่งได้อีกเต็มรอบ (0x) — แนะนำเติมงบเพิ่ม หรือลดจำนวนคนที่ส่งต่อรอบเพื่อยืดโควตาที่เหลือ
-            </li>
-            <li>
-              <span className="font-semibold text-emerald-600">แบรนด์ดิ้ง</span> บลอดไปแล้วเพียง{" "}
-              {Math.round(loaWithTimesUsed.find((r) => r.key === "branding").timesUsed)} ครั้ง (น้อยที่สุด) ใช้งบน้อยที่สุดและเหลือมากที่สุด
-              (ยังบลอดได้อีก 4x) — มีช่องว่างให้เพิ่มความถี่ broadcast เพื่อสร้าง brand awareness โดยไม่เสียงบเปล่า
-            </li>
-            <li>
-              <span className="font-semibold">หน้าอก/ดูดไขมัน</span> กับ <span className="font-semibold">Semi</span> บลอดไปแล้วพอๆกัน (
-              {Math.round(loaWithTimesUsed.find((r) => r.key === "breast").timesUsed)} และ{" "}
-              {Math.round(loaWithTimesUsed.find((r) => r.key === "semi").timesUsed)} ครั้งตามลำดับ) ใช้งบใกล้เคียงกัน (~2,350–2,360 บาท)
-              แต่หน้าอกเหลือโควตาคนน้อยกว่ามาก (38,709 vs 116,758 คน) และบลอดได้อีกแค่ 1x — ควรเติมงบให้หน้าอกก่อน Semi
-            </li>
-            <li>
-              รวมทั้งเดือนบลอดไปแล้ว {Math.round(loaWithTimesUsed.reduce((s, r) => s + r.timesUsed, 0))} ครั้ง ใช้งบไปแล้ว{" "}
-              {((loaTotal.budgetUsed / LOA_MONTHLY_BUDGET) * 100).toFixed(1)}% ควรเผื่องบสำหรับสัปดาห์สุดท้ายของเดือนไว้ด้วย
-            </li>
-          </ul>
+          {/* เดิมการ์ดนี้ตรึงไว้ที่ตัวเลขเดือน มิ.ย. 2569 ตรงๆ (ตั้งใจไม่ผูกกับ Filter วันที่หลัก) แม้ผู้ใช้จะเปลี่ยน
+              ช่วงวันที่ด้านบนไปเดือนอื่นแล้วก็ตาม ทำให้คำแนะนำ (หัตถการไหนใช้งบมากสุด/เหลือน้อยสุด) อาจไม่ตรงกับ
+              ช่วงที่กำลังดูอยู่จริง — เปลี่ยนมาคำนวณสดจาก loaSummarySource (เหมือนการ์ด "สรุปภาพรวม Dashboard" ท้าย
+              หน้านี้ และการ์ด LINE OA Broadcast บนหน้า Ads) แล้วสร้างคำแนะนำจากอันดับจริงของช่วงที่เลือกแทนการเขียน
+              ชื่อหัตถการ/ตัวเลขตายตัวไว้ในข้อความ */}
+          {!loaSummarySource || loaSummarySource.length === 0 ? (
+            <p className="text-sm text-slate-500">ไม่มีข้อมูล LINE OA Broadcast (ปกติ) สำหรับช่วงวันที่ที่เลือก</p>
+          ) : (
+            (() => {
+              const withTimesUsed = loaSummarySource.map((r) => ({ ...r, timesUsed: r.broadcastReach / LOA_PEOPLE_PER_BROADCAST }));
+              const totalBudgetUsed = withTimesUsed.reduce((s, r) => s + r.budgetUsed, 0);
+              const totalTimesUsed = withTimesUsed.reduce((s, r) => s + r.timesUsed, 0);
+              const byUsedDesc = [...withTimesUsed].sort((a, b) => b.budgetUsed - a.budgetUsed);
+              const mostUsed = byUsedDesc[0];
+              const leastUsed = byUsedDesc[byUsedDesc.length - 1];
+              const rowsWithTimesLeft = withTimesUsed.filter((r) => r.timesLeft != null);
+              const mostUrgent = rowsWithTimesLeft.length ? [...rowsWithTimesLeft].sort((a, b) => a.timesLeft - b.timesLeft)[0] : null;
+              return (
+                <ul className="space-y-1.5 text-sm text-slate-600 list-disc list-inside">
+                  <li>
+                    <span className="font-semibold">{mostUsed.label}</span> บลอดไปแล้ว {Math.round(mostUsed.timesUsed)} ครั้ง (มากที่สุด)
+                    ใช้งบไปแล้ว {totalBudgetUsed > 0 ? ((mostUsed.budgetUsed / totalBudgetUsed) * 100).toFixed(0) : 0}% ของงบ Broadcast
+                    รวมในช่วงนี้{mostUsed.timesLeft != null && ` แต่ยังเหลือพอส่งได้อีก ${Math.round(mostUsed.timesLeft)}x`} —
+                    ควรกระจายรอบการส่งให้พอดีจนจบช่วง ไม่ยิงรัวจนงบหมดเร็วเกินไป
+                  </li>
+                  {mostUrgent && mostUrgent.key !== mostUsed.key && (
+                    <li>
+                      <span className="font-semibold text-rose-600">{mostUrgent.label}</span> เหลือโควตาส่งได้อีกน้อยที่สุด (
+                      {Math.round(mostUrgent.timesLeft)}x) จากที่บลอดไปแล้ว {Math.round(mostUrgent.timesUsed)} ครั้ง —
+                      แนะนำเติมงบเพิ่ม หรือลดจำนวนคนที่ส่งต่อรอบเพื่อยืดโควตาที่เหลือ
+                    </li>
+                  )}
+                  {leastUsed.key !== mostUsed.key && (!mostUrgent || leastUsed.key !== mostUrgent.key) && (
+                    <li>
+                      <span className="font-semibold text-emerald-600">{leastUsed.label}</span> บลอดไปแล้วเพียง{" "}
+                      {Math.round(leastUsed.timesUsed)} ครั้ง (น้อยที่สุด) ใช้งบน้อยที่สุด
+                      {leastUsed.timesLeft != null && ` (ยังบลอดได้อีก ${Math.round(leastUsed.timesLeft)}x)`} —
+                      มีช่องว่างให้เพิ่มความถี่ broadcast เพื่อสร้าง brand awareness โดยไม่เสียงบเปล่า
+                    </li>
+                  )}
+                  <li>
+                    รวมช่วงนี้บลอดไปแล้ว {Math.round(totalTimesUsed)} ครั้ง ใช้งบไปแล้ว{" "}
+                    {((totalBudgetUsed / LOA_MONTHLY_BUDGET) * 100).toFixed(1)}% ของงบ Broadcast ต่อเดือน ควรเผื่องบสำหรับช่วงท้ายเดือนไว้ด้วย
+                  </li>
+                </ul>
+              );
+            })()
+          )}
         </div>
 )}
 
