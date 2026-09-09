@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
 import {
   TrendingUp,
   Wallet,
@@ -726,24 +726,75 @@ const DOCTOR_HERO_POSTS = DOCTOR_HERO_POSTS_DATA.doctors;
 
 const fmtTHB = (n) => new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 }).format(Math.round(n));
 
+// เดิมใช้ <select> ของเบราว์เซอร์ตรงๆ — กล่องปิดเปลี่ยนสีตาม Dark Mode ได้ (มีคลาส bg-white/text-slate-700 ที่
+// index.css override ไว้แล้ว) แต่ "รายการที่กางออกมา" (option list) เป็น UI ของเบราว์เซอร์/OS เอง ไม่รับ CSS
+// ของเว็บเลยนอกจาก background-color/color พื้นฐาน ทำให้ตอนกางออกมาสีไม่ตรงกับ Theme ของแดชบอร์ด (พบจากภาพที่
+// ผู้ใช้ส่งมา 2569-09-09) — เปลี่ยนเป็น dropdown ที่สร้างเองทั้งหมด (ปุ่ม + panel ลอยด้วย <div>) ใช้คลาส Tailwind
+// เดียวกับส่วนอื่นของแอปที่มี dark-mode override อยู่แล้วใน index.css (bg-white/border-slate-200/text-slate-700/
+// shadow-lg/bg-slate-50/bg-teal-100/text-teal-600) จึงเข้าธีมเดียวกันทั้งตอนปิดและตอนกางออกมาโดยไม่ต้องเพิ่ม CSS
+// ใหม่ — หน้าตา/ตำแหน่งไอคอนคงเดิมทุกจุดที่เรียกใช้ (icon/value/onChange/options เหมือนเดิมทุกประการ)
 function Select({ icon: Icon, value, onChange, options }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) setOpen(false);
+    };
+    const onEscape = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onOutside);
+    document.addEventListener("keydown", onEscape);
+    return () => {
+      document.removeEventListener("mousedown", onOutside);
+      document.removeEventListener("keydown", onEscape);
+    };
+  }, [open]);
+
+  const current = options.find(([val]) => val === value);
   return (
-    <div className="relative">
-      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-        <Icon size={16} />
-      </div>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="appearance-none bg-white border border-slate-200 rounded-xl pl-9 pr-9 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200 cursor-pointer"
+    <div className="relative" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="relative flex items-center bg-white border border-slate-200 rounded-xl pl-9 pr-9 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:border-slate-300 cursor-pointer max-w-[16rem]"
       >
-        {options.map(([val, label]) => (
-          <option key={val} value={val}>{label}</option>
-        ))}
-      </select>
-      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-        <ChevronDown size={16} />
-      </div>
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+          <Icon size={16} />
+        </span>
+        <span className="truncate">{current ? current[1] : ""}</span>
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+          <ChevronDown size={16} className={`transition-transform duration-150 ${open ? "rotate-180" : ""}`} />
+        </span>
+      </button>
+      {open && (
+        <div
+          role="listbox"
+          className="absolute z-50 mt-1 min-w-full w-max max-w-xs max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg py-1"
+        >
+          {options.map(([val, label]) => (
+            <button
+              key={val}
+              type="button"
+              role="option"
+              aria-selected={val === value}
+              onClick={() => {
+                onChange(val);
+                setOpen(false);
+              }}
+              className={`block w-full text-left px-3 py-2 text-sm truncate ${
+                val === value ? "bg-teal-100 text-teal-600 font-semibold" : "text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -2359,17 +2410,19 @@ export default function AdsDashboard() {
   // สร้างจาก "ทุกเคสปิดมัดจำที่เคยเกิดขึ้น" (ไม่จำกัดช่วงวันที่) ให้รายการคงที่เหมือน badLeadTagOptions ด้านบน
   const procLabelForSale = (p) => CATEGORIES[p]?.label ?? "อื่นๆ (Eye/เสริมขมับ/ฯลฯ)";
   const allDepositRows = RAW_TX.filter((t) => t.dep > 0);
+  // ตัวเลขในวงเล็บ = จำนวนเคสปิดมัดจำ "รวมทั้งหมดทุกช่วงเวลา" ของคนนั้น/หัตถการนั้น/คุณหมอคนนั้น (ไม่ผูกกับ Filter
+  // วันที่ด้านบน) มีไว้ให้เห็นภาพรวมตอนเลือกจาก Dropdown เท่านั้น — ตัวเลขในการ์ดเมื่อเลือกแล้วจะกรองตามวันที่จริง
   const saleDepNameOptions = [
     ["all", "ทุกคน"],
-    ...tallyBy(allDepositRows, (t) => t.sale).map(([name, count]) => [name, `${name} (${count})`]),
+    ...tallyBy(allDepositRows, (t) => t.sale).map(([name, count]) => [name, `${name} (${count} เคส)`]),
   ];
   const saleDepProcOptions = [
     ["all", "ทุกหัตถการ"],
-    ...tallyBy(allDepositRows, (t) => t.p).map(([p, count]) => [p, `${procLabelForSale(p)} (${count})`]),
+    ...tallyBy(allDepositRows, (t) => t.p).map(([p, count]) => [p, `${procLabelForSale(p)} (${count} เคส)`]),
   ];
   const saleDepDoctorOptions = [
     ["all", "ทุกคุณหมอ"],
-    ...tallyBy(allDepositRows, (t) => t.doc).map(([name, count]) => [name, `${name} (${count})`]),
+    ...tallyBy(allDepositRows, (t) => t.doc).map(([name, count]) => [name, `${name} (${count} เคส)`]),
   ];
   const saleDepositInRange = txInRange.filter(
     (t) =>
