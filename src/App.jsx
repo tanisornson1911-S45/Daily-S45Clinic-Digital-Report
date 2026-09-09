@@ -2406,30 +2406,36 @@ export default function AdsDashboard() {
   const badLeadAssigneeTally = tallyBy(badLeadInRange, (l) => l.assignee || "ยังไม่มอบหมาย");
   // สรุปยอดปิดมัดจำ แยกตาม Sale (ผู้ใช้ขอเพิ่ม 2569-09-09) — จากคอลัมน์ "Sale ปิดมัดจำ" ในไฟล์ Data S45 Clinic
   // (ชีต "มัดจำ 2026") ที่ RAW_TX.sale เก็บไว้แล้ว (เดิมอ่านแต่ไม่ได้ใช้) นับเฉพาะแถวที่ dep>0 (ปิดมัดจำจริง) ตาม
-  // ช่วงวันที่ที่เลือก (txInRange) — Dropdown 3 ตัว (Sale/หัตถการ/คุณหมอ) กรองซ้อนกันได้ ตัวเลือกในแต่ละ Dropdown
-  // สร้างจาก "ทุกเคสปิดมัดจำที่เคยเกิดขึ้น" (ไม่จำกัดช่วงวันที่) ให้รายการคงที่เหมือน badLeadTagOptions ด้านบน
+  // ช่วงวันที่ที่เลือก (txInRange) — Dropdown 3 ตัว (Sale/หัตถการ/คุณหมอ) กรองซ้อนกันได้
   const procLabelForSale = (p) => CATEGORIES[p]?.label ?? "อื่นๆ (Eye/เสริมขมับ/ฯลฯ)";
-  const allDepositRows = RAW_TX.filter((t) => t.dep > 0);
-  // ตัวเลขในวงเล็บ = จำนวนเคสปิดมัดจำ "รวมทั้งหมดทุกช่วงเวลา" ของคนนั้น/หัตถการนั้น/คุณหมอคนนั้น (ไม่ผูกกับ Filter
-  // วันที่ด้านบน) มีไว้ให้เห็นภาพรวมตอนเลือกจาก Dropdown เท่านั้น — ตัวเลขในการ์ดเมื่อเลือกแล้วจะกรองตามวันที่จริง
+  // ตัวเลขในวงเล็บของ Dropdown = จำนวนเคสปิดมัดจำ "ตามช่วงวันที่ที่เลือกอยู่ตอนนี้" (ไม่ใช่ยอดรวมทุกช่วงเวลาเหมือนตอน
+  // แรก — ผู้ใช้แจ้ง 2569-09-10 ว่าอยากให้ตัวเลขผูกกับวันที่ด้วย) รายการจึงยุบ/ขยายตามจริงเมื่อเปลี่ยนวันที่ — ไม่ผูก
+  // กับอีก 2 Dropdown ที่เหลือ (กรองแค่ตามวันที่อย่างเดียว) ไม่งั้นเลือกหลาย Dropdown พร้อมกันแล้วรายการจะยุบจนงง
+  const depositRowsInDateRange = txInRange.filter((t) => t.dep > 0);
   const saleDepNameOptions = [
-    ["all", "ทุกคน"],
-    ...tallyBy(allDepositRows, (t) => t.sale).map(([name, count]) => [name, `${name} (${count} เคส)`]),
+    ["all", `ทุกคน (${depositRowsInDateRange.length} เคส)`],
+    ...tallyBy(depositRowsInDateRange, (t) => t.sale).map(([name, count]) => [name, `${name} (${count} เคส)`]),
   ];
   const saleDepProcOptions = [
-    ["all", "ทุกหัตถการ"],
-    ...tallyBy(allDepositRows, (t) => t.p).map(([p, count]) => [p, `${procLabelForSale(p)} (${count} เคส)`]),
+    ["all", `ทุกหัตถการ (${depositRowsInDateRange.length} เคส)`],
+    ...tallyBy(depositRowsInDateRange, (t) => t.p).map(([p, count]) => [p, `${procLabelForSale(p)} (${count} เคส)`]),
   ];
   const saleDepDoctorOptions = [
-    ["all", "ทุกคุณหมอ"],
-    ...tallyBy(allDepositRows, (t) => t.doc).map(([name, count]) => [name, `${name} (${count} เคส)`]),
+    ["all", `ทุกคุณหมอ (${depositRowsInDateRange.length} เคส)`],
+    ...tallyBy(depositRowsInDateRange, (t) => t.doc).map(([name, count]) => [name, `${name} (${count} เคส)`]),
   ];
-  const saleDepositInRange = txInRange.filter(
+  // ถ้าคนที่เลือกไว้ไม่มีเคสในช่วงวันที่ใหม่ (หายไปจาก Dropdown ด้านบนแล้ว) ให้ถือว่ากลับไป "ทุกคน" แทนการค้าง
+  // ค่าที่ไม่มีตัวเลือกให้เลือกอยู่ (state เดิมไม่ได้ถูกล้าง แค่ไม่ใช้ตอนกรอง/แสดงผล — พอมีเคสกลับมาในวันที่นั้นอีกจะ
+  // กลับไปเลือกให้อัตโนมัติเหมือนเดิม)
+  const saleDepFilterEff = saleDepFilter === "all" || saleDepNameOptions.some(([v]) => v === saleDepFilter) ? saleDepFilter : "all";
+  const saleDepProcFilterEff = saleDepProcFilter === "all" || saleDepProcOptions.some(([v]) => v === saleDepProcFilter) ? saleDepProcFilter : "all";
+  const saleDepDoctorFilterEff =
+    saleDepDoctorFilter === "all" || saleDepDoctorOptions.some(([v]) => v === saleDepDoctorFilter) ? saleDepDoctorFilter : "all";
+  const saleDepositInRange = depositRowsInDateRange.filter(
     (t) =>
-      t.dep > 0 &&
-      (saleDepFilter === "all" || t.sale === saleDepFilter) &&
-      (saleDepProcFilter === "all" || t.p === saleDepProcFilter) &&
-      (saleDepDoctorFilter === "all" || t.doc === saleDepDoctorFilter)
+      (saleDepFilterEff === "all" || t.sale === saleDepFilterEff) &&
+      (saleDepProcFilterEff === "all" || t.p === saleDepProcFilterEff) &&
+      (saleDepDoctorFilterEff === "all" || t.doc === saleDepDoctorFilterEff)
   );
   const saleDepositTotalCases = saleDepositInRange.length;
   const saleDepositTotalAmount = saleDepositInRange.reduce((s, t) => s + t.dep, 0);
@@ -4429,9 +4435,9 @@ export default function AdsDashboard() {
               <h2 className="text-sm font-semibold text-slate-700">สรุปยอดปิดมัดจำ แยกตาม Sale — {rangeLabel}</h2>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Select icon={UserCircle2} value={saleDepFilter} onChange={setSaleDepFilter} options={saleDepNameOptions} />
-              <Select icon={Stethoscope} value={saleDepProcFilter} onChange={setSaleDepProcFilter} options={saleDepProcOptions} />
-              <Select icon={Users} value={saleDepDoctorFilter} onChange={setSaleDepDoctorFilter} options={saleDepDoctorOptions} />
+              <Select icon={UserCircle2} value={saleDepFilterEff} onChange={setSaleDepFilter} options={saleDepNameOptions} />
+              <Select icon={Stethoscope} value={saleDepProcFilterEff} onChange={setSaleDepProcFilter} options={saleDepProcOptions} />
+              <Select icon={Users} value={saleDepDoctorFilterEff} onChange={setSaleDepDoctorFilter} options={saleDepDoctorOptions} />
             </div>
           </div>
           <p className="text-xs text-slate-400 mb-5 ml-10">
