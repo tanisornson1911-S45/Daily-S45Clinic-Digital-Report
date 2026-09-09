@@ -41,6 +41,7 @@ import {
   ArrowUp,
   ArrowDown,
   Tag,
+  Award,
 } from "lucide-react";
 import {
   BarChart,
@@ -1058,6 +1059,20 @@ function tallyBy(arr, keyFn) {
   return [...m.entries()].sort((a, b) => b[1] - a[1]);
 }
 
+// เหมือน tallyBy แต่รวมยอด (valueFn) ต่อกลุ่มด้วย ไม่ใช่แค่นับจำนวน — คืน [[key, count, sum], ...] เรียงจำนวนมากไปน้อย
+function groupSumBy(arr, keyFn, valueFn) {
+  const m = new Map();
+  for (const item of arr) {
+    const k = keyFn(item);
+    if (!k) continue;
+    const cur = m.get(k) || { count: 0, sum: 0 };
+    cur.count += 1;
+    cur.sum += valueFn(item);
+    m.set(k, cur);
+  }
+  return [...m.entries()].map(([k, v]) => [k, v.count, v.sum]).sort((a, b) => b[1] - a[1]);
+}
+
 // ช่วงก่อนหน้าที่มีจำนวนวันเท่ากัน ต่อจากปลายช่วงหลักย้อนกลับไปทันที (ค่าเริ่มต้นของ Compare)
 function previousPeriodRange(range) {
   const start = new Date(`${range.start}T00:00:00`);
@@ -1462,6 +1477,9 @@ export default function AdsDashboard() {
   const [interDoctorFilter, setInterDoctorFilter] = useState("all");
   const [badLeadTagFilter, setBadLeadTagFilter] = useState("all");
   const [interProcFilter, setInterProcFilter] = useState("all");
+  const [saleDepFilter, setSaleDepFilter] = useState("all");
+  const [saleDepProcFilter, setSaleDepProcFilter] = useState("all");
+  const [saleDepDoctorFilter, setSaleDepDoctorFilter] = useState("all");
   // ดูคอมเมนต์ที่ defaultDateRanges() ด้านบน — ปกติเป็น "เดือนนี้" เสมอ ยกเว้นตอนเพิ่งขึ้นเดือนใหม่แล้ว RAW_TX
   // ยังไม่มีข้อมูลเลยจะ fallback ไปเดือนที่แล้วชั่วคราว
   const [dateRange, setDateRange] = useState(() => defaultDateRanges().dateRange);
@@ -2335,6 +2353,36 @@ export default function AdsDashboard() {
   // ไม่ตัดเหลือ 6 อันแรกเหมือนเดิม — ตอนนี้ badLeadInRange คือ Lead ทั้งหมด (ไม่ใช่แค่ Bad Lead) มีผู้รับผิดชอบจริง
   // มากกว่าเดิมมาก การตัดเหลือ 6 ทำให้บางคน (เช่น Sales Center 5:ข้าวสุก อันดับ 7) หายไปจากรายการทั้งที่มีเคสเยอะจริง
   const badLeadAssigneeTally = tallyBy(badLeadInRange, (l) => l.assignee || "ยังไม่มอบหมาย");
+  // สรุปยอดปิดมัดจำ แยกตาม Sale (ผู้ใช้ขอเพิ่ม 2569-09-09) — จากคอลัมน์ "Sale ปิดมัดจำ" ในไฟล์ Data S45 Clinic
+  // (ชีต "มัดจำ 2026") ที่ RAW_TX.sale เก็บไว้แล้ว (เดิมอ่านแต่ไม่ได้ใช้) นับเฉพาะแถวที่ dep>0 (ปิดมัดจำจริง) ตาม
+  // ช่วงวันที่ที่เลือก (txInRange) — Dropdown 3 ตัว (Sale/หัตถการ/คุณหมอ) กรองซ้อนกันได้ ตัวเลือกในแต่ละ Dropdown
+  // สร้างจาก "ทุกเคสปิดมัดจำที่เคยเกิดขึ้น" (ไม่จำกัดช่วงวันที่) ให้รายการคงที่เหมือน badLeadTagOptions ด้านบน
+  const procLabelForSale = (p) => CATEGORIES[p]?.label ?? "อื่นๆ (Eye/เสริมขมับ/ฯลฯ)";
+  const allDepositRows = RAW_TX.filter((t) => t.dep > 0);
+  const saleDepNameOptions = [
+    ["all", "ทุกคน"],
+    ...tallyBy(allDepositRows, (t) => t.sale).map(([name, count]) => [name, `${name} (${count})`]),
+  ];
+  const saleDepProcOptions = [
+    ["all", "ทุกหัตถการ"],
+    ...tallyBy(allDepositRows, (t) => t.p).map(([p, count]) => [p, `${procLabelForSale(p)} (${count})`]),
+  ];
+  const saleDepDoctorOptions = [
+    ["all", "ทุกคุณหมอ"],
+    ...tallyBy(allDepositRows, (t) => t.doc).map(([name, count]) => [name, `${name} (${count})`]),
+  ];
+  const saleDepositInRange = txInRange.filter(
+    (t) =>
+      t.dep > 0 &&
+      (saleDepFilter === "all" || t.sale === saleDepFilter) &&
+      (saleDepProcFilter === "all" || t.p === saleDepProcFilter) &&
+      (saleDepDoctorFilter === "all" || t.doc === saleDepDoctorFilter)
+  );
+  const saleDepositTotalCases = saleDepositInRange.length;
+  const saleDepositTotalAmount = saleDepositInRange.reduce((s, t) => s + t.dep, 0);
+  const saleDepBySale = groupSumBy(saleDepositInRange, (t) => t.sale, (t) => t.dep);
+  const saleDepByProc = groupSumBy(saleDepositInRange, (t) => procLabelForSale(t.p), (t) => t.dep);
+  const saleDepByDoctor = groupSumBy(saleDepositInRange, (t) => t.doc, (t) => t.dep);
   // LOA (LINE OA Broadcast) สรุปช่องทาง "ปกติ" ตามช่วงวันที่ที่เลือกจริง (เหมือนการ์ดบนหน้า Ads)
   const loaSummarySource = loaRangeRows("normal", dateRange, LOA_NORMAL_DEFS);
   const loaSummaryTotal = loaSummarySource
@@ -4314,6 +4362,89 @@ export default function AdsDashboard() {
           </div>
           )}
 
+        </div>
+)}
+
+        {/* ---- NEW: สรุปยอดปิดมัดจำ แยกตาม Sale (จากไฟล์ Data S45 Clinic) ---- */}
+{activePage === "inbox" && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <Award size={16} />
+              </div>
+              <h2 className="text-sm font-semibold text-slate-700">สรุปยอดปิดมัดจำ แยกตาม Sale — {rangeLabel}</h2>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select icon={UserCircle2} value={saleDepFilter} onChange={setSaleDepFilter} options={saleDepNameOptions} />
+              <Select icon={Stethoscope} value={saleDepProcFilter} onChange={setSaleDepProcFilter} options={saleDepProcOptions} />
+              <Select icon={Users} value={saleDepDoctorFilter} onChange={setSaleDepDoctorFilter} options={saleDepDoctorOptions} />
+            </div>
+          </div>
+          <p className="text-xs text-slate-400 mb-5 ml-10">
+            นับจากเคสที่ปิดมัดจำจริง (Deposit &gt; 0) ในไฟล์ "Data S45 Clinic" ชีต "มัดจำ 2026" — คอลัมน์ "Sale ปิดมัดจำ" คือคนที่ปิดเคสนั้นได้
+            จำนวนเคส = คะแนนที่ปิดได้ กรองได้ทั้งตาม Sale/หัตถการ/คุณหมอ (Dropdown ด้านบน) และช่วงวันที่ (Filter บนสุดของแดชบอร์ด) พร้อมกัน
+          </p>
+
+          <div className="grid grid-cols-2 gap-3 mb-5">
+            <div className="bg-slate-50 rounded-xl p-3">
+              <p className="text-[11px] text-slate-500 font-medium mb-0.5">จำนวนเคสที่ปิดมัดจำ (ตามตัวกรอง)</p>
+              <p className="text-xl font-bold text-slate-700">{fmtTHB(saleDepositTotalCases)} เคส</p>
+            </div>
+            <div className="bg-emerald-50 rounded-xl p-3">
+              <p className="text-[11px] text-emerald-600 font-medium mb-0.5">ยอดมัดจำรวม (ตามตัวกรอง)</p>
+              <p className="text-xl font-bold text-emerald-700">฿{fmtTHB(saleDepositTotalAmount)}</p>
+            </div>
+          </div>
+
+          {saleDepositTotalCases === 0 ? (
+            <p className="text-sm text-slate-400 py-8 text-center">ไม่มีเคสปิดมัดจำตามตัวกรองที่เลือกในช่วงวันที่นี้</p>
+          ) : (
+          <div className="grid sm:grid-cols-3 gap-4">
+            <div className="rounded-xl border border-slate-100 p-4">
+              <h3 className="text-sm font-semibold text-slate-700 mb-2">แยกตาม Sale ปิดมัดจำ — {saleDepBySale.length} คน</h3>
+              <ul className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+                {saleDepBySale.map(([name, count, sum]) => (
+                  <li key={name} className="text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-600 truncate mr-2">{name}</span>
+                      <span className="font-semibold text-slate-700 shrink-0">{fmtTHB(count)} เคส</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400">฿{fmtTHB(sum)}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-xl border border-slate-100 p-4">
+              <h3 className="text-sm font-semibold text-slate-700 mb-2">แยกตามหัตถการ — {saleDepByProc.length} หัตถการ</h3>
+              <ul className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+                {saleDepByProc.map(([label, count, sum]) => (
+                  <li key={label} className="text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-600 truncate mr-2">{label}</span>
+                      <span className="font-semibold text-slate-700 shrink-0">{fmtTHB(count)} เคส</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400">฿{fmtTHB(sum)}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-xl border border-slate-100 p-4">
+              <h3 className="text-sm font-semibold text-slate-700 mb-2">แยกตามคุณหมอ — {saleDepByDoctor.length} คน</h3>
+              <ul className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+                {saleDepByDoctor.map(([name, count, sum]) => (
+                  <li key={name} className="text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-600 truncate mr-2">{name}</span>
+                      <span className="font-semibold text-slate-700 shrink-0">{fmtTHB(count)} เคส</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400">฿{fmtTHB(sum)}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          )}
         </div>
 )}
 

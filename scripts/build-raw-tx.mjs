@@ -128,7 +128,12 @@ function main() {
     // scripts/build-funnel.mjs to derive daily consult-close counts the same way
     // FUNNEL_DATA_JUL in App.jsx was originally hand-derived (see its comment).
     const cons = typeof r[3] === "string" && r[3].trim() !== "";
-    out.push({ d: dt, or, ch, p, doc, dep, onl, tot, cons });
+    // sale = column 16, "Sale ปิดมัดจำ" (the employee who closed THIS deposit — distinct from
+    // "Sale Consult" at column 3, who just handled the initial consult). Was read from the sheet
+    // for years but silently discarded — App.jsx's "สรุปยอดปิดมัดจำ แยกตาม Sale" card (added 2569-09-09
+    // per user request) needs the actual name, not just a presence flag.
+    const sale = typeof r[16] === "string" && r[16].trim() !== "" ? r[16].trim() : "รอระบุ";
+    out.push({ d: dt, or, ch, p, doc, dep, onl, tot, cons, sale });
   }
   out.sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0));
 
