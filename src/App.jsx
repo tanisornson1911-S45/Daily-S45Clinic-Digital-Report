@@ -71,6 +71,7 @@ import CONSULT_PIPELINE_DATA from "./data/consultPipeline.json";
 import CHANNEL_MIX_DATA from "./data/channelMix.json";
 import INTER_SALE_DATA from "./data/interSale.json";
 import NOSE_OPEN_BUDGET_DATA from "./data/noseOpenBudget.json";
+import NOSE_OPEN_DOCTOR_ADS_DATA from "./data/noseOpenDoctorAds.json";
 const loaDataByMonth = LOA_DATA.months;
 const loaNormalDataByMonth = LOA_NORMAL_DATA.months;
 
@@ -696,11 +697,12 @@ const S45_LOGO ="data:image/webp;base64,UklGRm4VAABXRUJQVlA4TGIVAAAv88FSEJegoG0b
 // คำนวณสดจาก RAW_TX เดือน CURRENT_SPEND_MONTH เฉพาะเคสที่มี OR Date แล้วจริง (สูตรเดียวกับ
 // activeLeadTime ที่ใช้คำนวณเดือนอื่นๆ แบบสด — ดูใน component ด้านล่าง)
 // ============================================================
-// ============================================================
 // แผนปรับงบ "เสริมจมูกโอเพ่น" รายคุณหมอ (ลด/เพิ่ม) — หน้า Ads, ส่วน "แผนเพิ่มเติม Digital Team"
-// อ้างอิงข้อมูลจริงล่าสุดจาก src/data/noseOpenBudget.json (scripts/fetch-budget-allocate.mjs, Google
-// Sheet "S45 - Budget Allocate") ไม่ผูกกับตัวกรองช่วงวันที่ของหน้า (เป็นงบของเดือนปัจจุบันที่กำลังวางแผนจริง
-// เหมือนกับการ์ด "สัดส่วนงบโฆษณาแยกตามช่องทาง" ที่ใช้เดือนล่าสุดเสมอ) — ปรับได้เฉพาะงบ Facebook ต่อคุณหมอ 5
+// งบต่อคุณหมออ้างอิงจาก src/data/noseOpenBudget.json (scripts/fetch-budget-allocate.mjs, Google Sheet
+// "S45 - Budget Allocate") ส่วน CPR/คาดการณ์ Inbox อ้างอิงข้อมูลจริงจาก src/data/noseOpenDoctorAds.json
+// (scripts/fetch-fb-doctor-campaigns.mjs, Facebook Marketing API ระดับแคมเปญ จับคู่คุณหมอจากชื่อแคมเปญ
+// ไม่รวม Inter) ไม่ผูกกับตัวกรองช่วงวันที่ของหน้า (เป็นงบของเดือนปัจจุบันที่กำลังวางแผนจริง เหมือนกับการ์ด
+// "สัดส่วนงบโฆษณาแยกตามช่องทาง" ที่ใช้เดือนล่าสุดเสมอ) — ปรับได้เฉพาะงบ Facebook ต่อคุณหมอ 5
 // คน หัตถการอื่น + Line/Google ของเสริมจมูกโอเพ่นเองคงเดิม, งบ Awareness (ไม่ใช่คุณหมอ) ก็คงเดิมเช่นกัน
 // ============================================================
 // น้ำหนักลำดับความสำคัญของคุณหมอ ตามที่ผู้ใช้ระบุ: หมอโรส/หมอตูน สูงสุด, รองลงมาหมอเช/หมอจิ๊จ๊ะ, น้อยที่สุด
@@ -750,18 +752,30 @@ function buildNoseOpenScenario(direction, adjustAmountRaw) {
   };
   const weightSum = doctors.reduce((s, d) => s + effectiveWeight(d.name), 0);
 
+  const adsDate = NOSE_OPEN_DOCTOR_ADS_DATA?.date ?? null;
   const scenarioDoctors = doctors.map((d) => {
     const weight = NOSE_OPEN_DOCTOR_WEIGHT[d.name];
     const share = weightSum > 0 ? (effectiveWeight(d.name) / weightSum) * adjustAmount : 0;
     const newBudget = Math.max(0, Math.round(d.budgetSet + sign * share));
-    // CPR (ต้นทุนต่อแชท) คำนวณจากคอลัมน์ "งบที่ใช้ปัจจุบัน"/"แชทปัจจุบัน" ต่อคุณหมอในชีต Budget Allocate — ตรวจสอบ
-    // แล้วว่าตัวเลขนี้คือ "วันล่าสุด" ไม่ใช่ยอดสะสมเดือน (Total row ของทั้งบัญชี 71,066 บาท/วัน ตรงกับค่าเฉลี่ย
-    // ใช้จ่ายจริงต่อวันจาก Facebook Marketing API เดือน ก.ย. ~72,522 บาท/วัน เกือบเป๊ะ — ถ้าเป็นยอดสะสม 13 วัน
-    // จะต้องมากกว่านี้ ~13 เท่า) จึงใช้แทนค่า CPR ย้อนหลัง 7 วันต่อคุณหมอตามที่ขอ เพราะไม่มีข้อมูลงบ/แชทรายวัน
-    // แยกคุณหมอย้อนหลังเก็บไว้ในระบบ (มีแค่สแนปช็อตวันล่าสุดต่อคุณหมอจากชีตนี้)
-    const cpr = d.actualChat > 0 ? d.currentSpend / d.actualChat : null;
+    // CPR (ต้นทุนต่อแชท) คำนวณจากงบ/Inbox จริงของคุณหมอในวันล่าสุดที่ข้อมูลนิ่งแล้ว (เมื่อวาน) — ดึงตรงจาก
+    // Facebook Marketing API ระดับแคมเปญ (scripts/fetch-fb-doctor-campaigns.mjs, src/data/noseOpenDoctorAds.json)
+    // จับคู่คุณหมอจากชื่อแคมเปญที่ระบุอยู่แล้ว ไม่รวมแคมเปญ Inter — แม่นยำกว่าคอลัมน์ "งบที่ใช้ปัจจุบัน"/"แชทปัจจุบัน"
+    // ของชีต Budget Allocate ซึ่งเป็นตัวเลขที่กรอกเอง (ใช้ค่าจากชีตเป็น fallback เฉพาะกรณีไม่มีข้อมูลจริงของคุณหมอคนนั้น)
+    const realAds = NOSE_OPEN_DOCTOR_ADS_DATA?.doctors?.[d.name];
+    const realSpend = realAds ? realAds.spend : d.currentSpend;
+    const realInbox = realAds ? realAds.inbox : d.actualChat;
+    const cpr = realInbox > 0 ? realSpend / realInbox : null;
     const forecastChat = cpr && cpr > 0 ? Math.round(newBudget / cpr) : null;
-    return { ...d, weight, newBudget, pctChange: d.budgetSet > 0 ? ((newBudget - d.budgetSet) / d.budgetSet) * 100 : 0, cpr, forecastChat };
+    return {
+      ...d,
+      weight,
+      newBudget,
+      pctChange: d.budgetSet > 0 ? ((newBudget - d.budgetSet) / d.budgetSet) * 100 : 0,
+      actualChat: realInbox,
+      currentSpend: realSpend,
+      cpr,
+      forecastChat,
+    };
   });
 
   const newDoctorPoolTotal = scenarioDoctors.reduce((s, d) => s + d.newBudget, 0);
@@ -777,6 +791,7 @@ function buildNoseOpenScenario(direction, adjustAmountRaw) {
     noseOpenTotalBefore,
     newNoseOpenTotal,
     newGrandTotal,
+    adsDate,
     totalTargetChat: scenarioDoctors.reduce((s, d) => s + d.targetChat, 0),
     totalActualChat: scenarioDoctors.reduce((s, d) => s + d.actualChat, 0),
     totalForecastChat: scenarioDoctors.reduce((s, d) => s + (d.forecastChat ?? 0), 0),
@@ -1271,7 +1286,7 @@ function NoseOpenScenarioCard({ plan, title, min, max, step, amount, onAmountCha
             <tr className="text-left text-[11px] text-slate-400 border-b border-slate-100">
               <th className="pb-2 font-medium">คุณหมอ</th>
               <th className="pb-2 font-medium text-right">งบปัจจุบัน → ใหม่</th>
-              <th className="pb-2 font-medium text-right">เป้า/แชทจริง (วันล่าสุด)</th>
+              <th className="pb-2 font-medium text-right">เป้า/แชทจริง{plan.adsDate ? ` (${plan.adsDate})` : " (วันล่าสุด)"}</th>
               <th className="pb-2 font-medium text-right">คาดการณ์แชทใหม่</th>
             </tr>
           </thead>
