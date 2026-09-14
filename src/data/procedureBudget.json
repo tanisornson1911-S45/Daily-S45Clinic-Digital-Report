@@ -149,20 +149,6 @@
           "actualChat": 8
         },
         {
-          "name": "Inter",
-          "budgetSet": 64750,
-          "currentSpend": 2275,
-          "targetChat": 28.122415219189413,
-          "actualChat": 2
-        },
-        {
-          "name": "Nose Open",
-          "budgetSet": 51000,
-          "currentSpend": 1795,
-          "targetChat": 14.061207609594707,
-          "actualChat": 1
-        },
-        {
           "name": "หมอโรส",
           "budgetSet": 20000,
           "currentSpend": 495,
@@ -175,20 +161,6 @@
           "currentSpend": 480,
           "targetChat": 3,
           "actualChat": 1
-        },
-        {
-          "name": "ยกคิ้ว/เลื่อนไรผม",
-          "budgetSet": 6750,
-          "currentSpend": 480,
-          "targetChat": 6,
-          "actualChat": 1
-        },
-        {
-          "name": "หน้าอก",
-          "budgetSet": 7000,
-          "currentSpend": 0,
-          "targetChat": 5,
-          "actualChat": 0
         }
       ],
       "otherProceduresTotal": 1600350

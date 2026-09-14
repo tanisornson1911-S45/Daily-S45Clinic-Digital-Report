@@ -193,6 +193,13 @@ const DOCTOR_NAME_ALIASES = {
 };
 // แถวย่อยใต้แต่ละหัตถการที่ไม่ใช่ชื่อคุณหมอจริง (งบรวม/เฉลี่ย/ไม่ระบุตัวบุคคล) — ข้ามตอนดึงรายชื่อคุณหมอ
 const NON_DOCTOR_ROW_LABELS = new Set(["Awareness", "ไม่เเจ้งหมอ", "ไม่แจ้งหมอ", "รวมหมอ"]);
+// บางหัตถการ (เช่น "เสริมจมูก Semi Open") มีแถวย่อยที่เป็นการแบ่งงบข้ามหัตถการ/แผนก (เช่น "Inter",
+// "Nose Open", "ยกคิ้ว/เลื่อนไรผม", "หน้าอก") ปนอยู่กับแถวชื่อคุณหมอจริง — ชื่อคุณหมอทุกคนในชีตนี้มีคำว่า "หมอ"
+// นำหน้าเสมอ จึงกรองแถวที่ไม่มีคำว่า "หมอ" ออกเพื่อไม่ให้ parser ทั่วไปดึงชื่อหัตถการ/แผนกอื่นมาปนเป็น
+// "ชื่อคุณหมอ" ผิดๆ (ตรวจพบจริงจากการดึงข้อมูล September26 เมื่อ 2569-09-14)
+function looksLikeDoctorName(name) {
+  return name.includes("หมอ");
+}
 // "Inter" มีโครงสร้างซ้อน 3 ชั้น (Inter > หัตถการย่อย > คุณหมอ) ต่างจากหัตถการอื่นที่เป็น 2 ชั้น
 // (หัตถการ > คุณหมอ) ตรงๆ — ข้ามไปเพื่อไม่ให้ parser ทั่วไปดึงชื่อหัตถการย่อยมาปนเป็น "ชื่อคุณหมอ" ผิดๆ
 const SKIP_TOP_LEVEL_LABELS = new Set(["Inter", "Total"]);
@@ -254,7 +261,7 @@ function parseAllProcedureDoctorBudgets(sheet, title) {
     for (let i = rowIdx + 1; i < subRowEnd; i++) {
       const subRow = sheet[i];
       const rawName = String(subRow[labelCol] ?? "").trim();
-      if (!rawName || NON_DOCTOR_ROW_LABELS.has(rawName)) continue;
+      if (!rawName || NON_DOCTOR_ROW_LABELS.has(rawName) || !looksLikeDoctorName(rawName)) continue;
       const budgetSet = num(subRow[fbBudgetCol]);
       if (budgetSet <= 0) continue; // ไม่มีงบตั้งไว้เดือนนี้ (เช่นหมอตี้ในเสริมจมูกโอเพ่น) — ไม่รวมในแผนปรับงบ
       const name = DOCTOR_NAME_ALIASES[rawName] || rawName;
