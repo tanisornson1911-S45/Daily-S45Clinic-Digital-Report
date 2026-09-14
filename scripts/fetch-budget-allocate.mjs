@@ -203,6 +203,8 @@ async function main() {
     (monthsSeen[monthIso] ||= []).push(title);
   }
 
+  const latestIso = Object.keys(monthsSeen).filter((iso) => !ambiguousMonths.has(iso)).sort().pop();
+
   const months = {};
   for (const [monthIso, tabTitles] of Object.entries(monthsSeen)) {
     if (ambiguousMonths.has(monthIso)) {
@@ -215,6 +217,20 @@ async function main() {
     if (!parsed) continue;
     months[monthIso] = parsed;
     console.log(`${monthIso} (${title}):`, JSON.stringify(parsed));
+
+    // TEMP DIAGNOSTIC (2026-09-14, remove after Nose Open per-doctor budget feature is designed) —
+    // dump every "หัตถการ" row of the latest month to check whether the sheet has per-procedure/
+    // per-doctor rows below the top-level "Total" row that parseBudgetSheet() doesn't currently read.
+    if (monthIso === latestIso) {
+      const labelCol = sheet.reduce((found, row) => (found !== -1 ? found : row.indexOf("หัตถการ") !== -1 ? row.indexOf("หัตถการ") : -1), -1);
+      const topGroupRowIdx = sheet.findIndex((row) => row.includes("หัตถการ"));
+      const totalRowIdx = sheet.findIndex((row, i) => i > topGroupRowIdx + 1 && String(row[labelCol] ?? "").trim() === "Total");
+      console.log(`\n=== DIAGNOSTIC: raw rows ${topGroupRowIdx}..${totalRowIdx} of "${title}" (labelCol=${labelCol}) ===`);
+      for (let i = topGroupRowIdx; i <= totalRowIdx && i < sheet.length; i++) {
+        console.log(i, JSON.stringify(sheet[i]));
+      }
+      console.log("=== END DIAGNOSTIC ===\n");
+    }
   }
 
   const outDir = path.resolve("src/data");
