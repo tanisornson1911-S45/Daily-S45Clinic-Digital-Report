@@ -70,7 +70,7 @@ import OR_SALES_DATA from "./data/orSales.json";
 import CONSULT_PIPELINE_DATA from "./data/consultPipeline.json";
 import CHANNEL_MIX_DATA from "./data/channelMix.json";
 import INTER_SALE_DATA from "./data/interSale.json";
-import NOSE_OPEN_BUDGET_DATA from "./data/noseOpenBudget.json";
+import PROCEDURE_BUDGET_DATA from "./data/procedureBudget.json";
 import NOSE_OPEN_DOCTOR_ADS_DATA from "./data/noseOpenDoctorAds.json";
 const loaDataByMonth = LOA_DATA.months;
 const loaNormalDataByMonth = LOA_NORMAL_DATA.months;
@@ -697,71 +697,93 @@ const S45_LOGO ="data:image/webp;base64,UklGRm4VAABXRUJQVlA4TGIVAAAv88FSEJegoG0b
 // คำนวณสดจาก RAW_TX เดือน CURRENT_SPEND_MONTH เฉพาะเคสที่มี OR Date แล้วจริง (สูตรเดียวกับ
 // activeLeadTime ที่ใช้คำนวณเดือนอื่นๆ แบบสด — ดูใน component ด้านล่าง)
 // ============================================================
-// แผนปรับงบ "เสริมจมูกโอเพ่น" รายคุณหมอ (ลด/เพิ่ม) — หน้า Ads, ส่วน "แผนเพิ่มเติม Digital Team"
-// งบต่อคุณหมออ้างอิงจาก src/data/noseOpenBudget.json (scripts/fetch-budget-allocate.mjs, Google Sheet
-// "S45 - Budget Allocate") ส่วน CPR/คาดการณ์ Inbox อ้างอิงข้อมูลจริงจาก src/data/noseOpenDoctorAds.json
-// (scripts/fetch-fb-doctor-campaigns.mjs, Facebook Marketing API ระดับแคมเปญ จับคู่คุณหมอจากชื่อแคมเปญ
-// ไม่รวม Inter) ไม่ผูกกับตัวกรองช่วงวันที่ของหน้า (เป็นงบของเดือนปัจจุบันที่กำลังวางแผนจริง เหมือนกับการ์ด
-// "สัดส่วนงบโฆษณาแยกตามช่องทาง" ที่ใช้เดือนล่าสุดเสมอ) — ปรับได้เฉพาะงบ Facebook ต่อคุณหมอ 5
-// คน หัตถการอื่น + Line/Google ของเสริมจมูกโอเพ่นเองคงเดิม, งบ Awareness (ไม่ใช่คุณหมอ) ก็คงเดิมเช่นกัน
+// แผนปรับงบประมาณรายคุณหมอ (ลด/เพิ่ม) — หน้า Ads, ส่วน "แผนเพิ่มเติม Digital Team"
+// งบต่อคุณหมอ (ทุกหัตถการ ยกเว้น Inter) อ้างอิงจาก src/data/procedureBudget.json (scripts/fetch-budget-
+// allocate.mjs, Google Sheet "S45 - Budget Allocate") เลือกหัตถการที่จะปรับได้ผ่าน dropdown — งบรวมทุก
+// หัตถการหลังปรับ (เป้า ~1.5 ล้านตอนลด / งบปัจจุบันตอนเพิ่ม) เท่ากันเสมอไม่ว่าจะเลือกหัตถการไหน เพราะปรับ
+// ได้ทีละหัตถการ หัตถการอื่นคงเดิมทุกครั้ง ไม่ผูกกับตัวกรองช่วงวันที่ของหน้า (เป็นงบของเดือนปัจจุบันที่กำลัง
+// วางแผนจริง เหมือนกับการ์ด "สัดส่วนงบโฆษณาแยกตามช่องทาง" ที่ใช้เดือนล่าสุดเสมอ)
 // ============================================================
-// น้ำหนักลำดับความสำคัญของคุณหมอ ตามที่ผู้ใช้ระบุ: หมอโรส/หมอตูน สูงสุด, รองลงมาหมอเช/หมอจิ๊จ๊ะ, น้อยที่สุด
-// หมอไบร์ท — ตอนเพิ่มงบใช้สัดส่วนนี้ตรงๆ (สำคัญสุดได้เพิ่มมากสุด) ตอนลดงบใช้สัดส่วนกลับด้าน (สำคัญสุดถูกตัดน้อยสุด)
-// ดู buildNoseOpenScenario()
+// น้ำหนักลำดับความสำคัญของคุณหมอ "เสริมจมูกโอเพ่น" โดยเฉพาะ ตามที่ผู้ใช้ระบุ: หมอโรส/หมอตูน สูงสุด, รองลงมา
+// หมอเช/หมอจิ๊จ๊ะ, น้อยที่สุดหมอไบร์ท — ตอนเพิ่มงบใช้สัดส่วนนี้ตรงๆ (สำคัญสุดได้เพิ่มมากสุด) ตอนลดงบใช้สัดส่วน
+// กลับด้าน (สำคัญสุดถูกตัดน้อยสุด) ดู buildProcedureScenario() — หัตถการอื่นไม่มีลำดับความสำคัญที่ผู้ใช้ระบุไว้
+// จึงปรับแบบสัดส่วนเท่ากันทุกคน (ตามสัดส่วนงบปัจจุบันของแต่ละคน) เหมือนกันทั้งสองทิศทาง
+const NOSE_OPEN_PROCEDURE_KEY = "เสริมจมูกโอเพ่น";
 const NOSE_OPEN_DOCTOR_WEIGHT = { หมอโรส: 3, หมอตูน: 3, หมอเช: 2, หมอจิ๊จ๊ะ: 2, หมอไบร์ท: 1 };
+// ชื่อหัตถการ (ตามชีต Budget Allocate) -> คีย์หมวดใน adSpend.json (Facebook Marketing API จริง) สำหรับ
+// คำนวณ "งบที่ใช้ได้ / งบที่ใช้ได้ต่อวัน" — ใช้เทียบงบ Facebook กับยอดใช้จริงสะสมเดือนนี้เฉพาะหัตถการนั้น
+const PROCEDURE_AD_SPEND_CATEGORY = {
+  เสริมจมูกโอเพ่น: "nose_open",
+  "เสริมจมูก Semi Open": "nose_semi",
+  "เสริมหน้าอก/ดูดไขมัน/ตัดหนัง": "breast_lipo",
+  "ยกคิ้ว/ดึงหน้า/เลื่อนไรผม": "brow_hairline",
+};
 // เป้ารวมงบทุกหัตถการหลังลดงบ ตามที่ผู้ใช้ระบุ ("เศษหลักหมื่นต้น-กลางไม่เป็นไร") — งบปัจจุบัน (1,702,350) คืองบ
 // "หลังเพิ่มแล้ว" ตามแผนเพิ่มงบที่ดำเนินการไปแล้วจริง (ผู้ใช้ยืนยัน) จึงไม่มีเป้าฝั่งเพิ่มงบให้คำนวณอีก
-const NOSE_OPEN_DECREASE_TARGET = 1500000;
-const NOSE_OPEN_MIN_ADJUST = 20000; // กันไว้ให้เห็นการเปลี่ยนแปลงจริงแม้งบรวมปัจจุบันจะใกล้เป้าอยู่แล้ว
-const NOSE_OPEN_DOCTOR_POOL_BEFORE = (NOSE_OPEN_BUDGET_DATA?.noseOpen?.doctors ?? []).reduce((s, d) => s + d.budgetSet, 0);
-// ขอบเขตตัวเลื่อน: ลดงบได้สูงสุด 90% ของ pool คุณหมอปัจจุบัน (กันงบติดลบ), เพิ่มงบได้สูงสุดเท่ากับ pool ปัจจุบัน (เพิ่มได้ถึงเท่าตัว)
-const NOSE_OPEN_DECREASE_MAX = Math.round(NOSE_OPEN_DOCTOR_POOL_BEFORE * 0.9);
-const NOSE_OPEN_INCREASE_MAX = Math.round(NOSE_OPEN_DOCTOR_POOL_BEFORE);
-// ค่าเริ่มต้นของตัวเลื่อนลดงบ: จำนวนที่ต้องลดจากงบปัจจุบันเพื่อให้งบรวมทุกหัตถการแตะเป้า ~1.5 ล้าน (ตามที่ผู้ใช้ระบุ
-// "เศษหลักหมื่นต้น-กลางไม่เป็นไร") — งบปัจจุบัน (1,702,350) คืองบ "หลังเพิ่มแล้ว" ตามแผนเพิ่มงบที่ดำเนินการไปแล้วจริง
-// (ผู้ใช้ยืนยัน) จึงไม่มีค่าเริ่มต้นของตัวเลื่อนเพิ่มงบ (เริ่มที่ 0 = ไม่เพิ่มเพิ่มเติมจากที่มีอยู่)
-const NOSE_OPEN_DECREASE_DEFAULT = Math.min(
-  Math.max(NOSE_OPEN_MIN_ADJUST, (NOSE_OPEN_BUDGET_DATA?.grandTotal ?? 0) - NOSE_OPEN_DECREASE_TARGET),
-  NOSE_OPEN_DECREASE_MAX
-);
+const PROCEDURE_DECREASE_TARGET = 1500000;
+const PROCEDURE_MIN_ADJUST = 20000; // กันไว้ให้เห็นการเปลี่ยนแปลงจริงแม้งบรวมปัจจุบันจะใกล้เป้าอยู่แล้ว
 
-function buildNoseOpenScenario(direction, adjustAmountRaw) {
-  const doctors = NOSE_OPEN_BUDGET_DATA?.noseOpen?.doctors ?? [];
-  if (doctors.length !== 5 || !doctors.every((d) => NOSE_OPEN_DOCTOR_WEIGHT[d.name])) return null;
+const PROCEDURE_OPTIONS = Object.keys(PROCEDURE_BUDGET_DATA?.procedures ?? {}).map((key) => [key, key]);
+const DEFAULT_PROCEDURE_KEY = PROCEDURE_OPTIONS.some(([k]) => k === NOSE_OPEN_PROCEDURE_KEY)
+  ? NOSE_OPEN_PROCEDURE_KEY
+  : PROCEDURE_OPTIONS[0]?.[0] ?? null;
 
-  const grandTotalBefore = NOSE_OPEN_BUDGET_DATA.grandTotal;
-  const otherProceduresTotal = NOSE_OPEN_BUDGET_DATA.otherProceduresTotal;
-  const noseOpenTotalBefore = NOSE_OPEN_BUDGET_DATA.noseOpen.total;
-  const noseOpenFixedCost = NOSE_OPEN_BUDGET_DATA.noseOpen.lineBroadcast + NOSE_OPEN_BUDGET_DATA.noseOpen.lineAds + NOSE_OPEN_BUDGET_DATA.noseOpen.google;
+// ขอบเขต/ค่าเริ่มต้นของตัวเลื่อน แยกตามหัตถการที่เลือก (pool คุณหมอแต่ละหัตถการขนาดไม่เท่ากัน) — ลดงบได้สูงสุด
+// 90% ของ pool คุณหมอปัจจุบัน (กันงบติดลบ), เพิ่มงบได้สูงสุดเท่ากับ pool ปัจจุบัน (เพิ่มได้ถึงเท่าตัว)
+function computeProcedureBounds(procedureKey) {
+  const proc = PROCEDURE_BUDGET_DATA?.procedures?.[procedureKey];
+  const doctorPoolBefore = (proc?.doctors ?? []).reduce((s, d) => s + d.budgetSet, 0);
+  const decreaseMax = Math.round(doctorPoolBefore * 0.9);
+  const increaseMax = Math.round(doctorPoolBefore);
+  const grandTotalBefore = PROCEDURE_BUDGET_DATA?.grandTotal ?? 0;
+  const decreaseDefault = Math.min(Math.max(PROCEDURE_MIN_ADJUST, grandTotalBefore - PROCEDURE_DECREASE_TARGET), decreaseMax);
+  return { doctorPoolBefore, decreaseMax, increaseMax, decreaseDefault };
+}
+
+function buildProcedureScenario(direction, adjustAmountRaw, procedureKey) {
+  const proc = PROCEDURE_BUDGET_DATA?.procedures?.[procedureKey];
+  const doctors = proc?.doctors ?? [];
+  if (!proc || doctors.length === 0) return null;
+  const isNoseOpen = procedureKey === NOSE_OPEN_PROCEDURE_KEY;
+
+  const grandTotalBefore = PROCEDURE_BUDGET_DATA.grandTotal;
+  const otherProceduresTotal = proc.otherProceduresTotal;
+  const procTotalBefore = proc.total;
+  const procFixedCost = proc.lineBroadcast + proc.lineAds + proc.google;
   const doctorPoolBefore = doctors.reduce((s, d) => s + d.budgetSet, 0);
-  const awarenessBudget = NOSE_OPEN_BUDGET_DATA.noseOpen.facebookBudgetTotal - doctorPoolBefore;
+  const awarenessBudget = proc.facebookBudgetTotal - doctorPoolBefore;
 
-  const maxAdjust = direction === "decrease" ? NOSE_OPEN_DECREASE_MAX : NOSE_OPEN_INCREASE_MAX;
+  const { decreaseMax, increaseMax } = computeProcedureBounds(procedureKey);
+  const maxAdjust = direction === "decrease" ? decreaseMax : increaseMax;
   const adjustAmount = Math.min(Math.max(0, adjustAmountRaw), maxAdjust);
   const sign = direction === "decrease" ? -1 : 1;
 
-  // น้ำหนักที่ใช้จริงในการแบ่งสัดส่วน: ตอน "เพิ่มงบ" ใช้น้ำหนักตามลำดับความสำคัญตรงๆ (โรส/ตูนสูงสุด ได้เพิ่มมาก
-  // ที่สุด) แต่ตอน "ลดงบ" ต้อง "สลับ" น้ำหนัก — คุณหมอลำดับความสำคัญสูงสุดควรถูกตัดงบน้อยที่สุด (คงสัดส่วนงบไว้ให้
-  // มากที่สุด) ส่วนคุณหมอลำดับท้ายๆ (หมอไบร์ท) รับผลกระทบจากการตัดงบมากที่สุดแทน (ตามที่ผู้ใช้ระบุ 2569-09-14)
-  const weightValues = doctors.map((d) => NOSE_OPEN_DOCTOR_WEIGHT[d.name]);
+  // น้ำหนักที่ใช้จริงในการแบ่งสัดส่วน: เสริมจมูกโอเพ่นตอน "เพิ่มงบ" ใช้น้ำหนักตามลำดับความสำคัญตรงๆ (โรส/ตูนสูง
+  // สุด ได้เพิ่มมากที่สุด) แต่ตอน "ลดงบ" ต้อง "สลับ" น้ำหนัก — คุณหมอลำดับความสำคัญสูงสุดควรถูกตัดงบน้อยที่สุด
+  // (คงสัดส่วนงบไว้ให้มากที่สุด) ส่วนคุณหมอลำดับท้ายๆ (หมอไบร์ท) รับผลกระทบจากการตัดงบมากที่สุดแทน (ตามที่ผู้ใช้
+  // ระบุ 2569-09-14) — หัตถการอื่นไม่มีลำดับความสำคัญที่ระบุไว้ ใช้สัดส่วนตามงบปัจจุบันของแต่ละคน (เท่ากันทั้ง
+  // สองทิศทาง = ทุกคนโดนปรับ % เท่ากัน)
+  const weightOf = (d) => (isNoseOpen ? NOSE_OPEN_DOCTOR_WEIGHT[d.name] ?? 1 : d.budgetSet);
+  const weightValues = doctors.map(weightOf);
   const maxWeight = Math.max(...weightValues);
   const minWeight = Math.min(...weightValues);
-  const effectiveWeight = (name) => {
-    const w = NOSE_OPEN_DOCTOR_WEIGHT[name];
-    return direction === "decrease" ? maxWeight + minWeight - w : w;
+  const effectiveWeight = (d) => {
+    const w = weightOf(d);
+    return isNoseOpen && direction === "decrease" ? maxWeight + minWeight - w : w;
   };
-  const weightSum = doctors.reduce((s, d) => s + effectiveWeight(d.name), 0);
+  const weightSum = doctors.reduce((s, d) => s + effectiveWeight(d), 0);
 
-  const adsDate = NOSE_OPEN_DOCTOR_ADS_DATA?.date ?? null;
+  const adsDate = isNoseOpen ? NOSE_OPEN_DOCTOR_ADS_DATA?.date ?? null : null;
   const scenarioDoctors = doctors.map((d) => {
-    const weight = NOSE_OPEN_DOCTOR_WEIGHT[d.name];
-    const share = weightSum > 0 ? (effectiveWeight(d.name) / weightSum) * adjustAmount : 0;
+    const weight = weightOf(d);
+    const share = weightSum > 0 ? (effectiveWeight(d) / weightSum) * adjustAmount : 0;
     const newBudget = Math.max(0, Math.round(d.budgetSet + sign * share));
-    // CPR (ต้นทุนต่อแชท) คำนวณจากงบ/Inbox จริงของคุณหมอในวันล่าสุดที่ข้อมูลนิ่งแล้ว (เมื่อวาน) — ดึงตรงจาก
-    // Facebook Marketing API ระดับแคมเปญ (scripts/fetch-fb-doctor-campaigns.mjs, src/data/noseOpenDoctorAds.json)
-    // จับคู่คุณหมอจากชื่อแคมเปญที่ระบุอยู่แล้ว ไม่รวมแคมเปญ Inter — แม่นยำกว่าคอลัมน์ "งบที่ใช้ปัจจุบัน"/"แชทปัจจุบัน"
-    // ของชีต Budget Allocate ซึ่งเป็นตัวเลขที่กรอกเอง (ใช้ค่าจากชีตเป็น fallback เฉพาะกรณีไม่มีข้อมูลจริงของคุณหมอคนนั้น)
-    const realAds = NOSE_OPEN_DOCTOR_ADS_DATA?.doctors?.[d.name];
+    // CPR (ต้นทุนต่อแชท): เสริมจมูกโอเพ่นคำนวณจากงบ/Inbox จริงของคุณหมอในวันล่าสุดที่ข้อมูลนิ่งแล้ว (เมื่อวาน) —
+    // ดึงตรงจาก Facebook Marketing API ระดับแคมเปญ (scripts/fetch-fb-doctor-campaigns.mjs, src/data/
+    // noseOpenDoctorAds.json) จับคู่คุณหมอจากชื่อแคมเปญที่ระบุอยู่แล้ว ไม่รวมแคมเปญ Inter — แม่นยำกว่าคอลัมน์
+    // "งบที่ใช้ปัจจุบัน"/"แชทปัจจุบัน" ของชีต Budget Allocate ซึ่งเป็นตัวเลขที่กรอกเอง หัตถการอื่นยังไม่มีข้อมูลจริง
+    // แยกรายคุณหมอแบบนี้ จึงใช้ตัวเลขจากชีต Budget Allocate ตรงๆ ตามที่ผู้ใช้ระบุว่า "ดูได้จาก Budget Allocate"
+    const realAds = isNoseOpen ? NOSE_OPEN_DOCTOR_ADS_DATA?.doctors?.[d.name] : null;
     const realSpend = realAds ? realAds.spend : d.currentSpend;
     const realInbox = realAds ? realAds.inbox : d.actualChat;
     const cpr = realInbox > 0 ? realSpend / realInbox : null;
@@ -783,18 +805,19 @@ function buildNoseOpenScenario(direction, adjustAmountRaw) {
   });
 
   const newDoctorPoolTotal = scenarioDoctors.reduce((s, d) => s + d.newBudget, 0);
-  const newNoseOpenTotal = newDoctorPoolTotal + awarenessBudget + noseOpenFixedCost;
-  const newGrandTotal = otherProceduresTotal + newNoseOpenTotal;
+  const newProcTotal = newDoctorPoolTotal + awarenessBudget + procFixedCost;
+  const newGrandTotal = otherProceduresTotal + newProcTotal;
 
-  // งบที่ใช้ได้ / งบที่ใช้ได้ต่อวัน เฉพาะเสริมจมูกโอเพ่น — เทียบงบ Facebook ใหม่ (หลังปรับตามตัวเลื่อน) กับยอดที่
+  // งบที่ใช้ได้ / งบที่ใช้ได้ต่อวัน เฉพาะหัตถการที่เลือก — เทียบงบ Facebook ใหม่ (หลังปรับตามตัวเลื่อน) กับยอดที่
   // ใช้จริงสะสมเดือนนี้แล้ว (adSpend.json, Facebook Marketing API จริง เฉพาะ FB ไม่รวม Line/Google เหมือนที่
   // budget-Facebook เทียบด้วย) เหลือเท่าไหร่ก็หารด้วยจำนวนวันที่เหลือของเดือนนี้จริง (นับจากวันนี้ถึงสิ้นเดือน) —
   // ถ้าติดลบ = ใช้เกินงบใหม่ที่ปรับไปแล้ว (มีความหมายจริง ไม่ clamp ให้เป็น 0)
   const newFacebookBudget = newDoctorPoolTotal + awarenessBudget;
-  const mtdFacebookSpend = adSpendData?.months?.[NOSE_OPEN_BUDGET_DATA.month]?.nose_open ?? null;
+  const adSpendCategory = PROCEDURE_AD_SPEND_CATEGORY[procedureKey];
+  const mtdFacebookSpend = adSpendCategory ? adSpendData?.months?.[PROCEDURE_BUDGET_DATA.month]?.[adSpendCategory] ?? null : null;
   let daysRemaining = null;
-  if (NOSE_OPEN_BUDGET_DATA.month) {
-    const [y, m] = NOSE_OPEN_BUDGET_DATA.month.split("-").map(Number);
+  if (PROCEDURE_BUDGET_DATA.month) {
+    const [y, m] = PROCEDURE_BUDGET_DATA.month.split("-").map(Number);
     const today = new Date();
     const daysInMonth = new Date(y, m, 0).getDate();
     const isCurrentMonth = today.getFullYear() === y && today.getMonth() + 1 === m;
@@ -805,12 +828,13 @@ function buildNoseOpenScenario(direction, adjustAmountRaw) {
 
   return {
     direction,
+    procedureKey,
     adjustAmount,
     doctors: scenarioDoctors,
     newDoctorPoolTotal,
     grandTotalBefore,
-    noseOpenTotalBefore,
-    newNoseOpenTotal,
+    procTotalBefore,
+    newProcTotal,
     newGrandTotal,
     adsDate,
     mtdFacebookSpend,
@@ -1281,7 +1305,7 @@ const COMPARE_PRESETS = [
   ["custom", "กำหนดเอง"],
 ];
 
-function NoseOpenScenarioCard({ plan, title, min, max, step, amount, onAmountChange, cls }) {
+function ProcedureScenarioCard({ plan, title, min, max, step, amount, onAmountChange, cls }) {
   const sign = plan.direction === "decrease" ? "-" : "+";
   return (
     <div className={`bg-white rounded-lg border ${cls.border} p-4`}>
@@ -1337,7 +1361,7 @@ function NoseOpenScenarioCard({ plan, title, min, max, step, amount, onAmountCha
               </tr>
             ))}
             <tr className="border-t border-slate-200">
-              <td className="py-2 font-semibold text-slate-700">รวม 5 คุณหมอ</td>
+              <td className="py-2 font-semibold text-slate-700">รวม {plan.doctors.length} คุณหมอ</td>
               <td className="py-2 text-right font-semibold text-slate-700">
                 ฿{fmtTHB(plan.doctors.reduce((s, d) => s + d.budgetSet, 0))} → ฿{fmtTHB(plan.newDoctorPoolTotal)}
               </td>
@@ -1351,7 +1375,7 @@ function NoseOpenScenarioCard({ plan, title, min, max, step, amount, onAmountCha
       </div>
       <div className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 space-y-1">
         <p>
-          งบเสริมจมูกโอเพ่นรวม (Facebook+Line+Google): ฿{fmtTHB(plan.noseOpenTotalBefore)} → <span className={`font-semibold ${cls.text}`}>฿{fmtTHB(plan.newNoseOpenTotal)}</span>
+          งบ{plan.procedureKey}รวม (Facebook+Line+Google): ฿{fmtTHB(plan.procTotalBefore)} → <span className={`font-semibold ${cls.text}`}>฿{fmtTHB(plan.newProcTotal)}</span>
         </p>
         <p>
           งบรวมทุกหัตถการ: ฿{fmtTHB(plan.grandTotalBefore)} → <span className={`font-semibold ${cls.text}`}>฿{fmtTHB(plan.newGrandTotal)}</span>
@@ -1359,7 +1383,7 @@ function NoseOpenScenarioCard({ plan, title, min, max, step, amount, onAmountCha
         {plan.availableBudget != null && (
           <>
             <p>
-              งบเสริมจมูกโอเพ่นที่ใช้ได้ (Facebook เหลือถึงสิ้นเดือน):{" "}
+              งบ{plan.procedureKey}ที่ใช้ได้ (Facebook เหลือถึงสิ้นเดือน):{" "}
               <span className={`font-semibold ${plan.availableBudget < 0 ? "text-rose-600" : cls.text}`}>
                 {plan.availableBudget < 0 ? "-" : ""}฿{fmtTHB(Math.abs(plan.availableBudget))}
                 {plan.availableBudget < 0 ? " (เกินงบ)" : ""}
@@ -1750,8 +1774,17 @@ export default function AdsDashboard() {
   const [budgetBoostPct, setBudgetBoostPct] = useState(20);
   const [staffBoostPct, setStaffBoostPct] = useState(20);
   const [growthTab, setGrowthTab] = useState("budget"); // "budget" | "staff"
-  const [noseOpenDecreaseAmount, setNoseOpenDecreaseAmount] = useState(NOSE_OPEN_DECREASE_DEFAULT);
-  const [noseOpenIncreaseAmount, setNoseOpenIncreaseAmount] = useState(0);
+  const [budgetPlanProcedure, setBudgetPlanProcedure] = useState(DEFAULT_PROCEDURE_KEY);
+  const [procedureDecreaseAmount, setProcedureDecreaseAmount] = useState(computeProcedureBounds(DEFAULT_PROCEDURE_KEY).decreaseDefault);
+  const [procedureIncreaseAmount, setProcedureIncreaseAmount] = useState(0);
+  // สลับหัตถการ (dropdown) แล้วรีเซ็ตตัวเลื่อนทั้งสองไปค่าเริ่มต้นใหม่ทันที — pool คุณหมอแต่ละหัตถการขนาดไม่
+  // เท่ากัน ตัวเลื่อนเก่าอาจเกินขอบเขตของหัตถการใหม่ (buildProcedureScenario clamp ให้อยู่แล้ว แต่ค่าที่ค้างอยู่
+  // จะดูสับสนถ้าไม่รีเซ็ต เช่นลดงบ 200,000 ค้างไว้ทั้งที่หัตถการใหม่มี pool แค่ 75,000)
+  useEffect(() => {
+    const bounds = computeProcedureBounds(budgetPlanProcedure);
+    setProcedureDecreaseAmount(bounds.decreaseDefault);
+    setProcedureIncreaseAmount(0);
+  }, [budgetPlanProcedure]);
   const [heroCaseFilter, setHeroCaseFilter] = useState("doctor_tee");
   const [antArmyProcFilter, setAntArmyProcFilter] = useState("all");
   const [antArmyVisibleCount, setAntArmyVisibleCount] = useState(ANT_ARMY_PAGE_SIZE);
@@ -2563,10 +2596,11 @@ export default function AdsDashboard() {
     ? `${THAI_MONTHS_FULL[Number(channelMixMonthIso.slice(5, 7)) - 1]} ${Number(channelMixMonthIso.slice(0, 4)) + 543}`
     : null;
 
-  // แผนปรับงบ "เสริมจมูกโอเพ่น" รายคุณหมอ (ลด/เพิ่ม) — ดู buildNoseOpenScenario() ด้านบนสำหรับสูตรคำนวณ ตัวเลื่อน
-  // ควบคุมจำนวนเงินที่ลด/เพิ่มได้เอง (noseOpenDecreaseAmount/noseOpenIncreaseAmount state ด้านล่าง)
-  const noseOpenDecreasePlan = buildNoseOpenScenario("decrease", noseOpenDecreaseAmount);
-  const noseOpenIncreasePlan = buildNoseOpenScenario("increase", noseOpenIncreaseAmount);
+  // แผนปรับงบประมาณรายคุณหมอ (ลด/เพิ่ม) — เลือกหัตถการได้ผ่าน budgetPlanProcedure (dropdown) ดู
+  // buildProcedureScenario() ด้านบนสำหรับสูตรคำนวณ ตัวเลื่อนควบคุมจำนวนเงินที่ลด/เพิ่มได้เอง
+  const procedureDecreasePlan = buildProcedureScenario("decrease", procedureDecreaseAmount, budgetPlanProcedure);
+  const procedureIncreasePlan = buildProcedureScenario("increase", procedureIncreaseAmount, budgetPlanProcedure);
+  const procedureBounds = computeProcedureBounds(budgetPlanProcedure);
 
   // ยอดขายรวมทุกช่องทาง / Facebook / ROAS ในสรุปภาพรวม — ใช้ตัวเลขเดียวกับ Metric Cards ด้านบน (ตามช่วงวันที่ที่เลือกจริง, มุมมอง "รวมทุกหัตถการ")
   const summaryAllSales = execSales;
@@ -5143,53 +5177,60 @@ export default function AdsDashboard() {
             </ul>
           </div>
 
-          {/* แผนปรับงบ "เสริมจมูกโอเพ่น" รายคุณหมอ (ลด/เพิ่ม) */}
-          {noseOpenDecreasePlan && noseOpenIncreasePlan ? (
+          {/* แผนปรับงบประมาณ (ลด/เพิ่ม) — เลือกหัตถการได้ */}
+          {PROCEDURE_OPTIONS.length > 0 ? (
             <div className="rounded-xl border border-violet-100 bg-violet-50/40 p-4 mt-5">
-              <div className="flex items-center gap-2 mb-1">
-                <Wallet size={14} className="text-violet-500" />
-                <h3 className="text-sm font-semibold text-slate-700">
-                  แผนปรับงบ "เสริมจมูกโอเพ่น" รายคุณหมอ — {NOSE_OPEN_BUDGET_DATA.tabTitle}
-                </h3>
+              <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Wallet size={14} className="text-violet-500" />
+                  <h3 className="text-sm font-semibold text-slate-700">แผนปรับงบประมาณ</h3>
+                </div>
+                <Select icon={Stethoscope} value={budgetPlanProcedure} onChange={setBudgetPlanProcedure} options={PROCEDURE_OPTIONS} />
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <NoseOpenScenarioCard
-                  plan={noseOpenDecreasePlan}
-                  title="แผนลดงบ"
-                  min={0}
-                  max={NOSE_OPEN_DECREASE_MAX}
-                  step={5000}
-                  amount={noseOpenDecreaseAmount}
-                  onAmountChange={setNoseOpenDecreaseAmount}
-                  cls={{
-                    border: "border-rose-100",
-                    text: "text-rose-600",
-                    chip: "bg-rose-50 text-rose-700",
-                    chipBorder: "border-rose-200",
-                    accent: "accent-rose-500",
-                  }}
-                />
-                <NoseOpenScenarioCard
-                  plan={noseOpenIncreasePlan}
-                  title="แผนเพิ่มงบ"
-                  min={0}
-                  max={NOSE_OPEN_INCREASE_MAX}
-                  step={5000}
-                  amount={noseOpenIncreaseAmount}
-                  onAmountChange={setNoseOpenIncreaseAmount}
-                  cls={{
-                    border: "border-emerald-100",
-                    text: "text-emerald-600",
-                    chip: "bg-emerald-50 text-emerald-700",
-                    chipBorder: "border-emerald-200",
-                    accent: "accent-emerald-500",
-                  }}
-                />
-              </div>
+              {procedureDecreasePlan && procedureIncreasePlan ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <ProcedureScenarioCard
+                    plan={procedureDecreasePlan}
+                    title="แผนลดงบ"
+                    min={0}
+                    max={procedureBounds.decreaseMax}
+                    step={5000}
+                    amount={procedureDecreaseAmount}
+                    onAmountChange={setProcedureDecreaseAmount}
+                    cls={{
+                      border: "border-rose-100",
+                      text: "text-rose-600",
+                      chip: "bg-rose-50 text-rose-700",
+                      chipBorder: "border-rose-200",
+                      accent: "accent-rose-500",
+                    }}
+                  />
+                  <ProcedureScenarioCard
+                    plan={procedureIncreasePlan}
+                    title="แผนเพิ่มงบ"
+                    min={0}
+                    max={procedureBounds.increaseMax}
+                    step={5000}
+                    amount={procedureIncreaseAmount}
+                    onAmountChange={setProcedureIncreaseAmount}
+                    cls={{
+                      border: "border-emerald-100",
+                      text: "text-emerald-600",
+                      chip: "bg-emerald-50 text-emerald-700",
+                      chipBorder: "border-emerald-200",
+                      accent: "accent-emerald-500",
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 text-xs text-slate-400">
+                  ยังไม่มีข้อมูลงบ "{budgetPlanProcedure}" รายคุณหมอที่ครบถ้วนสำหรับเดือนล่าสุดจาก Google Sheet "S45 - Budget Allocate" — แผนปรับงบนี้จะแสดงเมื่อข้อมูลพร้อม
+                </div>
+              )}
             </div>
           ) : (
             <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 mt-5 text-xs text-slate-400">
-              ยังไม่มีข้อมูลงบ "เสริมจมูกโอเพ่น" รายคุณหมอที่ครบถ้วนสำหรับเดือนล่าสุดจาก Google Sheet "S45 - Budget Allocate" — แผนปรับงบนี้จะแสดงเมื่อข้อมูลพร้อม
+              ยังไม่มีข้อมูลงบรายคุณหมอที่ครบถ้วนสำหรับเดือนล่าสุดจาก Google Sheet "S45 - Budget Allocate" — แผนปรับงบประมาณนี้จะแสดงเมื่อข้อมูลพร้อม
             </div>
           )}
         </div>
