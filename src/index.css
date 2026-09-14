@@ -19,38 +19,75 @@
 :root { --glass-blur: blur(20px) saturate(160%); color-scheme: light; }
 
 /* ============================================================
-   Range slider (budget planner sliders) — explicit track styling
+   Range slider (budget planner + Option calculator sliders) — fully custom
    -----------------------------------------------------------
-   `color-scheme: light` above isn't enough on its own: some browsers still
-   render the "unfilled" portion of a native <input type="range"> track
-   using a dark UA default specifically when the thumb sits at the minimum
-   value (0) — confirmed 2026-09-14 via a real user screenshot showing a
-   solid black track on the budget-increase slider (default value 0) while
-   the budget-decrease slider (thumb partway along) rendered fine. Rather
-   than depend on `accent-color` + UA track defaults across browsers/OS
-   themes, style the track explicitly so it's always a fixed light gray
-   (dark gray under `.dark`) regardless of thumb position — `accent-color`
-   (set via Tailwind's accent-* utility in JSX) still themes the thumb.
+   Two problems with leaning on native rendering + accent-color:
+   1) `color-scheme: light` alone wasn't enough — some browsers still drew
+      the "unfilled" track portion in a dark UA color specifically when the
+      thumb sat at the minimum value (real user screenshot, 2026-09-14).
+   2) Styling only the track pseudo-element while leaving the thumb as
+      native `appearance: auto` caused the thumb to visually float off the
+      custom track ("ตัวเลื่อนไม่ตรงกับช่องเลื่อน", reported same day) —
+      the browser's native thumb-centering math assumes its own default
+      track box, not our restyled one.
+   Fix: reset appearance on both track and thumb and size/position them
+   ourselves, so there's no native rendering left to disagree with us.
+   accent-color no longer auto-themes the thumb once appearance is reset,
+   so each accent-* utility used in JSX gets an explicit thumb-color rule
+   below (hex values are Tailwind's rose-500/emerald-500/violet-500).
    ============================================================ */
 input[type="range"] {
-  height: 6px;
-  border-radius: 9999px;
-  background: transparent;
-}
-input[type="range"]::-webkit-slider-runnable-track {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
   height: 6px;
   border-radius: 9999px;
   background: #e2e8f0; /* slate-200 */
+  outline: none;
+  cursor: pointer;
 }
-input[type="range"]::-moz-range-track {
-  height: 6px;
+.dark input[type="range"] { background: rgba(255, 255, 255, 0.15); }
+
+input[type="range"]::-webkit-slider-runnable-track { height: 6px; border-radius: 9999px; background: transparent; }
+input[type="range"]::-moz-range-track { height: 6px; border-radius: 9999px; background: transparent; border: none; }
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -5px; /* centers a 16px thumb on a 6px track: -(16-6)/2 */
   border-radius: 9999px;
-  background: #e2e8f0;
+  background: #64748b; /* slate-500 fallback */
+  border: 2px solid #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
 }
-.dark input[type="range"]::-webkit-slider-runnable-track,
-.dark input[type="range"]::-moz-range-track {
-  background: rgba(255, 255, 255, 0.15);
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: #64748b;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
 }
+.dark input[type="range"]::-webkit-slider-thumb { border-color: #1e293b; }
+.dark input[type="range"]::-moz-range-thumb { border-color: #1e293b; }
+
+/* input[type="range"] prefix needed so these out-specificity the base ::-webkit-slider-thumb rule
+   above (attribute selector [type="range"] outweighs a bare class selector) — without it the
+   gray fallback always won and every slider rendered gray regardless of its accent-* class.
+   NOTE: ::-webkit-slider-thumb and ::-moz-range-thumb must each get their OWN rule — Chrome
+   doesn't recognize ::-moz-range-thumb, and grouping them in one comma-separated selector makes
+   Chrome drop the WHOLE rule (an unsupported selector in the list invalidates the entire group),
+   which silently kept every slider thumb on the gray fallback color below. */
+input[type="range"].accent-rose-500::-webkit-slider-thumb { background: #f43f5e; }
+input[type="range"].accent-rose-500::-moz-range-thumb { background: #f43f5e; }
+input[type="range"].accent-emerald-500::-webkit-slider-thumb { background: #10b981; }
+input[type="range"].accent-emerald-500::-moz-range-thumb { background: #10b981; }
+input[type="range"].accent-violet-500::-webkit-slider-thumb { background: #8b5cf6; }
+input[type="range"].accent-violet-500::-moz-range-thumb { background: #8b5cf6; }
 
 .bg-white,
 .bg-slate-100,

@@ -766,11 +766,15 @@ function buildNoseOpenScenario(direction, adjustAmountRaw) {
     const realInbox = realAds ? realAds.inbox : d.actualChat;
     const cpr = realInbox > 0 ? realSpend / realInbox : null;
     const forecastChat = cpr && cpr > 0 ? Math.round(newBudget / cpr) : null;
+    // "เป้า" (targetChat) ต้องขยับตามงบที่ปรับ (สัดส่วนเดียวกับที่งบเปลี่ยน) เพราะเป้าถูกตั้งไว้ตามงบเดิม — ถ้าปรับ
+    // งบก็ต้องปรับเป้าตาม ส่วน "แชทจริง" (actualChat) คือข้อมูลที่เกิดขึ้นจริงแล้วในอดีต ไม่เปลี่ยนตามสถานการณ์สมมติ
+    const newTargetChat = d.budgetSet > 0 ? Math.round(d.targetChat * (newBudget / d.budgetSet)) : d.targetChat;
     return {
       ...d,
       weight,
       newBudget,
       pctChange: d.budgetSet > 0 ? ((newBudget - d.budgetSet) / d.budgetSet) * 100 : 0,
+      targetChat: newTargetChat,
       actualChat: realInbox,
       currentSpend: realSpend,
       cpr,
@@ -1286,7 +1290,7 @@ function NoseOpenScenarioCard({ plan, title, min, max, step, amount, onAmountCha
             <tr className="text-left text-[11px] text-slate-400 border-b border-slate-100">
               <th className="pb-2 font-medium">คุณหมอ</th>
               <th className="pb-2 font-medium text-right">งบปัจจุบัน → ใหม่</th>
-              <th className="pb-2 font-medium text-right">เป้า/แชทจริง{plan.adsDate ? ` (${plan.adsDate})` : " (วันล่าสุด)"}</th>
+              <th className="pb-2 font-medium text-right">เป้า/แชทจริง</th>
               <th className="pb-2 font-medium text-right">คาดการณ์แชทใหม่</th>
             </tr>
           </thead>
