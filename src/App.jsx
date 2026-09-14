@@ -1224,10 +1224,10 @@ const COMPARE_PRESETS = [
   ["custom", "กำหนดเอง"],
 ];
 
-// น้ำหนักสัดส่วน %ที่เพิ่ม/ลดงบเสริมจมูกโอเพ่นต่อคุณหมอ ตามที่ผู้ใช้ระบุ: หมอโรส/หมอตูน สูงสุด, รองลงมาหมอเช/
-// หมอจิ๊จ๊ะ, น้อยที่สุดหมอไบร์ท — ใช้สัดส่วน 3:3:2:2:1 (คงอันดับเดิมทั้งสองทิศทาง ลด/เพิ่ม)
+// น้ำหนักลำดับความสำคัญของคุณหมอ ตามที่ผู้ใช้ระบุ: หมอโรส/หมอตูน สูงสุด, รองลงมาหมอเช/หมอจิ๊จ๊ะ, น้อยที่สุด
+// หมอไบร์ท — ตอนเพิ่มงบใช้สัดส่วนนี้ตรงๆ (สำคัญสุดได้เพิ่มมากสุด) ตอนลดงบใช้สัดส่วนกลับด้าน (สำคัญสุดถูกตัดน้อยสุด)
+// ดู buildNoseOpenScenario()
 const NOSE_OPEN_DOCTOR_WEIGHT = { หมอโรส: 3, หมอตูน: 3, หมอเช: 2, หมอจิ๊จ๊ะ: 2, หมอไบร์ท: 1 };
-const NOSE_OPEN_WEIGHT_RANK_LABEL = { 3: "สูงสุด", 2: "รองลงมา", 1: "น้อยที่สุด" };
 // เป้ารวมงบทุกหัตถการหลังลดงบ ตามที่ผู้ใช้ระบุ ("เศษหลักหมื่นต้น-กลางไม่เป็นไร") — งบปัจจุบัน (1,702,350) คืองบ
 // "หลังเพิ่มแล้ว" ตามแผนเพิ่มงบที่ดำเนินการไปแล้วจริง (ผู้ใช้ยืนยัน) จึงไม่มีเป้าฝั่งเพิ่มงบให้คำนวณอีก
 const NOSE_OPEN_DECREASE_TARGET = 1500000;
@@ -1242,21 +1242,6 @@ function NoseOpenScenarioCard({ plan, title, targetLabel, sourceLabel, cls }) {
           เป้ารวมงบ {targetLabel}
         </span>
       </div>
-      <p className="text-xs text-slate-500 mb-3">
-        {plan.direction === "decrease" ? (
-          <>
-            ปรับงบ Facebook เฉพาะ "เสริมจมูกโอเพ่น" ต่อคุณหมอลดลงรวม{" "}
-            <span className={`font-semibold ${cls.text}`}>฿{fmtTHB(plan.adjustAmount)}</span> จากงบปัจจุบัน หัตถการอื่นคงเดิม —{" "}
-            <span className="font-semibold">สลับลำดับน้ำหนักจากตอนเพิ่มงบ:</span> คุณหมอลำดับความสำคัญสูงสุด (โรส/ตูน) ถูกตัดงบน้อยที่สุด
-            (คงสัดส่วนงบไว้มากที่สุด) ส่วนหมอไบร์ทรับผลกระทบมากที่สุดแทน
-          </>
-        ) : (
-          <>
-            งบปัจจุบันในชีต Budget Allocate <span className={`font-semibold ${cls.text}`}>คือ งบหลังเพิ่มแล้ว</span>{" "}
-            ตามแผนเพิ่มงบประมาณที่ดำเนินการไปแล้วจริง — ไม่ต้องปรับเพิ่มอีก ตารางด้านล่างจึงแสดงงบปัจจุบันของแต่ละคุณหมอตรงๆ
-          </>
-        )}
-      </p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -1270,10 +1255,7 @@ function NoseOpenScenarioCard({ plan, title, targetLabel, sourceLabel, cls }) {
           <tbody>
             {plan.doctors.map((d) => (
               <tr key={d.name} className="border-b border-slate-50 last:border-0">
-                <td className="py-2 text-slate-600">
-                  <p>{d.name}</p>
-                  <p className="text-[11px] text-slate-400">น้ำหนัก {d.weight} ({NOSE_OPEN_WEIGHT_RANK_LABEL[d.weight] || "-"})</p>
-                </td>
+                <td className="py-2 text-slate-600">{d.name}</td>
                 <td className="py-2 text-right text-slate-600">
                   {plan.direction === "decrease" ? (
                     <>
@@ -5107,16 +5089,6 @@ export default function AdsDashboard() {
                   แผนปรับงบ "เสริมจมูกโอเพ่น" รายคุณหมอ — {NOSE_OPEN_BUDGET_DATA.tabTitle}
                 </h3>
               </div>
-              <p className="text-xs text-slate-500 mb-4">
-                เทียบข้อมูลจริงจาก Google Sheet "S45 - Budget Allocate" — ปรับได้เฉพาะงบ Facebook ของ "เสริมจมูกโอเพ่น" ต่อคุณหมอเท่านั้น
-                (หัตถการอื่น และ Line/Google/งบ Awareness ของเสริมจมูกโอเพ่นเองคงเดิม) ลำดับความสำคัญตามที่กำหนด: หมอโรส/หมอตูน สูงสุด
-                รองลงมาหมอเช/หมอจิ๊จ๊ะ และน้อยที่สุดหมอไบร์ท (น้ำหนัก 3:3:2:2:1) — <span className="font-semibold">ตอนเพิ่มงบ</span>{" "}
-                คุณหมอลำดับสำคัญสูงสุดได้รับส่วนแบ่งงบที่เพิ่มมากที่สุด แต่<span className="font-semibold">ตอนลดงบ</span>{" "}
-                จะสลับลำดับ: คุณหมอลำดับสำคัญสูงสุดถูกตัดงบน้อยที่สุด (คงสัดส่วนงบไว้มากที่สุด) เพื่อปกป้องคุณหมอที่มีความสำคัญ — งบปัจจุบันในชีต
-                (฿{fmtTHB(NOSE_OPEN_BUDGET_DATA.grandTotal)}) คืองบหลังเพิ่มตามแผนเพิ่มงบที่ดำเนินการไปแล้วจริง จึงใช้เป็นฐานของ "แผนเพิ่มงบ" ตรงๆ
-                ส่วน "แผนลดงบ" คือคำนวณลดจากฐานนี้ลงมา
-              </p>
-
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <NoseOpenScenarioCard
                   plan={noseOpenDecreasePlan}
@@ -5131,14 +5103,6 @@ export default function AdsDashboard() {
                   cls={{ border: "border-emerald-100", text: "text-emerald-600", chip: "bg-emerald-50 text-emerald-700", chipBorder: "border-emerald-200" }}
                 />
               </div>
-
-              <p className="text-[11px] text-slate-400 mt-3">
-                "คาดการณ์แชทใหม่" คำนวณจาก CPR (งบ ÷ แชท) ของแต่ละคุณหมอในสแนปช็อต "วันล่าสุด" จากชีต Budget Allocate คูณกับงบใหม่ที่ปรับ —
-                หมายเหตุ: คอลัมน์ "งบที่ใช้ปัจจุบัน"/"แชทปัจจุบัน" ตรวจสอบแล้วว่าเป็นยอดของวันล่าสุดวันเดียว ไม่ใช่ยอดสะสมทั้งเดือน (เทียบ Total
-                row ของทั้งบัญชี ฿71,066/วัน ใกล้เคียงค่าเฉลี่ยใช้จ่ายจริงต่อวันจาก Facebook Marketing API มาก) แต่ระบบยังไม่มีข้อมูลงบ/แชท
-                รายวันแยกรายคุณหมอย้อนหลังเก็บไว้ จึงยังคำนวณ CPR เฉลี่ย 7 วันตามที่ขอแบบเป๊ะๆ ไม่ได้ ตัวเลขนี้จึงเป็น Forecast โดยประมาณจาก CPR
-                ของวันล่าสุดแทน อาจผันผวนตามผลงานวันต่อวันของแต่ละคุณหมอ · เป้ารวมงบเป็นตัวเลขปัดประมาณตามที่วางแผนไว้ อาจคลาดเคลื่อนหลักหมื่นบาทได้ตามงบจริงที่อัปเดตทุกวัน
-              </p>
             </div>
           ) : (
             <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 mt-5 text-xs text-slate-400">
