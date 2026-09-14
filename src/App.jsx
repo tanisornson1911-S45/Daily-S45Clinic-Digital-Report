@@ -715,11 +715,12 @@ function buildNoseOpenScenario(direction) {
   const awarenessBudget = NOSE_OPEN_BUDGET_DATA.noseOpen.facebookBudgetTotal - doctorPoolBefore;
   const weightSum = doctors.reduce((s, d) => s + NOSE_OPEN_DOCTOR_WEIGHT[d.name], 0);
 
-  const target = direction === "decrease" ? NOSE_OPEN_DECREASE_TARGET : NOSE_OPEN_INCREASE_TARGET;
-  let adjustAmount =
-    direction === "decrease" ? Math.max(NOSE_OPEN_MIN_ADJUST, grandTotalBefore - target) : Math.max(NOSE_OPEN_MIN_ADJUST, target - grandTotalBefore);
+  // งบปัจจุบันในชีต Budget Allocate (฿1,702,350) คือ "งบหลังเพิ่มแล้ว" ตามแผนเพิ่มงบประมาณที่ดำเนินการไปแล้วจริง
+  // (ผู้ใช้ยืนยัน 2569-09-14) ไม่ใช่งบก่อนปรับที่ต้องคำนวณเพิ่มอีก — แผน "เพิ่มงบ" จึงแสดงงบปัจจุบันตรงๆ (adjustAmount
+  // = 0, ไม่ redistribute) ส่วนแผน "ลดงบ" คือการคำนวณลดจากงบปัจจุบัน (ที่เพิ่มแล้ว) นี้ลงมาเหลือ ~1.5 ล้าน
+  let adjustAmount = direction === "decrease" ? Math.max(NOSE_OPEN_MIN_ADJUST, grandTotalBefore - NOSE_OPEN_DECREASE_TARGET) : 0;
   if (direction === "decrease") adjustAmount = Math.min(adjustAmount, doctorPoolBefore * 0.9); // กันไม่ให้งบคุณหมอติดลบ
-  const sign = direction === "decrease" ? -1 : 1;
+  const sign = -1;
 
   const scenarioDoctors = doctors.map((d) => {
     const weight = NOSE_OPEN_DOCTOR_WEIGHT[d.name];
@@ -1216,9 +1217,9 @@ const COMPARE_PRESETS = [
 // หมอจิ๊จ๊ะ, น้อยที่สุดหมอไบร์ท — ใช้สัดส่วน 3:3:2:2:1 (คงอันดับเดิมทั้งสองทิศทาง ลด/เพิ่ม)
 const NOSE_OPEN_DOCTOR_WEIGHT = { หมอโรส: 3, หมอตูน: 3, หมอเช: 2, หมอจิ๊จ๊ะ: 2, หมอไบร์ท: 1 };
 const NOSE_OPEN_WEIGHT_RANK_LABEL = { 3: "สูงสุด", 2: "รองลงมา", 1: "น้อยที่สุด" };
-// เป้ารวมงบทุกหัตถการหลังปรับ ตามที่ผู้ใช้ระบุ ("เศษหลักหมื่นต้น-กลางไม่เป็นไร")
+// เป้ารวมงบทุกหัตถการหลังลดงบ ตามที่ผู้ใช้ระบุ ("เศษหลักหมื่นต้น-กลางไม่เป็นไร") — งบปัจจุบัน (1,702,350) คืองบ
+// "หลังเพิ่มแล้ว" ตามแผนเพิ่มงบที่ดำเนินการไปแล้วจริง (ผู้ใช้ยืนยัน) จึงไม่มีเป้าฝั่งเพิ่มงบให้คำนวณอีก
 const NOSE_OPEN_DECREASE_TARGET = 1500000;
-const NOSE_OPEN_INCREASE_TARGET = 1730000;
 const NOSE_OPEN_MIN_ADJUST = 20000; // กันไว้ให้เห็นการเปลี่ยนแปลงจริงแม้งบรวมปัจจุบันจะใกล้เป้าอยู่แล้ว
 
 function NoseOpenScenarioCard({ plan, title, targetLabel, sourceLabel, cls }) {
@@ -1231,17 +1232,26 @@ function NoseOpenScenarioCard({ plan, title, targetLabel, sourceLabel, cls }) {
         </span>
       </div>
       <p className="text-xs text-slate-500 mb-3">
-        ปรับงบ Facebook เฉพาะ "เสริมจมูกโอเพ่น" ต่อคุณหมอ{plan.direction === "decrease" ? "ลดลงรวม" : "เพิ่มขึ้นรวม"}{" "}
-        <span className={`font-semibold ${cls.text}`}>฿{fmtTHB(plan.adjustAmount)}</span> หัตถการอื่นคงเดิม
+        {plan.direction === "decrease" ? (
+          <>
+            ปรับงบ Facebook เฉพาะ "เสริมจมูกโอเพ่น" ต่อคุณหมอลดลงรวม{" "}
+            <span className={`font-semibold ${cls.text}`}>฿{fmtTHB(plan.adjustAmount)}</span> จากงบปัจจุบัน หัตถการอื่นคงเดิม
+          </>
+        ) : (
+          <>
+            งบปัจจุบันในชีต Budget Allocate <span className={`font-semibold ${cls.text}`}>คือ งบหลังเพิ่มแล้ว</span>{" "}
+            ตามแผนเพิ่มงบประมาณที่ดำเนินการไปแล้วจริง — ไม่ต้องปรับเพิ่มอีก ตารางด้านล่างจึงแสดงงบปัจจุบันของแต่ละคุณหมอตรงๆ
+          </>
+        )}
       </p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-[11px] text-slate-400 border-b border-slate-100">
               <th className="pb-2 font-medium">คุณหมอ</th>
-              <th className="pb-2 font-medium text-right">งบปัจจุบัน → ใหม่</th>
+              <th className="pb-2 font-medium text-right">{plan.direction === "decrease" ? "งบปัจจุบัน → ใหม่" : "งบปัจจุบัน (เพิ่มแล้ว)"}</th>
               <th className="pb-2 font-medium text-right">เป้า/แชทจริง (วันล่าสุด)</th>
-              <th className="pb-2 font-medium text-right">คาดการณ์แชทใหม่</th>
+              <th className="pb-2 font-medium text-right">{plan.direction === "decrease" ? "คาดการณ์แชทใหม่" : "คาดการณ์แชทเต็มงบเดือน"}</th>
             </tr>
           </thead>
           <tbody>
@@ -1252,13 +1262,19 @@ function NoseOpenScenarioCard({ plan, title, targetLabel, sourceLabel, cls }) {
                   <p className="text-[11px] text-slate-400">น้ำหนัก {d.weight} ({NOSE_OPEN_WEIGHT_RANK_LABEL[d.weight] || "-"})</p>
                 </td>
                 <td className="py-2 text-right text-slate-600">
-                  <p>
-                    ฿{fmtTHB(d.budgetSet)} → <span className={`font-semibold ${cls.text}`}>฿{fmtTHB(d.newBudget)}</span>
-                  </p>
-                  <p className={`text-[11px] ${cls.text}`}>
-                    {d.pctChange >= 0 ? "+" : ""}
-                    {d.pctChange.toFixed(1)}%
-                  </p>
+                  {plan.direction === "decrease" ? (
+                    <>
+                      <p>
+                        ฿{fmtTHB(d.budgetSet)} → <span className={`font-semibold ${cls.text}`}>฿{fmtTHB(d.newBudget)}</span>
+                      </p>
+                      <p className={`text-[11px] ${cls.text}`}>
+                        {d.pctChange >= 0 ? "+" : ""}
+                        {d.pctChange.toFixed(1)}%
+                      </p>
+                    </>
+                  ) : (
+                    <p className={`font-semibold ${cls.text}`}>฿{fmtTHB(d.newBudget)}</p>
+                  )}
                 </td>
                 <td className="py-2 text-right text-slate-600">
                   {d.targetChat} / {d.actualChat}
@@ -1271,7 +1287,11 @@ function NoseOpenScenarioCard({ plan, title, targetLabel, sourceLabel, cls }) {
             <tr className="border-t border-slate-200">
               <td className="py-2 font-semibold text-slate-700">รวม 5 คุณหมอ</td>
               <td className="py-2 text-right font-semibold text-slate-700">
-                ฿{fmtTHB(plan.doctors.reduce((s, d) => s + d.budgetSet, 0))} → ฿{fmtTHB(plan.newDoctorPoolTotal)}
+                {plan.direction === "decrease" ? (
+                  <>฿{fmtTHB(plan.doctors.reduce((s, d) => s + d.budgetSet, 0))} → ฿{fmtTHB(plan.newDoctorPoolTotal)}</>
+                ) : (
+                  <>฿{fmtTHB(plan.newDoctorPoolTotal)}</>
+                )}
               </td>
               <td className="py-2 text-right font-semibold text-slate-700">
                 {plan.totalTargetChat} / {plan.totalActualChat}
@@ -1282,12 +1302,25 @@ function NoseOpenScenarioCard({ plan, title, targetLabel, sourceLabel, cls }) {
         </table>
       </div>
       <div className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 space-y-1">
-        <p>
-          งบเสริมจมูกโอเพ่นรวม (Facebook+Line+Google): ฿{fmtTHB(plan.noseOpenTotalBefore)} → <span className={`font-semibold ${cls.text}`}>฿{fmtTHB(plan.newNoseOpenTotal)}</span>
-        </p>
-        <p>
-          งบรวมทุกหัตถการ: ฿{fmtTHB(plan.grandTotalBefore)} → <span className={`font-semibold ${cls.text}`}>฿{fmtTHB(plan.newGrandTotal)}</span>
-        </p>
+        {plan.direction === "decrease" ? (
+          <>
+            <p>
+              งบเสริมจมูกโอเพ่นรวม (Facebook+Line+Google): ฿{fmtTHB(plan.noseOpenTotalBefore)} → <span className={`font-semibold ${cls.text}`}>฿{fmtTHB(plan.newNoseOpenTotal)}</span>
+            </p>
+            <p>
+              งบรวมทุกหัตถการ: ฿{fmtTHB(plan.grandTotalBefore)} → <span className={`font-semibold ${cls.text}`}>฿{fmtTHB(plan.newGrandTotal)}</span>
+            </p>
+          </>
+        ) : (
+          <>
+            <p>
+              งบเสริมจมูกโอเพ่นรวม (Facebook+Line+Google): <span className={`font-semibold ${cls.text}`}>฿{fmtTHB(plan.newNoseOpenTotal)}</span> (เพิ่มแล้ว คงที่)
+            </p>
+            <p>
+              งบรวมทุกหัตถการ: <span className={`font-semibold ${cls.text}`}>฿{fmtTHB(plan.newGrandTotal)}</span> (เพิ่มแล้ว คงที่)
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
@@ -5064,7 +5097,8 @@ export default function AdsDashboard() {
               <p className="text-xs text-slate-500 mb-4">
                 เทียบข้อมูลจริงจาก Google Sheet "S45 - Budget Allocate" — ปรับได้เฉพาะงบ Facebook ของ "เสริมจมูกโอเพ่น" ต่อคุณหมอเท่านั้น
                 (หัตถการอื่น และ Line/Google/งบ Awareness ของเสริมจมูกโอเพ่นเองคงเดิม) แบ่งสัดส่วน %ที่เพิ่ม/ลดตามน้ำหนักที่กำหนด: หมอโรส/หมอตูน
-                สูงสุด รองลงมาหมอเช/หมอจิ๊จ๊ะ และน้อยที่สุดหมอไบร์ท (สัดส่วนน้ำหนัก 3:3:2:2:1)
+                สูงสุด รองลงมาหมอเช/หมอจิ๊จ๊ะ และน้อยที่สุดหมอไบร์ท (สัดส่วนน้ำหนัก 3:3:2:2:1) — งบปัจจุบันในชีต (฿{fmtTHB(NOSE_OPEN_BUDGET_DATA.grandTotal)})
+                คืองบหลังเพิ่มตามแผนเพิ่มงบที่ดำเนินการไปแล้วจริง จึงใช้เป็นฐานของ "แผนเพิ่มงบ" ตรงๆ ส่วน "แผนลดงบ" คือคำนวณลดจากฐานนี้ลงมา
               </p>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -5076,8 +5110,8 @@ export default function AdsDashboard() {
                 />
                 <NoseOpenScenarioCard
                   plan={noseOpenIncreasePlan}
-                  title="แผนเพิ่มงบ"
-                  targetLabel="~1.73 ล้านบาท"
+                  title="แผนเพิ่มงบ (เพิ่มแล้ว)"
+                  targetLabel="~1.7 ล้านบาท"
                   cls={{ border: "border-emerald-100", text: "text-emerald-600", chip: "bg-emerald-50 text-emerald-700", chipBorder: "border-emerald-200" }}
                 />
               </div>
