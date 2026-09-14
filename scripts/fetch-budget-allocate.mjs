@@ -333,6 +333,17 @@ async function main() {
     console.log(`${monthIso} (${title}):`, JSON.stringify(parsed));
 
     if (monthIso === latestIso) {
+      // TEMP DIAGNOSTIC: dump raw rows around "Inter" to design its parser (3-level nesting) — remove after.
+      {
+        const labelCol = sheet.reduce((found, row) => (found !== -1 ? found : row.indexOf("หัตถการ") !== -1 ? row.indexOf("หัตถการ") : -1), -1);
+        const interRowIdx = sheet.findIndex((row) => String(row[labelCol] ?? "").trim() === "Inter");
+        console.log(`\n  DIAG: "Inter" row at index ${interRowIdx}, labelCol=${labelCol}`);
+        if (interRowIdx !== -1) {
+          for (let i = interRowIdx; i < interRowIdx + 35 && i < sheet.length; i++) {
+            console.log(`  DIAG row ${i}:`, JSON.stringify(sheet[i]));
+          }
+        }
+      }
       procedureBudget = parseAllProcedureDoctorBudgets(sheet, title);
       if (procedureBudget) {
         for (const proc of procedureBudget.procedures) {
