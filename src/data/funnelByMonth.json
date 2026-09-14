@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-13T20:58:39.410Z",
+  "generatedAt": "2026-09-14T05:17:55.959Z",
   "minMonth": "2026-08",
   "months": {
     "2026-08": {
@@ -1174,10 +1174,10 @@
           "ads": 614690,
           "inbox": 1490,
           "or": 867610,
-          "sales": 3412300,
-          "basket": 243735.7142857143,
-          "closeRate": 0.009395973154362415,
-          "adsCost": 0.18013949535503912,
+          "sales": 4015800,
+          "basket": 267720,
+          "closeRate": 0.010067114093959731,
+          "adsCost": 0.15306788186662681,
           "adsCostOr": 0.7084865319671281,
           "dailyAds": [
             53269,
@@ -1254,7 +1254,7 @@
             0,
             2,
             2,
-            0,
+            1,
             0,
             0,
             0,
@@ -1286,7 +1286,7 @@
             0,
             2,
             2,
-            0,
+            1,
             0,
             0,
             0,
@@ -1895,10 +1895,10 @@
           "ads": 935885,
           "inbox": 3401,
           "or": 1326510,
-          "sales": 4920190,
-          "basket": 164006.33333333334,
-          "closeRate": 0.008820935019112026,
-          "adsCost": 0.19021318282424052,
+          "sales": 5523690,
+          "basket": 178183.5483870968,
+          "closeRate": 0.00911496618641576,
+          "adsCost": 0.16943112303550706,
           "adsCostOr": 0.7055242704540486,
           "dailyAds": [
             78407,
@@ -1975,7 +1975,7 @@
             3,
             2,
             3,
-            0,
+            1,
             0,
             0,
             0,
@@ -2007,7 +2007,7 @@
             3,
             2,
             3,
-            0,
+            1,
             0,
             0,
             0,
@@ -2062,10 +2062,10 @@
       },
       "closeCounts": {
         "nose_open": {
-          "consult": 14,
-          "deposit": 14,
-          "consultValue": 3412300,
-          "depositValue": 3412300
+          "consult": 15,
+          "deposit": 15,
+          "consultValue": 4015800,
+          "depositValue": 4015800
         },
         "nose_semi": {
           "consult": 8,
@@ -2086,10 +2086,10 @@
           "depositValue": 939890
         },
         "all": {
-          "consult": 30,
-          "deposit": 30,
-          "consultValue": 4920190,
-          "depositValue": 4920190
+          "consult": 31,
+          "deposit": 31,
+          "consultValue": 5523690,
+          "depositValue": 5523690
         }
       },
       "sourceKind": "facebook_api"
