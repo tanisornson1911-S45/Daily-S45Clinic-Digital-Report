@@ -5098,7 +5098,7 @@ export default function AdsDashboard() {
                 />
                 <NoseOpenScenarioCard
                   plan={noseOpenIncreasePlan}
-                  title="แผนเพิ่มงบ (เพิ่มแล้ว)"
+                  title="แผนเพิ่มงบ"
                   targetLabel="~1.7 ล้านบาท"
                   cls={{ border: "border-emerald-100", text: "text-emerald-600", chip: "bg-emerald-50 text-emerald-700", chipBorder: "border-emerald-200" }}
                 />
