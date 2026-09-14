@@ -786,6 +786,23 @@ function buildNoseOpenScenario(direction, adjustAmountRaw) {
   const newNoseOpenTotal = newDoctorPoolTotal + awarenessBudget + noseOpenFixedCost;
   const newGrandTotal = otherProceduresTotal + newNoseOpenTotal;
 
+  // งบที่ใช้ได้ / งบที่ใช้ได้ต่อวัน เฉพาะเสริมจมูกโอเพ่น — เทียบงบ Facebook ใหม่ (หลังปรับตามตัวเลื่อน) กับยอดที่
+  // ใช้จริงสะสมเดือนนี้แล้ว (adSpend.json, Facebook Marketing API จริง เฉพาะ FB ไม่รวม Line/Google เหมือนที่
+  // budget-Facebook เทียบด้วย) เหลือเท่าไหร่ก็หารด้วยจำนวนวันที่เหลือของเดือนนี้จริง (นับจากวันนี้ถึงสิ้นเดือน) —
+  // ถ้าติดลบ = ใช้เกินงบใหม่ที่ปรับไปแล้ว (มีความหมายจริง ไม่ clamp ให้เป็น 0)
+  const newFacebookBudget = newDoctorPoolTotal + awarenessBudget;
+  const mtdFacebookSpend = adSpendData?.months?.[NOSE_OPEN_BUDGET_DATA.month]?.nose_open ?? null;
+  let daysRemaining = null;
+  if (NOSE_OPEN_BUDGET_DATA.month) {
+    const [y, m] = NOSE_OPEN_BUDGET_DATA.month.split("-").map(Number);
+    const today = new Date();
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const isCurrentMonth = today.getFullYear() === y && today.getMonth() + 1 === m;
+    daysRemaining = isCurrentMonth ? Math.max(1, daysInMonth - today.getDate() + 1) : daysInMonth;
+  }
+  const availableBudget = mtdFacebookSpend != null ? newFacebookBudget - mtdFacebookSpend : null;
+  const availableBudgetPerDay = availableBudget != null && daysRemaining ? availableBudget / daysRemaining : null;
+
   return {
     direction,
     adjustAmount,
@@ -796,6 +813,10 @@ function buildNoseOpenScenario(direction, adjustAmountRaw) {
     newNoseOpenTotal,
     newGrandTotal,
     adsDate,
+    mtdFacebookSpend,
+    daysRemaining,
+    availableBudget,
+    availableBudgetPerDay,
     totalTargetChat: scenarioDoctors.reduce((s, d) => s + d.targetChat, 0),
     totalActualChat: scenarioDoctors.reduce((s, d) => s + d.actualChat, 0),
     totalForecastChat: scenarioDoctors.reduce((s, d) => s + (d.forecastChat ?? 0), 0),
@@ -1335,6 +1356,26 @@ function NoseOpenScenarioCard({ plan, title, min, max, step, amount, onAmountCha
         <p>
           งบรวมทุกหัตถการ: ฿{fmtTHB(plan.grandTotalBefore)} → <span className={`font-semibold ${cls.text}`}>฿{fmtTHB(plan.newGrandTotal)}</span>
         </p>
+        {plan.availableBudget != null && (
+          <>
+            <p>
+              งบเสริมจมูกโอเพ่นที่ใช้ได้ (Facebook เหลือถึงสิ้นเดือน):{" "}
+              <span className={`font-semibold ${plan.availableBudget < 0 ? "text-rose-600" : cls.text}`}>
+                {plan.availableBudget < 0 ? "-" : ""}฿{fmtTHB(Math.abs(plan.availableBudget))}
+                {plan.availableBudget < 0 ? " (เกินงบ)" : ""}
+              </span>
+            </p>
+            <p>
+              งบที่ใช้ได้ต่อวัน ({plan.daysRemaining} วันที่เหลือ):{" "}
+              <span className={`font-semibold ${plan.availableBudgetPerDay < 0 ? "text-rose-600" : cls.text}`}>
+                {plan.availableBudgetPerDay < 0 ? "-" : ""}฿{fmtTHB(Math.abs(plan.availableBudgetPerDay))}/วัน
+              </span>
+            </p>
+            <p className="text-[11px] text-slate-400">
+              เทียบกับงบ Facebook ที่ใช้จริงสะสมเดือนนี้แล้ว ฿{fmtTHB(plan.mtdFacebookSpend)} (Facebook Marketing API)
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
