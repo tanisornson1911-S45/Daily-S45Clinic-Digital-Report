@@ -725,8 +725,11 @@ function buildNoseOpenScenario(direction) {
     const weight = NOSE_OPEN_DOCTOR_WEIGHT[d.name];
     const share = weightSum > 0 ? (weight / weightSum) * adjustAmount : 0;
     const newBudget = Math.max(0, Math.round(d.budgetSet + sign * share));
-    // CPR (ต้นทุนต่อแชท) คำนวณจากงบที่ใช้จริง/แชทจริงสะสมเดือนนี้ (Month-to-date) ต่อคุณหมอ — ใช้แทนค่า CPR
-    // ย้อนหลัง 7 วันตามที่ขอ เพราะไม่มีข้อมูลงบ/แชทรายวันแยกคุณหมอเก็บไว้ในระบบ (มีแค่ยอดสะสมเดือนต่อคุณหมอ)
+    // CPR (ต้นทุนต่อแชท) คำนวณจากคอลัมน์ "งบที่ใช้ปัจจุบัน"/"แชทปัจจุบัน" ต่อคุณหมอในชีต Budget Allocate — ตรวจสอบ
+    // แล้วว่าตัวเลขนี้คือ "วันล่าสุด" ไม่ใช่ยอดสะสมเดือน (Total row ของทั้งบัญชี 71,066 บาท/วัน ตรงกับค่าเฉลี่ย
+    // ใช้จ่ายจริงต่อวันจาก Facebook Marketing API เดือน ก.ย. ~72,522 บาท/วัน เกือบเป๊ะ — ถ้าเป็นยอดสะสม 13 วัน
+    // จะต้องมากกว่านี้ ~13 เท่า) จึงใช้แทนค่า CPR ย้อนหลัง 7 วันต่อคุณหมอตามที่ขอ เพราะไม่มีข้อมูลงบ/แชทรายวัน
+    // แยกคุณหมอย้อนหลังเก็บไว้ในระบบ (มีแค่สแนปช็อตวันล่าสุดต่อคุณหมอจากชีตนี้)
     const cpr = d.actualChat > 0 ? d.currentSpend / d.actualChat : null;
     const forecastChat = cpr && cpr > 0 ? Math.round(newBudget / cpr) : null;
     return { ...d, weight, newBudget, pctChange: d.budgetSet > 0 ? ((newBudget - d.budgetSet) / d.budgetSet) * 100 : 0, cpr, forecastChat };
@@ -1237,7 +1240,7 @@ function NoseOpenScenarioCard({ plan, title, targetLabel, sourceLabel, cls }) {
             <tr className="text-left text-[11px] text-slate-400 border-b border-slate-100">
               <th className="pb-2 font-medium">คุณหมอ</th>
               <th className="pb-2 font-medium text-right">งบปัจจุบัน → ใหม่</th>
-              <th className="pb-2 font-medium text-right">เป้า/แชทจริง (MTD)</th>
+              <th className="pb-2 font-medium text-right">เป้า/แชทจริง (วันล่าสุด)</th>
               <th className="pb-2 font-medium text-right">คาดการณ์แชทใหม่</th>
             </tr>
           </thead>
@@ -5080,9 +5083,11 @@ export default function AdsDashboard() {
               </div>
 
               <p className="text-[11px] text-slate-400 mt-3">
-                "คาดการณ์แชทใหม่" คำนวณจาก CPR (งบ ÷ แชท) ของแต่ละคุณหมอที่ทำได้จริงสะสมตั้งแต่ต้นเดือนนี้ (Month-to-date) คูณกับงบใหม่ที่ปรับ —
-                หมายเหตุ: ระบบยังไม่มีข้อมูลงบ/แชทรายวันแยกรายคุณหมอเก็บไว้ ทำให้ยังคำนวณ CPR ย้อนหลัง 7 วันล่าสุดแบบเป๊ะๆ ไม่ได้ ตัวเลขนี้จึงเป็น
-                Forecast โดยประมาณจากอัตราส่วนสะสมของเดือนแทน · เป้ารวมงบเป็นตัวเลขปัดประมาณตามที่วางแผนไว้ อาจคลาดเคลื่อนหลักหมื่นบาทได้ตามงบจริงที่อัปเดตทุกวัน
+                "คาดการณ์แชทใหม่" คำนวณจาก CPR (งบ ÷ แชท) ของแต่ละคุณหมอในสแนปช็อต "วันล่าสุด" จากชีต Budget Allocate คูณกับงบใหม่ที่ปรับ —
+                หมายเหตุ: คอลัมน์ "งบที่ใช้ปัจจุบัน"/"แชทปัจจุบัน" ตรวจสอบแล้วว่าเป็นยอดของวันล่าสุดวันเดียว ไม่ใช่ยอดสะสมทั้งเดือน (เทียบ Total
+                row ของทั้งบัญชี ฿71,066/วัน ใกล้เคียงค่าเฉลี่ยใช้จ่ายจริงต่อวันจาก Facebook Marketing API มาก) แต่ระบบยังไม่มีข้อมูลงบ/แชท
+                รายวันแยกรายคุณหมอย้อนหลังเก็บไว้ จึงยังคำนวณ CPR เฉลี่ย 7 วันตามที่ขอแบบเป๊ะๆ ไม่ได้ ตัวเลขนี้จึงเป็น Forecast โดยประมาณจาก CPR
+                ของวันล่าสุดแทน อาจผันผวนตามผลงานวันต่อวันของแต่ละคุณหมอ · เป้ารวมงบเป็นตัวเลขปัดประมาณตามที่วางแผนไว้ อาจคลาดเคลื่อนหลักหมื่นบาทได้ตามงบจริงที่อัปเดตทุกวัน
               </p>
             </div>
           ) : (
