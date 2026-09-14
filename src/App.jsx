@@ -70,6 +70,7 @@ import OR_SALES_DATA from "./data/orSales.json";
 import CONSULT_PIPELINE_DATA from "./data/consultPipeline.json";
 import CHANNEL_MIX_DATA from "./data/channelMix.json";
 import INTER_SALE_DATA from "./data/interSale.json";
+import NOSE_OPEN_BUDGET_DATA from "./data/noseOpenBudget.json";
 const loaDataByMonth = LOA_DATA.months;
 const loaNormalDataByMonth = LOA_NORMAL_DATA.months;
 
@@ -695,6 +696,61 @@ const S45_LOGO ="data:image/webp;base64,UklGRm4VAABXRUJQVlA4TGIVAAAv88FSEJegoG0b
 // คำนวณสดจาก RAW_TX เดือน CURRENT_SPEND_MONTH เฉพาะเคสที่มี OR Date แล้วจริง (สูตรเดียวกับ
 // activeLeadTime ที่ใช้คำนวณเดือนอื่นๆ แบบสด — ดูใน component ด้านล่าง)
 // ============================================================
+// ============================================================
+// แผนปรับงบ "เสริมจมูกโอเพ่น" รายคุณหมอ (ลด/เพิ่ม) — หน้า Ads, ส่วน "แผนเพิ่มเติม Digital Team"
+// อ้างอิงข้อมูลจริงล่าสุดจาก src/data/noseOpenBudget.json (scripts/fetch-budget-allocate.mjs, Google
+// Sheet "S45 - Budget Allocate") ไม่ผูกกับตัวกรองช่วงวันที่ของหน้า (เป็นงบของเดือนปัจจุบันที่กำลังวางแผนจริง
+// เหมือนกับการ์ด "สัดส่วนงบโฆษณาแยกตามช่องทาง" ที่ใช้เดือนล่าสุดเสมอ) — ปรับได้เฉพาะงบ Facebook ต่อคุณหมอ 5
+// คน หัตถการอื่น + Line/Google ของเสริมจมูกโอเพ่นเองคงเดิม, งบ Awareness (ไม่ใช่คุณหมอ) ก็คงเดิมเช่นกัน
+// ============================================================
+function buildNoseOpenScenario(direction) {
+  const doctors = NOSE_OPEN_BUDGET_DATA?.noseOpen?.doctors ?? [];
+  if (doctors.length !== 5 || !doctors.every((d) => NOSE_OPEN_DOCTOR_WEIGHT[d.name])) return null;
+
+  const grandTotalBefore = NOSE_OPEN_BUDGET_DATA.grandTotal;
+  const otherProceduresTotal = NOSE_OPEN_BUDGET_DATA.otherProceduresTotal;
+  const noseOpenTotalBefore = NOSE_OPEN_BUDGET_DATA.noseOpen.total;
+  const noseOpenFixedCost = NOSE_OPEN_BUDGET_DATA.noseOpen.lineBroadcast + NOSE_OPEN_BUDGET_DATA.noseOpen.lineAds + NOSE_OPEN_BUDGET_DATA.noseOpen.google;
+  const doctorPoolBefore = doctors.reduce((s, d) => s + d.budgetSet, 0);
+  const awarenessBudget = NOSE_OPEN_BUDGET_DATA.noseOpen.facebookBudgetTotal - doctorPoolBefore;
+  const weightSum = doctors.reduce((s, d) => s + NOSE_OPEN_DOCTOR_WEIGHT[d.name], 0);
+
+  const target = direction === "decrease" ? NOSE_OPEN_DECREASE_TARGET : NOSE_OPEN_INCREASE_TARGET;
+  let adjustAmount =
+    direction === "decrease" ? Math.max(NOSE_OPEN_MIN_ADJUST, grandTotalBefore - target) : Math.max(NOSE_OPEN_MIN_ADJUST, target - grandTotalBefore);
+  if (direction === "decrease") adjustAmount = Math.min(adjustAmount, doctorPoolBefore * 0.9); // กันไม่ให้งบคุณหมอติดลบ
+  const sign = direction === "decrease" ? -1 : 1;
+
+  const scenarioDoctors = doctors.map((d) => {
+    const weight = NOSE_OPEN_DOCTOR_WEIGHT[d.name];
+    const share = weightSum > 0 ? (weight / weightSum) * adjustAmount : 0;
+    const newBudget = Math.max(0, Math.round(d.budgetSet + sign * share));
+    // CPR (ต้นทุนต่อแชท) คำนวณจากงบที่ใช้จริง/แชทจริงสะสมเดือนนี้ (Month-to-date) ต่อคุณหมอ — ใช้แทนค่า CPR
+    // ย้อนหลัง 7 วันตามที่ขอ เพราะไม่มีข้อมูลงบ/แชทรายวันแยกคุณหมอเก็บไว้ในระบบ (มีแค่ยอดสะสมเดือนต่อคุณหมอ)
+    const cpr = d.actualChat > 0 ? d.currentSpend / d.actualChat : null;
+    const forecastChat = cpr && cpr > 0 ? Math.round(newBudget / cpr) : null;
+    return { ...d, weight, newBudget, pctChange: d.budgetSet > 0 ? ((newBudget - d.budgetSet) / d.budgetSet) * 100 : 0, cpr, forecastChat };
+  });
+
+  const newDoctorPoolTotal = scenarioDoctors.reduce((s, d) => s + d.newBudget, 0);
+  const newNoseOpenTotal = newDoctorPoolTotal + awarenessBudget + noseOpenFixedCost;
+  const newGrandTotal = otherProceduresTotal + newNoseOpenTotal;
+
+  return {
+    direction,
+    adjustAmount,
+    doctors: scenarioDoctors,
+    newDoctorPoolTotal,
+    grandTotalBefore,
+    noseOpenTotalBefore,
+    newNoseOpenTotal,
+    newGrandTotal,
+    totalTargetChat: scenarioDoctors.reduce((s, d) => s + d.targetChat, 0),
+    totalActualChat: scenarioDoctors.reduce((s, d) => s + d.actualChat, 0),
+    totalForecastChat: scenarioDoctors.reduce((s, d) => s + (d.forecastChat ?? 0), 0),
+  };
+}
+
 const LEAD_TIME_LABELS = { nose_open: "Nose Open", nose_semi: "Semi Open", brow_hairline: "ยกคิ้ว", breast_lipo: "เสริมหน้าอก/ดูดไขมัน", all: "รวมทุกหัตถการ" };
 function liveLeadTimeDays(monthIso) {
   const rows = txInMonth(monthIso).filter((t) => t.or && t.or >= t.d);
@@ -1152,6 +1208,87 @@ const COMPARE_PRESETS = [
   ["prev_month", "เดือนก่อนหน้า (วันเดียวกัน)"],
   ["custom", "กำหนดเอง"],
 ];
+
+// น้ำหนักสัดส่วน %ที่เพิ่ม/ลดงบเสริมจมูกโอเพ่นต่อคุณหมอ ตามที่ผู้ใช้ระบุ: หมอโรส/หมอตูน สูงสุด, รองลงมาหมอเช/
+// หมอจิ๊จ๊ะ, น้อยที่สุดหมอไบร์ท — ใช้สัดส่วน 3:3:2:2:1 (คงอันดับเดิมทั้งสองทิศทาง ลด/เพิ่ม)
+const NOSE_OPEN_DOCTOR_WEIGHT = { หมอโรส: 3, หมอตูน: 3, หมอเช: 2, หมอจิ๊จ๊ะ: 2, หมอไบร์ท: 1 };
+const NOSE_OPEN_WEIGHT_RANK_LABEL = { 3: "สูงสุด", 2: "รองลงมา", 1: "น้อยที่สุด" };
+// เป้ารวมงบทุกหัตถการหลังปรับ ตามที่ผู้ใช้ระบุ ("เศษหลักหมื่นต้น-กลางไม่เป็นไร")
+const NOSE_OPEN_DECREASE_TARGET = 1500000;
+const NOSE_OPEN_INCREASE_TARGET = 1730000;
+const NOSE_OPEN_MIN_ADJUST = 20000; // กันไว้ให้เห็นการเปลี่ยนแปลงจริงแม้งบรวมปัจจุบันจะใกล้เป้าอยู่แล้ว
+
+function NoseOpenScenarioCard({ plan, title, targetLabel, sourceLabel, cls }) {
+  return (
+    <div className={`bg-white rounded-lg border ${cls.border} p-4`}>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <p className="text-sm font-semibold text-slate-700">{title}</p>
+        <span className={`text-[11px] font-semibold ${cls.chip} rounded-full px-2 py-0.5 border ${cls.chipBorder}`}>
+          เป้ารวมงบ {targetLabel}
+        </span>
+      </div>
+      <p className="text-xs text-slate-500 mb-3">
+        ปรับงบ Facebook เฉพาะ "เสริมจมูกโอเพ่น" ต่อคุณหมอ{plan.direction === "decrease" ? "ลดลงรวม" : "เพิ่มขึ้นรวม"}{" "}
+        <span className={`font-semibold ${cls.text}`}>฿{fmtTHB(plan.adjustAmount)}</span> หัตถการอื่นคงเดิม
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-[11px] text-slate-400 border-b border-slate-100">
+              <th className="pb-2 font-medium">คุณหมอ</th>
+              <th className="pb-2 font-medium text-right">งบปัจจุบัน → ใหม่</th>
+              <th className="pb-2 font-medium text-right">เป้า/แชทจริง (MTD)</th>
+              <th className="pb-2 font-medium text-right">คาดการณ์แชทใหม่</th>
+            </tr>
+          </thead>
+          <tbody>
+            {plan.doctors.map((d) => (
+              <tr key={d.name} className="border-b border-slate-50 last:border-0">
+                <td className="py-2 text-slate-600">
+                  <p>{d.name}</p>
+                  <p className="text-[11px] text-slate-400">น้ำหนัก {d.weight} ({NOSE_OPEN_WEIGHT_RANK_LABEL[d.weight] || "-"})</p>
+                </td>
+                <td className="py-2 text-right text-slate-600">
+                  <p>
+                    ฿{fmtTHB(d.budgetSet)} → <span className={`font-semibold ${cls.text}`}>฿{fmtTHB(d.newBudget)}</span>
+                  </p>
+                  <p className={`text-[11px] ${cls.text}`}>
+                    {d.pctChange >= 0 ? "+" : ""}
+                    {d.pctChange.toFixed(1)}%
+                  </p>
+                </td>
+                <td className="py-2 text-right text-slate-600">
+                  {d.targetChat} / {d.actualChat}
+                </td>
+                <td className="py-2 text-right">
+                  <span className={`font-semibold ${cls.text}`}>{d.forecastChat != null ? d.forecastChat : "-"}</span>
+                </td>
+              </tr>
+            ))}
+            <tr className="border-t border-slate-200">
+              <td className="py-2 font-semibold text-slate-700">รวม 5 คุณหมอ</td>
+              <td className="py-2 text-right font-semibold text-slate-700">
+                ฿{fmtTHB(plan.doctors.reduce((s, d) => s + d.budgetSet, 0))} → ฿{fmtTHB(plan.newDoctorPoolTotal)}
+              </td>
+              <td className="py-2 text-right font-semibold text-slate-700">
+                {plan.totalTargetChat} / {plan.totalActualChat}
+              </td>
+              <td className={`py-2 text-right font-semibold ${cls.text}`}>{plan.totalForecastChat}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 space-y-1">
+        <p>
+          งบเสริมจมูกโอเพ่นรวม (Facebook+Line+Google): ฿{fmtTHB(plan.noseOpenTotalBefore)} → <span className={`font-semibold ${cls.text}`}>฿{fmtTHB(plan.newNoseOpenTotal)}</span>
+        </p>
+        <p>
+          งบรวมทุกหัตถการ: ฿{fmtTHB(plan.grandTotalBefore)} → <span className={`font-semibold ${cls.text}`}>฿{fmtTHB(plan.newGrandTotal)}</span>
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function ThemeToggle({ dark, onToggle }) {
   return (
@@ -2332,6 +2469,11 @@ export default function AdsDashboard() {
   const channelMixMonthLabel = channelMixMonthIso
     ? `${THAI_MONTHS_FULL[Number(channelMixMonthIso.slice(5, 7)) - 1]} ${Number(channelMixMonthIso.slice(0, 4)) + 543}`
     : null;
+
+  // แผนปรับงบ "เสริมจมูกโอเพ่น" รายคุณหมอ (ลด/เพิ่ม) — ดู buildNoseOpenScenario() ด้านบนสำหรับสูตรคำนวณ
+  const noseOpenDecreasePlan = buildNoseOpenScenario("decrease");
+  const noseOpenIncreasePlan = buildNoseOpenScenario("increase");
+
   // ยอดขายรวมทุกช่องทาง / Facebook / ROAS ในสรุปภาพรวม — ใช้ตัวเลขเดียวกับ Metric Cards ด้านบน (ตามช่วงวันที่ที่เลือกจริง, มุมมอง "รวมทุกหัตถการ")
   const summaryAllSales = execSales;
   const summaryFbSales = execFbSales;
@@ -4906,6 +5048,48 @@ export default function AdsDashboard() {
               </li>
             </ul>
           </div>
+
+          {/* แผนปรับงบ "เสริมจมูกโอเพ่น" รายคุณหมอ (ลด/เพิ่ม) */}
+          {noseOpenDecreasePlan && noseOpenIncreasePlan ? (
+            <div className="rounded-xl border border-violet-100 bg-violet-50/40 p-4 mt-5">
+              <div className="flex items-center gap-2 mb-1">
+                <Wallet size={14} className="text-violet-500" />
+                <h3 className="text-sm font-semibold text-slate-700">
+                  แผนปรับงบ "เสริมจมูกโอเพ่น" รายคุณหมอ — {NOSE_OPEN_BUDGET_DATA.tabTitle}
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 mb-4">
+                เทียบข้อมูลจริงจาก Google Sheet "S45 - Budget Allocate" — ปรับได้เฉพาะงบ Facebook ของ "เสริมจมูกโอเพ่น" ต่อคุณหมอเท่านั้น
+                (หัตถการอื่น และ Line/Google/งบ Awareness ของเสริมจมูกโอเพ่นเองคงเดิม) แบ่งสัดส่วน %ที่เพิ่ม/ลดตามน้ำหนักที่กำหนด: หมอโรส/หมอตูน
+                สูงสุด รองลงมาหมอเช/หมอจิ๊จ๊ะ และน้อยที่สุดหมอไบร์ท (สัดส่วนน้ำหนัก 3:3:2:2:1)
+              </p>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <NoseOpenScenarioCard
+                  plan={noseOpenDecreasePlan}
+                  title="แผนลดงบ"
+                  targetLabel="~1.5 ล้านบาท"
+                  cls={{ border: "border-rose-100", text: "text-rose-600", chip: "bg-rose-50 text-rose-700", chipBorder: "border-rose-200" }}
+                />
+                <NoseOpenScenarioCard
+                  plan={noseOpenIncreasePlan}
+                  title="แผนเพิ่มงบ"
+                  targetLabel="~1.73 ล้านบาท"
+                  cls={{ border: "border-emerald-100", text: "text-emerald-600", chip: "bg-emerald-50 text-emerald-700", chipBorder: "border-emerald-200" }}
+                />
+              </div>
+
+              <p className="text-[11px] text-slate-400 mt-3">
+                "คาดการณ์แชทใหม่" คำนวณจาก CPR (งบ ÷ แชท) ของแต่ละคุณหมอที่ทำได้จริงสะสมตั้งแต่ต้นเดือนนี้ (Month-to-date) คูณกับงบใหม่ที่ปรับ —
+                หมายเหตุ: ระบบยังไม่มีข้อมูลงบ/แชทรายวันแยกรายคุณหมอเก็บไว้ ทำให้ยังคำนวณ CPR ย้อนหลัง 7 วันล่าสุดแบบเป๊ะๆ ไม่ได้ ตัวเลขนี้จึงเป็น
+                Forecast โดยประมาณจากอัตราส่วนสะสมของเดือนแทน · เป้ารวมงบเป็นตัวเลขปัดประมาณตามที่วางแผนไว้ อาจคลาดเคลื่อนหลักหมื่นบาทได้ตามงบจริงที่อัปเดตทุกวัน
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 mt-5 text-xs text-slate-400">
+              ยังไม่มีข้อมูลงบ "เสริมจมูกโอเพ่น" รายคุณหมอที่ครบถ้วนสำหรับเดือนล่าสุดจาก Google Sheet "S45 - Budget Allocate" — แผนปรับงบนี้จะแสดงเมื่อข้อมูลพร้อม
+            </div>
+          )}
         </div>
 )}
 
