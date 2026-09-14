@@ -187,19 +187,21 @@ function parseBudgetSheet(sheet, title) {
 }
 
 // ผู้กรอกข้อมูลในชีตสะกดชื่อคุณหมอต่างจากที่ใช้ในที่อื่นของ dashboard — normalize ก่อนใช้
-const NOSE_OPEN_DOCTOR_ALIASES = {
+const DOCTOR_NAME_ALIASES = {
   "หมอไบท์": "หมอไบร์ท",
   "หมอจิจ๊ะ": "หมอจิ๊จ๊ะ",
 };
-// 5 คุณหมอที่มีแคมเปญ "เสริมจมูกโอเพ่น" ตั้งงบไว้จริงตามที่ผู้ใช้ระบุไว้สำหรับแผนปรับงบ — หมอตี้ (งบ 0
-// เดือนนี้ ใช้เกินโดยไม่มีงบตั้ง) และ Awareness (ไม่ใช่คุณหมอ) ไม่รวมอยู่ในแผนนี้
-const NOSE_OPEN_TARGET_DOCTORS = ["หมอโรส", "หมอตูน", "หมอเช", "หมอจิ๊จ๊ะ", "หมอไบร์ท"];
+// แถวย่อยใต้แต่ละหัตถการที่ไม่ใช่ชื่อคุณหมอจริง (งบรวม/เฉลี่ย/ไม่ระบุตัวบุคคล) — ข้ามตอนดึงรายชื่อคุณหมอ
+const NON_DOCTOR_ROW_LABELS = new Set(["Awareness", "ไม่เเจ้งหมอ", "ไม่แจ้งหมอ", "รวมหมอ"]);
+// "Inter" มีโครงสร้างซ้อน 3 ชั้น (Inter > หัตถการย่อย > คุณหมอ) ต่างจากหัตถการอื่นที่เป็น 2 ชั้น
+// (หัตถการ > คุณหมอ) ตรงๆ — ข้ามไปเพื่อไม่ให้ parser ทั่วไปดึงชื่อหัตถการย่อยมาปนเป็น "ชื่อคุณหมอ" ผิดๆ
+const SKIP_TOP_LEVEL_LABELS = new Set(["Inter", "Total"]);
 
-// ดึงงบเสริมจมูกโอเพ่นแยกรายคุณหมอ (แถวย่อยใต้แถว "เสริมจมูกโอเพ่น" ในชีต Budget Allocate) — ใช้เป็นฐาน
-// ข้อมูลของแผนปรับ (ลด/เพิ่ม) งบบนหน้า Ads "แผนเพิ่มเติม Digital Team". โครงสร้างคอลัมน์ตรวจสอบจริงจาก
-// การ diagnostic-dump ชีต "September26" เมื่อ 2569-09-14 (แถว 9-50) — แถวระดับหัตถการบนสุดมีเลขในคอลัมน์
-// "Target" ส่วนแถวย่อยรายคุณหมอ (Target ว่าง) จะอยู่ถัดไปจนกว่าจะเจอแถวหัตถการบนสุดถัดไปหรือแถว "Total".
-function parseNoseOpenDoctorBudget(sheet, title) {
+// ดึงงบแยกรายคุณหมอของ "ทุกหัตถการ" (ยกเว้น Inter) จากชีต Budget Allocate — ใช้เป็นฐานข้อมูลของแผนปรับ
+// งบประมาณบนหน้า Ads "แผนเพิ่มเติม Digital Team". โครงสร้างคอลัมน์ตรวจสอบจริงจากการ diagnostic-dump ชีต
+// "September26" เมื่อ 2569-09-14 (แถว 9-50) — แถวระดับหัตถการบนสุดมีเลขในคอลัมน์ "Target" ส่วนแถวย่อยราย
+// คุณหมอ (Target ว่าง) จะอยู่ถัดไปจนกว่าจะเจอแถวหัตถการบนสุดถัดไปหรือแถว "Total".
+function parseAllProcedureDoctorBudgets(sheet, title) {
   const labelCol = sheet.reduce((found, row) => (found !== -1 ? found : row.indexOf("หัตถการ") !== -1 ? row.indexOf("หัตถการ") : -1), -1);
   const topGroupRowIdx = sheet.findIndex((row) => row.includes("หัตถการ"));
   if (labelCol === -1 || topGroupRowIdx === -1) return null;
@@ -225,65 +227,69 @@ function parseNoseOpenDoctorBudget(sheet, title) {
   const targetChatCol = topGroupRow.indexOf("เป้าเเชท");
   const actualChatCol = topGroupRow.indexOf("แชทปัจจุบัน");
   if ([fbBudgetCol, lineBroadcastCol, lineAdsCol, googleCol, totalBudgetCol, currentSpendCol, targetChatCol, actualChatCol].some((c) => c === -1)) {
-    console.warn(`  ! "${title}": โครงสร้างคอลัมน์ของชีตไม่ตรงกับที่คาดไว้ — ข้าม noseOpenBudget`);
+    console.warn(`  ! "${title}": โครงสร้างคอลัมน์ของชีตไม่ตรงกับที่คาดไว้ — ข้ามการดึงงบรายหัตถการ/คุณหมอ`);
     return null;
   }
 
   const num = (v) => (typeof v === "number" ? v : 0);
-
-  const noseOpenRowIdx = sheet.findIndex(
-    (row, i) =>
-      i > topGroupRowIdx + 1 &&
-      i < totalRowIdx &&
-      String(row[labelCol] ?? "").trim() === "เสริมจมูกโอเพ่น" &&
-      typeof row[targetCol] === "number"
-  );
-  if (noseOpenRowIdx === -1) {
-    console.warn(`  ! "${title}": ไม่พบแถว "เสริมจมูกโอเพ่น" — ข้าม noseOpenBudget`);
-    return null;
-  }
-  const noseOpenRow = sheet[noseOpenRowIdx];
-
-  const nextTopLevelIdx = sheet.findIndex(
-    (row, i) => i > noseOpenRowIdx && (i >= totalRowIdx || typeof row[targetCol] === "number")
-  );
-  const subRowEnd = nextTopLevelIdx === -1 ? totalRowIdx : nextTopLevelIdx;
-
-  const doctorsByName = {};
-  for (let i = noseOpenRowIdx + 1; i < subRowEnd; i++) {
-    const row = sheet[i];
-    const rawName = String(row[labelCol] ?? "").trim();
-    if (!rawName) continue;
-    const name = NOSE_OPEN_DOCTOR_ALIASES[rawName] || rawName;
-    if (!NOSE_OPEN_TARGET_DOCTORS.includes(name)) continue;
-    doctorsByName[name] = {
-      name,
-      budgetSet: num(row[fbBudgetCol]),
-      currentSpend: num(row[currentSpendCol]),
-      targetChat: num(row[targetChatCol]),
-      actualChat: num(row[actualChatCol]),
-    };
-  }
-  const doctors = NOSE_OPEN_TARGET_DOCTORS.map((n) => doctorsByName[n]).filter(Boolean);
-  if (doctors.length !== NOSE_OPEN_TARGET_DOCTORS.length) {
-    console.warn(`  ! "${title}": พบคุณหมอเสริมจมูกโอเพ่นไม่ครบ 5 คน (พบ ${doctors.length}/${NOSE_OPEN_TARGET_DOCTORS.length}) — ข้าม noseOpenBudget`);
-    return null;
-  }
-
   const totalRow = sheet[totalRowIdx];
-  return {
-    tabTitle: title,
-    grandTotal: num(totalRow[totalBudgetCol]),
-    noseOpen: {
-      target: num(noseOpenRow[targetCol]),
-      facebookBudgetTotal: num(noseOpenRow[fbBudgetCol]),
-      lineBroadcast: num(noseOpenRow[lineBroadcastCol]),
-      lineAds: num(noseOpenRow[lineAdsCol]),
-      google: num(noseOpenRow[googleCol]),
-      total: num(noseOpenRow[totalBudgetCol]),
+  const grandTotal = num(totalRow[totalBudgetCol]);
+
+  // หาแถวระดับหัตถการบนสุดทุกแถว (Target มีเลข, อยู่ระหว่างแถวหัวตารางกับแถว Total, ไม่ใช่ Inter/Total)
+  const topLevelIdxs = [];
+  for (let i = topGroupRowIdx + 1; i < totalRowIdx; i++) {
+    const row = sheet[i];
+    const label = String(row[labelCol] ?? "").trim();
+    if (typeof row[targetCol] === "number" && !SKIP_TOP_LEVEL_LABELS.has(label)) topLevelIdxs.push(i);
+  }
+
+  const procedures = [];
+  for (let k = 0; k < topLevelIdxs.length; k++) {
+    const rowIdx = topLevelIdxs[k];
+    const row = sheet[rowIdx];
+    const label = String(row[labelCol] ?? "").trim();
+    const subRowEnd = k + 1 < topLevelIdxs.length ? topLevelIdxs[k + 1] : totalRowIdx;
+
+    const doctorsByName = {};
+    for (let i = rowIdx + 1; i < subRowEnd; i++) {
+      const subRow = sheet[i];
+      const rawName = String(subRow[labelCol] ?? "").trim();
+      if (!rawName || NON_DOCTOR_ROW_LABELS.has(rawName)) continue;
+      const budgetSet = num(subRow[fbBudgetCol]);
+      if (budgetSet <= 0) continue; // ไม่มีงบตั้งไว้เดือนนี้ (เช่นหมอตี้ในเสริมจมูกโอเพ่น) — ไม่รวมในแผนปรับงบ
+      const name = DOCTOR_NAME_ALIASES[rawName] || rawName;
+      doctorsByName[name] = {
+        name,
+        budgetSet,
+        currentSpend: num(subRow[currentSpendCol]),
+        targetChat: num(subRow[targetChatCol]),
+        actualChat: num(subRow[actualChatCol]),
+      };
+    }
+    const doctors = Object.values(doctorsByName);
+    if (doctors.length === 0) {
+      console.warn(`  ! "${title}": หัตถการ "${label}" ไม่พบคุณหมอที่มีงบตั้งไว้ — ข้ามหัตถการนี้`);
+      continue;
+    }
+
+    procedures.push({
+      key: label,
+      target: num(row[targetCol]),
+      facebookBudgetTotal: num(row[fbBudgetCol]),
+      lineBroadcast: num(row[lineBroadcastCol]),
+      lineAds: num(row[lineAdsCol]),
+      google: num(row[googleCol]),
+      total: num(row[totalBudgetCol]),
       doctors,
-    },
-  };
+    });
+  }
+
+  if (procedures.length === 0) {
+    console.warn(`  ! "${title}": ไม่พบหัตถการที่ดึงงบรายคุณหมอได้เลย`);
+    return null;
+  }
+
+  return { tabTitle: title, grandTotal, procedures };
 }
 
 async function main() {
@@ -306,7 +312,7 @@ async function main() {
   const latestIso = Object.keys(monthsSeen).filter((iso) => !ambiguousMonths.has(iso)).sort().pop();
 
   const months = {};
-  let noseOpenBudget = null;
+  let procedureBudget = null;
   for (const [monthIso, tabTitles] of Object.entries(monthsSeen)) {
     if (ambiguousMonths.has(monthIso)) {
       console.warn(`  ! ${monthIso}: มีหลายชีต (${tabTitles.join(", ")}) — ไม่แน่ใจว่าอันไหนถูกต้อง ข้ามเดือนนี้`);
@@ -320,9 +326,11 @@ async function main() {
     console.log(`${monthIso} (${title}):`, JSON.stringify(parsed));
 
     if (monthIso === latestIso) {
-      noseOpenBudget = parseNoseOpenDoctorBudget(sheet, title);
-      if (noseOpenBudget) {
-        console.log(`  Nose Open per-doctor budget (${title}):`, JSON.stringify(noseOpenBudget.noseOpen.doctors));
+      procedureBudget = parseAllProcedureDoctorBudgets(sheet, title);
+      if (procedureBudget) {
+        for (const proc of procedureBudget.procedures) {
+          console.log(`  ${proc.key} per-doctor budget (${title}):`, JSON.stringify(proc.doctors));
+        }
       }
     }
   }
@@ -348,31 +356,35 @@ async function main() {
   );
   console.log(`\nWrote ${outPath}`);
 
-  if (noseOpenBudget) {
-    const otherProceduresTotal = noseOpenBudget.grandTotal - noseOpenBudget.noseOpen.total;
-    const noseOpenOutPath = path.join(outDir, "noseOpenBudget.json");
+  if (procedureBudget) {
+    const procedureOutPath = path.join(outDir, "procedureBudget.json");
+    const proceduresByKey = {};
+    for (const proc of procedureBudget.procedures) {
+      proceduresByKey[proc.key] = { ...proc, otherProceduresTotal: procedureBudget.grandTotal - proc.total };
+    }
     await writeFile(
-      noseOpenOutPath,
+      procedureOutPath,
       JSON.stringify(
         {
           generatedAt: new Date().toISOString(),
           source:
-            "Generated by scripts/fetch-budget-allocate.mjs — งบ \"เสริมจมูกโอเพ่น\" แยกรายคุณหมอของเดือนล่าสุด " +
-            `(${noseOpenBudget.tabTitle}) จากชีต "S45 - Budget Allocate". ใช้เป็นฐานข้อมูลของแผนปรับงบ ` +
-            "\"แผนเพิ่มเติม Digital Team\" บนหน้า Ads — หมอตี้ (งบ 0 เดือนนี้) และ Awareness (ไม่ใช่คุณหมอ) ไม่รวมอยู่ในแผนนี้.",
+            "Generated by scripts/fetch-budget-allocate.mjs — งบแยกรายคุณหมอของทุกหัตถการ (ยกเว้น Inter ซึ่งมี " +
+            `โครงสร้างซ้อน 3 ชั้นต่างจากหัตถการอื่น) ของเดือนล่าสุด (${procedureBudget.tabTitle}) จากชีต ` +
+            "\"S45 - Budget Allocate\". ใช้เป็นฐานข้อมูลของ \"แผนปรับงบประมาณ\" บนหน้า Ads — แถวคุณหมอที่งบเป็น 0 " +
+            "เดือนนี้ (เช่นหมอตี้ในเสริมจมูกโอเพ่น) และแถวไม่ใช่คุณหมอ (Awareness ฯลฯ) ไม่รวมอยู่ในแผนนี้. " +
+            "otherProceduresTotal ต่อหัตถการ = งบรวมทุกหัตถการ (grandTotal) ลบงบของหัตถการนั้นเอง.",
           month: latestIso,
-          tabTitle: noseOpenBudget.tabTitle,
-          grandTotal: noseOpenBudget.grandTotal,
-          otherProceduresTotal,
-          noseOpen: noseOpenBudget.noseOpen,
+          tabTitle: procedureBudget.tabTitle,
+          grandTotal: procedureBudget.grandTotal,
+          procedures: proceduresByKey,
         },
         null,
         2
       )
     );
-    console.log(`Wrote ${noseOpenOutPath}`);
+    console.log(`Wrote ${procedureOutPath}`);
   } else {
-    console.warn("  ! ไม่สามารถดึงงบเสริมจมูกโอเพ่นรายคุณหมอของเดือนล่าสุดได้ — จะไม่เขียน noseOpenBudget.json (ใช้ไฟล์เดิมถ้ามี)");
+    console.warn("  ! ไม่สามารถดึงงบรายคุณหมอของเดือนล่าสุดได้ — จะไม่เขียน procedureBudget.json (ใช้ไฟล์เดิมถ้ามี)");
   }
 }
 
