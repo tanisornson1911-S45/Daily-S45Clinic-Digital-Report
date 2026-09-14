@@ -713,7 +713,6 @@ function buildNoseOpenScenario(direction) {
   const noseOpenFixedCost = NOSE_OPEN_BUDGET_DATA.noseOpen.lineBroadcast + NOSE_OPEN_BUDGET_DATA.noseOpen.lineAds + NOSE_OPEN_BUDGET_DATA.noseOpen.google;
   const doctorPoolBefore = doctors.reduce((s, d) => s + d.budgetSet, 0);
   const awarenessBudget = NOSE_OPEN_BUDGET_DATA.noseOpen.facebookBudgetTotal - doctorPoolBefore;
-  const weightSum = doctors.reduce((s, d) => s + NOSE_OPEN_DOCTOR_WEIGHT[d.name], 0);
 
   // งบปัจจุบันในชีต Budget Allocate (฿1,702,350) คือ "งบหลังเพิ่มแล้ว" ตามแผนเพิ่มงบประมาณที่ดำเนินการไปแล้วจริง
   // (ผู้ใช้ยืนยัน 2569-09-14) ไม่ใช่งบก่อนปรับที่ต้องคำนวณเพิ่มอีก — แผน "เพิ่มงบ" จึงแสดงงบปัจจุบันตรงๆ (adjustAmount
@@ -722,9 +721,21 @@ function buildNoseOpenScenario(direction) {
   if (direction === "decrease") adjustAmount = Math.min(adjustAmount, doctorPoolBefore * 0.9); // กันไม่ให้งบคุณหมอติดลบ
   const sign = -1;
 
+  // น้ำหนักที่ใช้จริงในการแบ่งสัดส่วน: ตอน "เพิ่มงบ" ใช้น้ำหนักตามลำดับความสำคัญตรงๆ (โรส/ตูนสูงสุด ได้เพิ่มมาก
+  // ที่สุด) แต่ตอน "ลดงบ" ต้อง "สลับ" น้ำหนัก — คุณหมอลำดับความสำคัญสูงสุดควรถูกตัดงบน้อยที่สุด (คงสัดส่วนงบไว้ให้
+  // มากที่สุด) ส่วนคุณหมอลำดับท้ายๆ (หมอไบร์ท) รับผลกระทบจากการตัดงบมากที่สุดแทน (ตามที่ผู้ใช้ระบุ 2569-09-14)
+  const weightValues = doctors.map((d) => NOSE_OPEN_DOCTOR_WEIGHT[d.name]);
+  const maxWeight = Math.max(...weightValues);
+  const minWeight = Math.min(...weightValues);
+  const effectiveWeight = (name) => {
+    const w = NOSE_OPEN_DOCTOR_WEIGHT[name];
+    return direction === "decrease" ? maxWeight + minWeight - w : w;
+  };
+  const weightSum = doctors.reduce((s, d) => s + effectiveWeight(d.name), 0);
+
   const scenarioDoctors = doctors.map((d) => {
     const weight = NOSE_OPEN_DOCTOR_WEIGHT[d.name];
-    const share = weightSum > 0 ? (weight / weightSum) * adjustAmount : 0;
+    const share = weightSum > 0 ? (effectiveWeight(d.name) / weightSum) * adjustAmount : 0;
     const newBudget = Math.max(0, Math.round(d.budgetSet + sign * share));
     // CPR (ต้นทุนต่อแชท) คำนวณจากคอลัมน์ "งบที่ใช้ปัจจุบัน"/"แชทปัจจุบัน" ต่อคุณหมอในชีต Budget Allocate — ตรวจสอบ
     // แล้วว่าตัวเลขนี้คือ "วันล่าสุด" ไม่ใช่ยอดสะสมเดือน (Total row ของทั้งบัญชี 71,066 บาท/วัน ตรงกับค่าเฉลี่ย
@@ -1235,7 +1246,9 @@ function NoseOpenScenarioCard({ plan, title, targetLabel, sourceLabel, cls }) {
         {plan.direction === "decrease" ? (
           <>
             ปรับงบ Facebook เฉพาะ "เสริมจมูกโอเพ่น" ต่อคุณหมอลดลงรวม{" "}
-            <span className={`font-semibold ${cls.text}`}>฿{fmtTHB(plan.adjustAmount)}</span> จากงบปัจจุบัน หัตถการอื่นคงเดิม
+            <span className={`font-semibold ${cls.text}`}>฿{fmtTHB(plan.adjustAmount)}</span> จากงบปัจจุบัน หัตถการอื่นคงเดิม —{" "}
+            <span className="font-semibold">สลับลำดับน้ำหนักจากตอนเพิ่มงบ:</span> คุณหมอลำดับความสำคัญสูงสุด (โรส/ตูน) ถูกตัดงบน้อยที่สุด
+            (คงสัดส่วนงบไว้มากที่สุด) ส่วนหมอไบร์ทรับผลกระทบมากที่สุดแทน
           </>
         ) : (
           <>
@@ -5096,9 +5109,12 @@ export default function AdsDashboard() {
               </div>
               <p className="text-xs text-slate-500 mb-4">
                 เทียบข้อมูลจริงจาก Google Sheet "S45 - Budget Allocate" — ปรับได้เฉพาะงบ Facebook ของ "เสริมจมูกโอเพ่น" ต่อคุณหมอเท่านั้น
-                (หัตถการอื่น และ Line/Google/งบ Awareness ของเสริมจมูกโอเพ่นเองคงเดิม) แบ่งสัดส่วน %ที่เพิ่ม/ลดตามน้ำหนักที่กำหนด: หมอโรส/หมอตูน
-                สูงสุด รองลงมาหมอเช/หมอจิ๊จ๊ะ และน้อยที่สุดหมอไบร์ท (สัดส่วนน้ำหนัก 3:3:2:2:1) — งบปัจจุบันในชีต (฿{fmtTHB(NOSE_OPEN_BUDGET_DATA.grandTotal)})
-                คืองบหลังเพิ่มตามแผนเพิ่มงบที่ดำเนินการไปแล้วจริง จึงใช้เป็นฐานของ "แผนเพิ่มงบ" ตรงๆ ส่วน "แผนลดงบ" คือคำนวณลดจากฐานนี้ลงมา
+                (หัตถการอื่น และ Line/Google/งบ Awareness ของเสริมจมูกโอเพ่นเองคงเดิม) ลำดับความสำคัญตามที่กำหนด: หมอโรส/หมอตูน สูงสุด
+                รองลงมาหมอเช/หมอจิ๊จ๊ะ และน้อยที่สุดหมอไบร์ท (น้ำหนัก 3:3:2:2:1) — <span className="font-semibold">ตอนเพิ่มงบ</span>{" "}
+                คุณหมอลำดับสำคัญสูงสุดได้รับส่วนแบ่งงบที่เพิ่มมากที่สุด แต่<span className="font-semibold">ตอนลดงบ</span>{" "}
+                จะสลับลำดับ: คุณหมอลำดับสำคัญสูงสุดถูกตัดงบน้อยที่สุด (คงสัดส่วนงบไว้มากที่สุด) เพื่อปกป้องคุณหมอที่มีความสำคัญ — งบปัจจุบันในชีต
+                (฿{fmtTHB(NOSE_OPEN_BUDGET_DATA.grandTotal)}) คืองบหลังเพิ่มตามแผนเพิ่มงบที่ดำเนินการไปแล้วจริง จึงใช้เป็นฐานของ "แผนเพิ่มงบ" ตรงๆ
+                ส่วน "แผนลดงบ" คือคำนวณลดจากฐานนี้ลงมา
               </p>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
