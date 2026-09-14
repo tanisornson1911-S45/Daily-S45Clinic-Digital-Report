@@ -186,6 +186,106 @@ function parseBudgetSheet(sheet, title) {
   return { facebook, line_broadcast, line_ads, google, tiktok, total };
 }
 
+// ผู้กรอกข้อมูลในชีตสะกดชื่อคุณหมอต่างจากที่ใช้ในที่อื่นของ dashboard — normalize ก่อนใช้
+const NOSE_OPEN_DOCTOR_ALIASES = {
+  "หมอไบท์": "หมอไบร์ท",
+  "หมอจิจ๊ะ": "หมอจิ๊จ๊ะ",
+};
+// 5 คุณหมอที่มีแคมเปญ "เสริมจมูกโอเพ่น" ตั้งงบไว้จริงตามที่ผู้ใช้ระบุไว้สำหรับแผนปรับงบ — หมอตี้ (งบ 0
+// เดือนนี้ ใช้เกินโดยไม่มีงบตั้ง) และ Awareness (ไม่ใช่คุณหมอ) ไม่รวมอยู่ในแผนนี้
+const NOSE_OPEN_TARGET_DOCTORS = ["หมอโรส", "หมอตูน", "หมอเช", "หมอจิ๊จ๊ะ", "หมอไบร์ท"];
+
+// ดึงงบเสริมจมูกโอเพ่นแยกรายคุณหมอ (แถวย่อยใต้แถว "เสริมจมูกโอเพ่น" ในชีต Budget Allocate) — ใช้เป็นฐาน
+// ข้อมูลของแผนปรับ (ลด/เพิ่ม) งบบนหน้า Ads "แผนเพิ่มเติม Digital Team". โครงสร้างคอลัมน์ตรวจสอบจริงจาก
+// การ diagnostic-dump ชีต "September26" เมื่อ 2569-09-14 (แถว 9-50) — แถวระดับหัตถการบนสุดมีเลขในคอลัมน์
+// "Target" ส่วนแถวย่อยรายคุณหมอ (Target ว่าง) จะอยู่ถัดไปจนกว่าจะเจอแถวหัตถการบนสุดถัดไปหรือแถว "Total".
+function parseNoseOpenDoctorBudget(sheet, title) {
+  const labelCol = sheet.reduce((found, row) => (found !== -1 ? found : row.indexOf("หัตถการ") !== -1 ? row.indexOf("หัตถการ") : -1), -1);
+  const topGroupRowIdx = sheet.findIndex((row) => row.includes("หัตถการ"));
+  if (labelCol === -1 || topGroupRowIdx === -1) return null;
+  const topGroupRow = sheet[topGroupRowIdx];
+  const subHeaderRow = sheet[topGroupRowIdx + 1] || [];
+  const targetCol = topGroupRow.indexOf("Target");
+  const totalRowIdx = sheet.findIndex((row, i) => i > topGroupRowIdx + 1 && String(row[labelCol] ?? "").trim() === "Total");
+  if (targetCol === -1 || totalRowIdx === -1) return null;
+
+  let currentGroup = "";
+  const colGroup = [];
+  for (let c = 0; c < topGroupRow.length; c++) {
+    const v = topGroupRow[c];
+    if (typeof v === "string" && v.trim()) currentGroup = v.trim();
+    colGroup[c] = currentGroup;
+  }
+  const fbBudgetCol = subHeaderRow.findIndex((v, c) => colGroup[c] === "Facebook" && String(v ?? "").trim() === "งบที่ตั้งไว้");
+  const lineBroadcastCol = subHeaderRow.findIndex((v, c) => colGroup[c] === "Line Official Account" && String(v ?? "").trim() === "Line Broadcast");
+  const lineAdsCol = subHeaderRow.findIndex((v, c) => colGroup[c] === "Line Official Account" && String(v ?? "").trim() === "Line Ads");
+  const googleCol = topGroupRow.indexOf("Google");
+  const totalBudgetCol = topGroupRow.indexOf("รวมงบ");
+  const currentSpendCol = topGroupRow.indexOf("งบที่ใช้ปัจจุบัน");
+  const targetChatCol = topGroupRow.indexOf("เป้าเเชท");
+  const actualChatCol = topGroupRow.indexOf("แชทปัจจุบัน");
+  if ([fbBudgetCol, lineBroadcastCol, lineAdsCol, googleCol, totalBudgetCol, currentSpendCol, targetChatCol, actualChatCol].some((c) => c === -1)) {
+    console.warn(`  ! "${title}": โครงสร้างคอลัมน์ของชีตไม่ตรงกับที่คาดไว้ — ข้าม noseOpenBudget`);
+    return null;
+  }
+
+  const num = (v) => (typeof v === "number" ? v : 0);
+
+  const noseOpenRowIdx = sheet.findIndex(
+    (row, i) =>
+      i > topGroupRowIdx + 1 &&
+      i < totalRowIdx &&
+      String(row[labelCol] ?? "").trim() === "เสริมจมูกโอเพ่น" &&
+      typeof row[targetCol] === "number"
+  );
+  if (noseOpenRowIdx === -1) {
+    console.warn(`  ! "${title}": ไม่พบแถว "เสริมจมูกโอเพ่น" — ข้าม noseOpenBudget`);
+    return null;
+  }
+  const noseOpenRow = sheet[noseOpenRowIdx];
+
+  const nextTopLevelIdx = sheet.findIndex(
+    (row, i) => i > noseOpenRowIdx && (i >= totalRowIdx || typeof row[targetCol] === "number")
+  );
+  const subRowEnd = nextTopLevelIdx === -1 ? totalRowIdx : nextTopLevelIdx;
+
+  const doctorsByName = {};
+  for (let i = noseOpenRowIdx + 1; i < subRowEnd; i++) {
+    const row = sheet[i];
+    const rawName = String(row[labelCol] ?? "").trim();
+    if (!rawName) continue;
+    const name = NOSE_OPEN_DOCTOR_ALIASES[rawName] || rawName;
+    if (!NOSE_OPEN_TARGET_DOCTORS.includes(name)) continue;
+    doctorsByName[name] = {
+      name,
+      budgetSet: num(row[fbBudgetCol]),
+      currentSpend: num(row[currentSpendCol]),
+      targetChat: num(row[targetChatCol]),
+      actualChat: num(row[actualChatCol]),
+    };
+  }
+  const doctors = NOSE_OPEN_TARGET_DOCTORS.map((n) => doctorsByName[n]).filter(Boolean);
+  if (doctors.length !== NOSE_OPEN_TARGET_DOCTORS.length) {
+    console.warn(`  ! "${title}": พบคุณหมอเสริมจมูกโอเพ่นไม่ครบ 5 คน (พบ ${doctors.length}/${NOSE_OPEN_TARGET_DOCTORS.length}) — ข้าม noseOpenBudget`);
+    return null;
+  }
+
+  const totalRow = sheet[totalRowIdx];
+  return {
+    tabTitle: title,
+    grandTotal: num(totalRow[totalBudgetCol]),
+    noseOpen: {
+      target: num(noseOpenRow[targetCol]),
+      facebookBudgetTotal: num(noseOpenRow[fbBudgetCol]),
+      lineBroadcast: num(noseOpenRow[lineBroadcastCol]),
+      lineAds: num(noseOpenRow[lineAdsCol]),
+      google: num(noseOpenRow[googleCol]),
+      total: num(noseOpenRow[totalBudgetCol]),
+      doctors,
+    },
+  };
+}
+
 async function main() {
   const serviceAccount = JSON.parse(SERVICE_ACCOUNT_KEY_RAW);
   const accessToken = await getAccessToken(serviceAccount);
@@ -206,6 +306,7 @@ async function main() {
   const latestIso = Object.keys(monthsSeen).filter((iso) => !ambiguousMonths.has(iso)).sort().pop();
 
   const months = {};
+  let noseOpenBudget = null;
   for (const [monthIso, tabTitles] of Object.entries(monthsSeen)) {
     if (ambiguousMonths.has(monthIso)) {
       console.warn(`  ! ${monthIso}: มีหลายชีต (${tabTitles.join(", ")}) — ไม่แน่ใจว่าอันไหนถูกต้อง ข้ามเดือนนี้`);
@@ -218,18 +319,11 @@ async function main() {
     months[monthIso] = parsed;
     console.log(`${monthIso} (${title}):`, JSON.stringify(parsed));
 
-    // TEMP DIAGNOSTIC (2026-09-14, remove after Nose Open per-doctor budget feature is designed) —
-    // dump every "หัตถการ" row of the latest month to check whether the sheet has per-procedure/
-    // per-doctor rows below the top-level "Total" row that parseBudgetSheet() doesn't currently read.
     if (monthIso === latestIso) {
-      const labelCol = sheet.reduce((found, row) => (found !== -1 ? found : row.indexOf("หัตถการ") !== -1 ? row.indexOf("หัตถการ") : -1), -1);
-      const topGroupRowIdx = sheet.findIndex((row) => row.includes("หัตถการ"));
-      const totalRowIdx = sheet.findIndex((row, i) => i > topGroupRowIdx + 1 && String(row[labelCol] ?? "").trim() === "Total");
-      console.log(`\n=== DIAGNOSTIC: raw rows ${topGroupRowIdx}..${totalRowIdx} of "${title}" (labelCol=${labelCol}) ===`);
-      for (let i = topGroupRowIdx; i <= totalRowIdx && i < sheet.length; i++) {
-        console.log(i, JSON.stringify(sheet[i]));
+      noseOpenBudget = parseNoseOpenDoctorBudget(sheet, title);
+      if (noseOpenBudget) {
+        console.log(`  Nose Open per-doctor budget (${title}):`, JSON.stringify(noseOpenBudget.noseOpen.doctors));
       }
-      console.log("=== END DIAGNOSTIC ===\n");
     }
   }
 
@@ -253,6 +347,33 @@ async function main() {
     )
   );
   console.log(`\nWrote ${outPath}`);
+
+  if (noseOpenBudget) {
+    const otherProceduresTotal = noseOpenBudget.grandTotal - noseOpenBudget.noseOpen.total;
+    const noseOpenOutPath = path.join(outDir, "noseOpenBudget.json");
+    await writeFile(
+      noseOpenOutPath,
+      JSON.stringify(
+        {
+          generatedAt: new Date().toISOString(),
+          source:
+            "Generated by scripts/fetch-budget-allocate.mjs — งบ \"เสริมจมูกโอเพ่น\" แยกรายคุณหมอของเดือนล่าสุด " +
+            `(${noseOpenBudget.tabTitle}) จากชีต "S45 - Budget Allocate". ใช้เป็นฐานข้อมูลของแผนปรับงบ ` +
+            "\"แผนเพิ่มเติม Digital Team\" บนหน้า Ads — หมอตี้ (งบ 0 เดือนนี้) และ Awareness (ไม่ใช่คุณหมอ) ไม่รวมอยู่ในแผนนี้.",
+          month: latestIso,
+          tabTitle: noseOpenBudget.tabTitle,
+          grandTotal: noseOpenBudget.grandTotal,
+          otherProceduresTotal,
+          noseOpen: noseOpenBudget.noseOpen,
+        },
+        null,
+        2
+      )
+    );
+    console.log(`Wrote ${noseOpenOutPath}`);
+  } else {
+    console.warn("  ! ไม่สามารถดึงงบเสริมจมูกโอเพ่นรายคุณหมอของเดือนล่าสุดได้ — จะไม่เขียน noseOpenBudget.json (ใช้ไฟล์เดิมถ้ามี)");
+  }
 }
 
 main().catch((err) => {

@@ -95,8 +95,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json src/data/loaNormalData.json src/data/funnelByMonth.json src/data/badLead.json src/data/interSale.json src/data/orSales.json src/data/consultPipeline.json src/data/channelMix.json
-          if git diff --cached --quiet -- src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json src/data/loaNormalData.json src/data/funnelByMonth.json src/data/badLead.json src/data/interSale.json src/data/orSales.json src/data/consultPipeline.json src/data/channelMix.json; then
+          git add src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json src/data/loaNormalData.json src/data/funnelByMonth.json src/data/badLead.json src/data/interSale.json src/data/orSales.json src/data/consultPipeline.json src/data/channelMix.json src/data/noseOpenBudget.json
+          if git diff --cached --quiet -- src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json src/data/loaNormalData.json src/data/funnelByMonth.json src/data/badLead.json src/data/interSale.json src/data/orSales.json src/data/consultPipeline.json src/data/channelMix.json src/data/noseOpenBudget.json; then
             echo "No change — nothing to commit."
             exit 0
           fi
