@@ -16,7 +16,7 @@
    above a solid backdrop, it doesn't replace it.
    ============================================================ */
 
-:root { --glass-blur: blur(20px) saturate(160%); }
+:root { --glass-blur: blur(20px) saturate(160%); color-scheme: light; }
 
 .bg-white,
 .bg-slate-100,
