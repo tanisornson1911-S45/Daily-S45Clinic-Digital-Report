@@ -18,6 +18,40 @@
 
 :root { --glass-blur: blur(20px) saturate(160%); color-scheme: light; }
 
+/* ============================================================
+   Range slider (budget planner sliders) — explicit track styling
+   -----------------------------------------------------------
+   `color-scheme: light` above isn't enough on its own: some browsers still
+   render the "unfilled" portion of a native <input type="range"> track
+   using a dark UA default specifically when the thumb sits at the minimum
+   value (0) — confirmed 2026-09-14 via a real user screenshot showing a
+   solid black track on the budget-increase slider (default value 0) while
+   the budget-decrease slider (thumb partway along) rendered fine. Rather
+   than depend on `accent-color` + UA track defaults across browsers/OS
+   themes, style the track explicitly so it's always a fixed light gray
+   (dark gray under `.dark`) regardless of thumb position — `accent-color`
+   (set via Tailwind's accent-* utility in JSX) still themes the thumb.
+   ============================================================ */
+input[type="range"] {
+  height: 6px;
+  border-radius: 9999px;
+  background: transparent;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: #e2e8f0; /* slate-200 */
+}
+input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: #e2e8f0;
+}
+.dark input[type="range"]::-webkit-slider-runnable-track,
+.dark input[type="range"]::-moz-range-track {
+  background: rgba(255, 255, 255, 0.15);
+}
+
 .bg-white,
 .bg-slate-100,
 .bg-amber-50, .bg-amber-50\/40, .bg-amber-50\/50, .bg-amber-50\/60, .bg-amber-50\/70, .bg-amber-100,
