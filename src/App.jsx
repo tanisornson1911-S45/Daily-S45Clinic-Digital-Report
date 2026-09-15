@@ -1440,12 +1440,12 @@ function ThemeToggle({ dark, onToggle }) {
       onClick={onToggle}
       title={dark ? "สลับเป็นโหมดสว่าง" : "สลับเป็นโหมดมืด"}
       className={`relative inline-flex items-center h-8 w-14 rounded-full shrink-0 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-        dark ? "bg-indigo-600 focus:ring-indigo-400" : "bg-slate-200 focus:ring-slate-300"
+        dark ? "bg-teal-600 focus:ring-teal-400" : "bg-slate-200 focus:ring-slate-300"
       }`}
     >
       <span className="sr-only">สลับโหมดมืด/สว่าง</span>
       <Sun size={12} className={`absolute left-1.5 text-amber-400 transition-opacity duration-200 ${dark ? "opacity-0" : "opacity-100"}`} />
-      <Moon size={12} className={`absolute right-1.5 text-indigo-200 transition-opacity duration-200 ${dark ? "opacity-100" : "opacity-0"}`} />
+      <Moon size={12} className={`absolute right-1.5 text-teal-100 transition-opacity duration-200 ${dark ? "opacity-100" : "opacity-0"}`} />
       <span
         className={`absolute top-1 left-1 h-6 w-6 rounded-full bg-white shadow-md flex items-center justify-center transition-transform duration-300 ease-out ${
           dark ? "translate-x-6" : "translate-x-0"
@@ -1571,7 +1571,7 @@ function MonthCalendar({ y, m, draft, onDayClick, onJump, yearOptions }) {
                 type="button"
                 onClick={() => onDayClick(iso)}
                 className={`h-7 w-7 text-xs rounded-full flex items-center justify-center transition-colors ${
-                  isEdge ? "bg-indigo-600 text-white font-semibold" : inRange ? "bg-indigo-100 text-indigo-700" : "text-slate-600 hover:bg-slate-100"
+                  isEdge ? "bg-teal-600 text-white font-semibold" : inRange ? "bg-teal-100 text-teal-600" : "text-slate-600 hover:bg-slate-100"
                 }`}
               >
                 {d}
@@ -1682,7 +1682,7 @@ function DateRangePicker({ value, compareEnabled, compareValue, onApply, presets
                       setViewMonth({ y: d.getFullYear(), m: d.getMonth() });
                     }}
                     className={`shrink-0 sm:block sm:w-full text-left text-xs sm:text-sm px-2 py-1.5 rounded-lg whitespace-nowrap ${
-                      isSelected ? "bg-indigo-50 text-indigo-700 font-semibold" : "hover:bg-slate-50 text-slate-600"
+                      isSelected ? "bg-teal-100 text-teal-600 font-semibold" : "hover:bg-slate-50 text-slate-600"
                     }`}
                   >
                     {p.label}
@@ -1713,7 +1713,7 @@ function DateRangePicker({ value, compareEnabled, compareValue, onApply, presets
                   setDraftCompareOn(e.target.checked);
                   if (e.target.checked && !draftCompare) setDraftCompare(previousPeriodRange(draft));
                 }}
-                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
               />
               Compare — เปรียบเทียบช่วงเวลา
             </label>
@@ -1753,7 +1753,7 @@ function DateRangePicker({ value, compareEnabled, compareValue, onApply, presets
               <button onClick={() => setOpen(false)} className="text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50">
                 ยกเลิก
               </button>
-              <button onClick={commit} className="text-xs font-medium px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">
+              <button onClick={commit} className="text-xs font-medium px-3 py-1.5 rounded-lg bg-teal-600 text-white hover:bg-teal-700">
                 อัปเดต
               </button>
             </div>
