@@ -76,6 +76,31 @@ const loaDataByMonth = LOA_DATA.months;
 const loaNormalDataByMonth = LOA_NORMAL_DATA.months;
 
 // ============================================================
+// LAST_DATA_UPDATE — เวลาที่ pipeline อัตโนมัติ (update-m365-data.yml +
+// update-dashboard-data.yml) เขียนไฟล์ข้อมูลล่าสุด ใช้แสดงในไฟสถานะ
+// "ออนไลน์" ที่หัว dashboard — เอาค่ามากสุดจากทุกไฟล์ที่มี generatedAt
+// (คนละ pipeline คนละเวลารัน) แทนที่จะ hardcode ไฟล์ใดไฟล์หนึ่ง
+// ============================================================
+const LAST_DATA_UPDATE = new Date(
+  Math.max(
+    ...[
+      CHANNEL_MIX_DATA,
+      PROCEDURE_BUDGET_DATA,
+      FUNNEL_BY_MONTH_DATA,
+      BAD_LEAD_DATA,
+      OR_SALES_DATA,
+      CONSULT_PIPELINE_DATA,
+      INTER_SALE_DATA,
+      adSpendData,
+      AD_DAILY,
+      DOCTOR_HERO_POSTS_DATA,
+      ANT_ARMY_POSTS_DATA,
+      NOSE_OPEN_DOCTOR_ADS_DATA,
+    ].map((d) => (d?.generatedAt ? new Date(d.generatedAt).getTime() : 0))
+  )
+);
+
+// ============================================================
 // LIVE AD SPEND — src/data/adSpend.json ถูกเขียนทับอัตโนมัติโดย
 // .github/workflows/update-dashboard-data.yml (รัน scripts/fetch-fb-spend.mjs
 // ทุกวัน ดึงจาก Facebook Marketing API จริง) ตัวเลข hardcode ด้านล่างนี้เป็น
@@ -2011,6 +2036,12 @@ export default function AdsDashboard() {
   };
   const rangeLabel = dateRange.start === dateRange.end ? fmtDateTh(dateRange.start) : `${fmtDateTh(dateRange.start)} – ${fmtDateTh(dateRange.end)}`;
 
+  // เวลาอัปเดตข้อมูลล่าสุด (ไฟสถานะ "ออนไลน์" ที่หัว dashboard) — แปลง UTC ของ generatedAt เป็นเวลาไทย (UTC+7)
+  const lastUpdatedIct = new Date(LAST_DATA_UPDATE.getTime() + 7 * 60 * 60 * 1000);
+  const lastUpdatedLabel = `${lastUpdatedIct.getUTCDate()} ${THAI_MONTHS_SHORT[lastUpdatedIct.getUTCMonth()]} ${lastUpdatedIct.getUTCFullYear() + 543} ${String(
+    lastUpdatedIct.getUTCHours()
+  ).padStart(2, "0")}:${String(lastUpdatedIct.getUTCMinutes()).padStart(2, "0")} น.`;
+
   // ---- วันนี้แบบเรียลไทม์: อ่านจากนาฬิกาเครื่องจริง (new Date()) ทุกครั้งที่ render แทนการล็อกวันที่ไว้ตายตัว ----
   // ใช้วันนี้จริงเสมอสำหรับ preset ต่างๆ (เช่น "เดือนนี้" ต้องขึ้นถึงวันที่จริงวันนี้ เช่น 27 ก็คือ 27
   // ต่อให้ไฟล์ข้อมูลยังไม่มีของวันนั้นเข้ามาก็ตาม) — ไม่ cap ไว้ที่ "วันที่มีข้อมูลล่าสุด" อีกต่อไป
@@ -2786,7 +2817,16 @@ export default function AdsDashboard() {
             <div>
               <p className="text-xs font-semibold text-slate-400 tracking-wide uppercase mb-1">S45 Clinic</p>
               <h1 className="text-2xl font-bold text-slate-800">Ads Performance Dashboard</h1>
-              <p className="text-sm text-slate-400 mt-0.5">ข้อมูลจริง — เลือกช่วงวันที่ได้อิสระ</p>
+              <div className="flex items-center flex-wrap gap-2 mt-1">
+                <p className="text-sm text-slate-400">ข้อมูลจริง — เลือกช่วงวันที่ได้อิสระ</p>
+                <span
+                  className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full pl-2 pr-2.5 py-0.5"
+                  title={`ข้อมูลอัปเดตล่าสุด ${lastUpdatedLabel} (เวลาไทย)`}
+                >
+                  <span className="status-live-dot" />
+                  ออนไลน์ · อัปเดต {lastUpdatedLabel}
+                </span>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
