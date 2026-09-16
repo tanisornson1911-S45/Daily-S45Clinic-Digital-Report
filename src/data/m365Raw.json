@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-16T03:03:07.767Z",
+  "generatedAt": "2026-09-16T21:29:07.938Z",
   "workbooks": {
     "data_s45_clinic": {
       "มัดจำ 2026": [
@@ -71484,6 +71484,83 @@
           42050,
           4236880,
           ""
+        ]
+      ],
+      "August 08": [
+        [
+          "HN",
+          "Date",
+          "Name-Surname",
+          "Nationality",
+          "Sale Online",
+          "Sale Consult",
+          "Platform",
+          "Doctor",
+          "Surgery",
+          "Online price",
+          "Top up",
+          "Medical check up\nEtc.",
+          "Total"
+        ],
+        [
+          "HN013447",
+          46261,
+          "Yamin Han ",
+          "myanmar",
+          "NT",
+          "NT",
+          "LineOA",
+          "Brite",
+          "OPEN RHINO",
+          119000,
+          "",
+          5990,
+          124990
+        ],
+        [
+          "HN013509",
+          46265,
+          "Thsutushi V. ",
+          "Indian",
+          "ข้าวสุก",
+          "NT",
+          "Instagram",
+          "JiJa",
+          "OPEN RHINO",
+          124400,
+          71185,
+          5990,
+          201575
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          326565
         ]
       ]
     },
