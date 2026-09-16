@@ -104,26 +104,28 @@ const WORKBOOKS = [
       "LOA- สิงหาคม",
     ],
   },
+  {
+    key: "lead_plus_connect",
+    // "Lead Plus Connect.xlsx" — personal/digital_mkt_s45clinic_com/Documents/ (2026-09-16)
+    // แทนที่ไฟล์เดิม "[Lead] Plus Connect.csv" (CSV แผ่นเดียว รวมทุก contact ตั้งแต่ ธ.ค. 2568) — ทีมเปลี่ยนมา
+    // แยกเป็น Excel workbook ชีตต่อเดือน (เริ่มที่ "สิงหาคม" แล้วต่อด้วย "กันยายน" ฯลฯ) และจะเพิ่มชีตใหม่ทุก
+    // เดือนต่อไปเรื่อยๆ (ผู้ใช้ยืนยัน 2569-09-16) จึงใช้ sheets: "auto" (ดึงรายชื่อชีตจริงทุกครั้งที่รัน แทนพิมพ์
+    // ชื่อเดือนตายตัวแบบ loa_broadcast/online_sales_daily ด้านบน) — ไม่ต้องแก้โค้ดตรงนี้อีกทุกเดือนที่มีชีตใหม่
+    // เหมือน fetch-budget-allocate.mjs. คอลัมน์เดียวกันทุกประการกับไฟล์ CSV เดิม (created_at, platform,
+    // channel_name, tags, assignees, blocked, ฯลฯ) — scripts/build-bad-lead.mjs อ่านทุกชีตแล้วรวม/dedupe เอง
+    // (ดูคอมเมนต์ที่นั่น เรื่องชีตแรก "สิงหาคม" ที่กลับมีข้อมูลสะสมทั้งหมดตั้งแต่ ธ.ค. 2568 ไม่ใช่แค่เดือนสิงหาคม)
+    driveId: "b!xxDvakZnBUOmKljZWLuYZ9g177OXvLtHthxJClpsEqA5xrnAHB8PRI3WaLvrDur8",
+    itemId: "01JXWUHPEJGHHB2RD3RJH2PPOWVZKR4CXE",
+    sheets: "auto",
+  },
 ];
 
 // ไฟล์ CSV ธรรมดา (ไม่ใช่ Excel workbook) — ดึงผ่าน Graph "/content" (โหลดไฟล์ดิบ) แทน
 // "/workbook/worksheets" ที่ใช้กับ WORKBOOKS ด้านบน แล้ว parse เป็น 2D array รูปแบบเดียวกับที่ sheet
-// จาก Excel คืนมา (row 0 = header) เพื่อให้ build script ฝั่งปลายทางใช้ร่วมกับโค้ดเดิมได้โดยไม่ต้องแก้เยอะ
-const CSV_SOURCES = [
-  {
-    key: "lead_plus_connect",
-    // "[Lead] Plus Connect.csv" — personal/digital_mkt_s45clinic_com/Documents/ (2026-09-02)
-    // Export "Contacts" เต็มจาก Plus Connect (ทุก contact บนเพจ ไม่ใช่แค่ที่ติดแท็ก Bad Lead) — แทนที่
-    // "Bad Lead [Plus Connect].xlsx" เดิมซึ่งพบว่าเป็นไฟล์ที่กรองมาแล้วและตกหล่นบางแถว ผู้ใช้ยืนยันให้ใช้ไฟล์นี้
-    // แทน — scripts/build-bad-lead.mjs กรองเหลือเฉพาะแถวที่ติดแท็ก "คุณสมบัติไม่ครบ" เอง (เหมือนที่
-    // scripts/import-bad-lead-csv.mjs ทำกับไฟล์ CSV ตัวอย่างที่ผู้ใช้ส่งมาก่อนหน้านี้) คอลัมน์เดียวกันทุก
-    // ประการกับไฟล์เดิม (created_at, platform, channel_name, tags, assignees, blocked, ฯลฯ) บวกคอลัมน์ PII
-    // ที่ build-bad-lead.mjs ทิ้งอยู่แล้วเหมือนเดิม
-    driveId: "b!xxDvakZnBUOmKljZWLuYZ9g177OXvLtHthxJClpsEqA5xrnAHB8PRI3WaLvrDur8",
-    itemId: "01JXWUHPB7EVK3IYCQMZD3VSCB562DMNRD",
-    sheetLabel: "Sheet1", // ชื่อ virtual "sheet" ให้ตรงกับที่ workbooks.bad_lead_plus_connect.Sheet1 เคยใช้
-  },
-];
+// จาก Excel คืนมา (row 0 = header) เพื่อให้ build script ฝั่งปลายทางใช้ร่วมกับโค้ดเดิมได้โดยไม่ต้องแก้เยอะ —
+// ว่างอยู่ตอนนี้ (แหล่งข้อมูล CSV เดียวที่เคยมี "[Lead] Plus Connect.csv" ย้ายไปเป็น WORKBOOKS entry ด้านบน
+// แล้วหลังทีมเปลี่ยนไฟล์เป็น Excel workbook ชีตต่อเดือนแทน) — เก็บไว้เผื่อมีไฟล์ CSV ใหม่ในอนาคต
+const CSV_SOURCES = [];
 
 // RFC4180-ish CSV parser (รองรับฟิลด์ quoted ที่มี comma/quote/newline ข้างในได้ — คอลัมน์ "contactslink"/
 // "page_configs" ของไฟล์นี้เป็น JSON ที่มี comma อยู่ในเครื่องหมายคำพูด ถ้า split(",") ตรงๆ แถวจะพังหมด)

@@ -2,17 +2,32 @@
 /**
  * build-bad-lead.mjs
  * ---------------------------------------------------------------
- * Transforms the "[Lead] Plus Connect.csv" export (src/data/m365Raw.json,
- * refreshed daily by scripts/fetch-m365-data.mjs — CSV_SOURCES.lead_plus_connect)
- * into src/data/badLead.json, which src/App.jsx imports for the Inbox &
- * Bad Lead page's Bad Lead/Lead-tag cards.
+ * Transforms the "Lead Plus Connect.xlsx" workbook (src/data/m365Raw.json,
+ * refreshed daily by scripts/fetch-m365-data.mjs — WORKBOOKS.lead_plus_connect,
+ * sheets: "auto") into src/data/badLead.json, which src/App.jsx imports for
+ * the Inbox & Bad Lead page's Bad Lead/Lead-tag cards.
  *
- * This file replaced the old "Bad Lead [Plus Connect].xlsx" workbook (per
- * user direction 2026-09-02) — that sheet turned out to be a filtered/stale
- * export missing some real leads (confirmed: a same-day manual CSV export
- * had 160 Bad Lead rows vs its 158). "[Lead] Plus Connect.csv" is Plus
- * Connect's full "Contacts" export — every contact on the page, all 6,546
- * of them as of the 2026-09-02 fetch.
+ * SOURCE FILE HISTORY:
+ * - Originally "Bad Lead [Plus Connect].xlsx" — replaced 2026-09-02 (per user
+ *   direction) after it turned out to be a filtered/stale export missing real
+ *   leads (a same-day manual CSV export had 160 Bad Lead rows vs its 158).
+ * - Then "[Lead] Plus Connect.csv" — Plus Connect's full "Contacts" export as
+ *   one flat CSV, every contact on the page (6,546 as of 2026-09-02).
+ * - Then (2026-09-16, per user direction) the team switched to an Excel
+ *   workbook with one sheet per month ("สิงหาคม", "กันยายน", ... — a new sheet
+ *   added every month going forward) instead of one flat CSV. IMPORTANT: the
+ *   first sheet, "สิงหาคม", turned out to hold the FULL cumulative history
+ *   (6,546 rows, dating back to 2025-12-17) rather than just August's leads —
+ *   so this script can't assume "one sheet = that month's leads only" is
+ *   guaranteed going forward either. To be correct under BOTH possible
+ *   patterns (incremental-per-month sheets, or cumulative-snapshot-per-month
+ *   sheets) without having to guess which one the team actually follows, it
+ *   reads every sheet and de-duplicates by the source "id" column (Plus
+ *   Connect's own contact id), letting a later sheet's row win over an
+ *   earlier one for the same id — a no-op under the incremental pattern
+ *   (no id ever repeats across sheets), and the correct fix under the
+ *   cumulative pattern (keeps the newest snapshot's data for each contact
+ *   instead of counting them once per sheet they appear in).
  *
  * Per user direction (2026-09-02, second round): keep EVERY contact here,
  * not just ones tagged "คุณสมบัติไม่ครบ" — the Tag/"no tag" breakdown in
@@ -81,43 +96,53 @@ function main() {
   const m365 = JSON.parse(readFileSync(m365Path, "utf8"));
 
   const sheets = m365.workbooks?.lead_plus_connect;
-  if (!sheets) {
-    console.error('Could not find "lead_plus_connect" workbook in src/data/m365Raw.json.');
-    process.exit(1);
-  }
-  const sheet = sheets["Sheet1"];
-  if (!sheet) {
-    console.error('Sheet "Sheet1" not found in the Lead Plus Connect CSV.');
+  const sheetNames = sheets ? Object.keys(sheets) : [];
+  if (!sheets || sheetNames.length === 0) {
+    console.error('Could not find any sheets in the "lead_plus_connect" workbook in src/data/m365Raw.json.');
     process.exit(1);
   }
 
-  const header = sheet[0];
-  const col = Object.fromEntries(header.map((h, i) => [h, i]));
-  const rows = sheet.slice(1).filter((r) => r.some((c) => c !== "" && c != null));
-
-  const leads = [];
+  // รวมทุกชีต (เรียงตามลำดับที่ fetch-m365-data.mjs ดึงมา = ตำแหน่งจริงในไฟล์ = เก่าไปใหม่) แล้ว dedupe ด้วย
+  // "id" ของ Plus Connect — ชีตหลังทับชีตก่อนถ้า id ซ้ำ (ดูคอมเมนต์หัวไฟล์ เรื่องทำไมต้อง dedupe แบบนี้)
+  const leadsById = new Map();
   const skipped = [];
-  for (const r of rows) {
-    const d = parseAnyDateToIso(r[col.created_at]);
-    if (!d) {
-      skipped.push(r);
+  let totalRows = 0;
+  for (const sheetName of sheetNames) {
+    const sheet = sheets[sheetName];
+    if (!sheet || sheet.length === 0) {
+      console.warn(`  ! Sheet "${sheetName}" is empty — skipping.`);
       continue;
     }
-    const rawTags = typeof r[col.tags] === "string" ? r[col.tags].split(",").map((t) => t.trim()).filter(Boolean) : [];
-    const meaningfulTags = rawTags.filter((t) => !CALENDAR_TAG_RE.test(t) && !MONTH_ABBR.includes(t));
-    leads.push({
-      d,
-      platform: r[col.platform] || null,
-      channel: r[col.channel_name] || null,
-      assignee: r[col.assignees] || null,
-      blocked: String(r[col.blocked]).toUpperCase() === "TRUE",
-      junk: rawTags.includes("ขยะ"),
-      tags: meaningfulTags,
-    });
+    const header = sheet[0];
+    const col = Object.fromEntries(header.map((h, i) => [h, i]));
+    const rows = sheet.slice(1).filter((r) => r.some((c) => c !== "" && c != null));
+    totalRows += rows.length;
+    for (const r of rows) {
+      const d = parseAnyDateToIso(r[col.created_at]);
+      if (!d) {
+        skipped.push(r);
+        continue;
+      }
+      const rawTags = typeof r[col.tags] === "string" ? r[col.tags].split(",").map((t) => t.trim()).filter(Boolean) : [];
+      const meaningfulTags = rawTags.filter((t) => !CALENDAR_TAG_RE.test(t) && !MONTH_ABBR.includes(t));
+      // fallback key ถ้าแถวไหนไม่มีคอลัมน์ "id" จริงๆ (ไม่ควรเกิดกับไฟล์จริง) กันไม่ให้ id ที่เป็น undefined
+      // ทุกแถวถูกมองว่าเป็นคนเดียวกันแล้วทับกันหมด
+      const id = r[col.id] ?? `${sheetName}:${totalRows}:${leadsById.size}`;
+      leadsById.set(id, {
+        d,
+        platform: r[col.platform] || null,
+        channel: r[col.channel_name] || null,
+        assignee: r[col.assignees] || null,
+        blocked: String(r[col.blocked]).toUpperCase() === "TRUE",
+        junk: rawTags.includes("ขยะ"),
+        tags: meaningfulTags,
+      });
+    }
   }
+  const leads = [...leadsById.values()];
   leads.sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0));
 
-  console.log(`Parsed ${rows.length} contact rows into ${leads.length} leads.`);
+  console.log(`Parsed ${totalRows} contact rows across ${sheetNames.length} sheet(s) (${sheetNames.join(", ")}) into ${leads.length} unique leads.`);
   if (skipped.length > 0) {
     console.warn(`Skipped ${skipped.length} row(s) with no parseable created_at:`);
     for (const r of skipped) console.warn("  ", JSON.stringify(r));
@@ -130,10 +155,12 @@ function main() {
       {
         generatedAt: new Date().toISOString(),
         source:
-          'Generated by scripts/build-bad-lead.mjs from the "[Lead] Plus Connect.csv" SharePoint file ' +
-          '(full Plus Connect "Contacts" export — every contact, not just ones tagged "คุณสมบัติไม่ครบ"; ' +
-          'that tag is kept in each lead\'s own tags array so it can be filtered on in App.jsx like any ' +
-          "other tag). PII columns (name/phone/email/profile picture/social links) are intentionally excluded.",
+          'Generated by scripts/build-bad-lead.mjs from the "Lead Plus Connect.xlsx" SharePoint workbook ' +
+          `(sheets: ${sheetNames.join(", ")} — one per month, auto-discovered, de-duplicated by contact id ` +
+          'across sheets; full Plus Connect "Contacts" export — every contact, not just ones tagged ' +
+          '"คุณสมบัติไม่ครบ"; that tag is kept in each lead\'s own tags array so it can be filtered on in ' +
+          "App.jsx like any other tag). PII columns (name/phone/email/profile picture/social links) are " +
+          "intentionally excluded.",
         leads,
       },
       null,
