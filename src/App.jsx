@@ -2680,19 +2680,24 @@ export default function AdsDashboard() {
   // เลือกจริง · badLeadTagFilter กรองซ้ำอีกชั้นด้วยแท็กที่เลือกจาก Dropdown (ทั้งสอง filter ทำงานร่วมกัน) — ตัวเลือก
   // ในนั้น รวมถึง "ไม่มีแท็ก" นับจาก Lead ทั้งหมดที่เข้ามาจริง (ทุกแชทในไฟล์ ไม่ใช่แค่ Bad Lead) ตามที่ผู้ใช้ยืนยัน
   const BAD_LEAD_TAG_LABEL = "คุณสมบัติไม่ครบ"; // เก็บเป็นแท็กปกติในข้อมูลแล้ว (ไม่ตัดออก) เลือกจาก Dropdown ได้เหมือนแท็กอื่น
-  const badLeadAllTagsTally = tallyBy(BAD_LEAD_LEADS.flatMap((l) => l.tags), (t) => t); // ทุกแท็กที่เคยเกิดขึ้นในทุก Lead (ไม่จำกัดช่วงวันที่) ใช้ทำตัวเลือกใน Dropdown ให้รายการคงที่
-  const badLeadNoTagCount = BAD_LEAD_LEADS.filter((l) => l.tags.length === 0).length; // นับจาก Lead ทั้งหมดในไฟล์ ไม่ใช่แค่ Bad Lead
+  const badLeadDateOnly = BAD_LEAD_LEADS.filter((l) => l.d >= dateRange.start && l.d <= dateRange.end); // กรองแค่วันที่ ไม่ผูกกับ Dropdown แท็ก — ใช้กับการ์ด "Bad Lead เทียบ Inbox" ด้านบนที่ไม่มี Dropdown ของตัวเอง
+  // ตัวเลือก/ตัวเลขใน Dropdown แท็ก ผูกกับช่วงวันที่ที่เลือกอยู่ (ไม่ใช่ตลอดกาลเหมือนเดิม — ผู้ใช้แจ้ง 2569-09-16
+  // ว่าเห็นตัวเลขรวมทั้งไฟล์ (เช่น 9,306) โผล่ข้างหัวข้อการ์ดที่มีช่วงวันที่กำกับ แล้วดูเหมือนไม่ตรงกับช่วงที่เลือก)
+  const badLeadAllTagsTally = tallyBy(badLeadDateOnly.flatMap((l) => l.tags), (t) => t);
+  const badLeadNoTagCount = badLeadDateOnly.filter((l) => l.tags.length === 0).length;
   const BAD_LEAD_NO_TAG = "__no_tag__";
   const badLeadTagOptions = [
-    ["all", `ทุกแท็ก (${BAD_LEAD_LEADS.length})`], // จำนวน Lead ทั้งหมดจริง (ไม่ใช่ผลรวมนับซ้ำของทุกแท็ก เพราะ 1 Lead มีได้หลายแท็ก)
+    ["all", `ทุกแท็ก (${badLeadDateOnly.length})`], // จำนวน Lead ในช่วงวันที่ที่เลือกจริง (ไม่ใช่ผลรวมนับซ้ำของทุกแท็ก เพราะ 1 Lead มีได้หลายแท็ก)
     [BAD_LEAD_NO_TAG, `ไม่มีแท็ก (${badLeadNoTagCount})`],
     ...badLeadAllTagsTally.map(([tag, count]) => [tag, `${tag} (${count})`]),
   ];
-  const badLeadDateOnly = BAD_LEAD_LEADS.filter((l) => l.d >= dateRange.start && l.d <= dateRange.end); // กรองแค่วันที่ ไม่ผูกกับ Dropdown แท็ก — ใช้กับการ์ด "Bad Lead เทียบ Inbox" ด้านบนที่ไม่มี Dropdown ของตัวเอง
   const badLeadOnlyInDateRange = badLeadDateOnly.filter((l) => l.tags.includes(BAD_LEAD_TAG_LABEL)).length;
   const badLeadPctInDateRange = hasFunnelCoverage && summaryInboxTotal > 0 ? (badLeadOnlyInDateRange / summaryInboxTotal) * 100 : null;
+  // แท็กที่เลือกไว้อาจไม่มีในช่วงวันที่ใหม่แล้ว (ตอนนี้ตัวเลือกผูกกับวันที่ ไม่ใช่ตลอดกาลเหมือนเดิม) — ถ้าหายไปจาก
+  // Dropdown ให้ถือว่ากลับไป "ทุกแท็ก" แทนการค้างค่าที่เลือกไม่ได้อีกแล้ว (เหมือน saleDepFilterEff ด้านล่าง)
+  const badLeadTagFilterEff = badLeadTagFilter === "all" || badLeadTagOptions.some(([v]) => v === badLeadTagFilter) ? badLeadTagFilter : "all";
   const badLeadInRange = badLeadDateOnly.filter(
-    (l) => badLeadTagFilter === "all" || (badLeadTagFilter === BAD_LEAD_NO_TAG ? l.tags.length === 0 : l.tags.includes(badLeadTagFilter))
+    (l) => badLeadTagFilterEff === "all" || (badLeadTagFilterEff === BAD_LEAD_NO_TAG ? l.tags.length === 0 : l.tags.includes(badLeadTagFilterEff))
   );
   const badLeadTotal = badLeadInRange.length;
   const badLeadOnlyCount = badLeadInRange.filter((l) => l.tags.includes(BAD_LEAD_TAG_LABEL)).length; // ในจำนวนที่กรองได้ (ตามแท็กที่เลือกใน Dropdown นี้) มีกี่รายที่เป็น Bad Lead จริง
@@ -4660,7 +4665,7 @@ export default function AdsDashboard() {
               </div>
               <h2 className="text-sm font-semibold text-slate-700">Lead ทั้งหมด (Plus Connect) แยกตามแท็ก รวมทุกหัตถการ — {rangeLabel}</h2>
             </div>
-            <Select icon={Tag} value={badLeadTagFilter} onChange={setBadLeadTagFilter} options={badLeadTagOptions} />
+            <Select icon={Tag} value={badLeadTagFilterEff} onChange={setBadLeadTagFilter} options={badLeadTagOptions} />
           </div>
           <p className="text-xs text-slate-400 mb-5 ml-10">
             นับจาก Lead/แชทที่เข้ามาทั้งหมด (ไม่ใช่แค่ที่ติดแท็ก Bad Lead แล้ว) รวมทุกหัตถการ ไม่แยกตามหัตถการ (ไฟล์ต้นฉบับไม่ได้ระบุหัตถการต่อแชท) —
@@ -4697,7 +4702,7 @@ export default function AdsDashboard() {
 
           {badLeadTotal === 0 ? (
             <p className="text-sm text-slate-400 py-8 text-center">
-              ไม่มี Lead {badLeadTagFilter === BAD_LEAD_NO_TAG ? "ที่ไม่มีแท็ก " : badLeadTagFilter !== "all" ? `แท็ก "${badLeadTagFilter}" ` : ""}ในช่วงวันที่เลือก
+              ไม่มี Lead {badLeadTagFilterEff === BAD_LEAD_NO_TAG ? "ที่ไม่มีแท็ก " : badLeadTagFilterEff !== "all" ? `แท็ก "${badLeadTagFilterEff}" ` : ""}ในช่วงวันที่เลือก
             </p>
           ) : (
           <div className="grid sm:grid-cols-2 gap-4">
