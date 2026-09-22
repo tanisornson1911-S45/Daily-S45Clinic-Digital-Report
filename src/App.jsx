@@ -3543,8 +3543,8 @@ export default function AdsDashboard() {
                 contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 13 }}
               />
               <Legend formatter={(v) => (v === "ads" ? "ยอดยิง Ads" : "Inbox")} wrapperStyle={{ fontSize: 12 }} />
-              <Bar yAxisId="ads" dataKey="ads" fill="#99f6e4" radius={[4, 4, 0, 0]} maxBarSize={16} />
-              <Line yAxisId="inbox" dataKey="inbox" stroke="#0891b2" strokeWidth={2} dot={false} />
+              <Line yAxisId="ads" type="monotone" dataKey="ads" stroke="#0d9488" strokeWidth={2} dot={{ r: 2 }} />
+              <Line yAxisId="inbox" type="monotone" dataKey="inbox" stroke="#0891b2" strokeWidth={2} dot={{ r: 2 }} />
             </ComposedChart>
           </ResponsiveContainer>
 
