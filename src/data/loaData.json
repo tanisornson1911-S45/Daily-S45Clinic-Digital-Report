@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-21T22:05:33.880Z",
+  "generatedAt": "2026-09-22T15:04:34.525Z",
   "months": {
     "2026-01": {
       "open": {
@@ -1124,6 +1124,59 @@
           0,
           0,
           0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "2026-09": {
+      "breast": {
+        "broadcastReach": 0,
+        "budgetUsed": 0,
+        "budgetLeft": 10000,
+        "quotaLeft": 166666,
+        "dailyReach": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "brow": {
+        "broadcastReach": 25481,
+        "budgetUsed": 1528.86,
+        "budgetLeft": 8471.14,
+        "quotaLeft": 141185,
+        "dailyReach": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          25481
+        ]
+      },
+      "skin": {
+        "broadcastReach": 0,
+        "budgetUsed": 0,
+        "budgetLeft": 10000,
+        "quotaLeft": 166666,
+        "dailyReach": [
           0,
           0,
           0,
