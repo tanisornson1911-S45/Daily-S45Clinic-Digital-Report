@@ -1242,7 +1242,11 @@ function liveDailyForMonth(monthIso, categoryKey) {
   if (categoryKey !== "all") return monthData[categoryKey] || null;
   const present = AD_DAILY_LIVE_CATEGORIES.filter((c) => monthData[c]);
   if (present.length === 0) return null;
-  const len = Math.min(...present.map((c) => monthData[c].dailyAds.length));
+  // Math.max ไม่ใช่ Math.min — ถ้าใช้ min แล้วหมวดใดหมวดหนึ่งสั้นกว่าหมวดอื่น (เช่น ยิงงบ ฿0 วันสุดท้ายๆ จนไม่มี
+  // แถวส่งกลับจาก Insights API วันนั้นเลย) "all" ทั้งก้อนจะถูกดึงสั้นลงตามหมวดที่สั้นที่สุดไปด้วยอย่างเงียบๆ ทั้งที่
+  // หมวดอื่นมีข้อมูลจริงถึงวันใหม่กว่า (พบจริง 2569-09-22: breast_lipo สั้นกว่าหมวดอื่น 2 วัน ทำให้กราฟ "รวม
+  // ทุกหัตถการ" ทั้งหน้าดูเหมือนข้อมูลขาดหายไป 2 วันตามไปด้วย) — วันที่หมวดใดไม่มีข้อมูลถือเป็น 0 แทน
+  const len = Math.max(...present.map((c) => monthData[c].dailyAds.length));
   const dailyAds = Array.from({ length: len }, (_, i) => present.reduce((s, c) => s + (monthData[c].dailyAds[i] || 0), 0));
   const dailyInbox = Array.from({ length: len }, (_, i) => present.reduce((s, c) => s + (monthData[c].dailyInbox[i] || 0), 0));
   return { dailyAds, dailyInbox };

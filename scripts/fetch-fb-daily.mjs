@@ -87,7 +87,6 @@ async function fetchCategoryMonth(category, accountIds, year, month) {
   const { since, until, daysInMonth } = monthRange(year, month);
   const dailyAds = new Array(daysInMonth).fill(0);
   const dailyInbox = new Array(daysInMonth).fill(0);
-  const daysWithData = new Set();
 
   for (const accountId of accountIds) {
     const rows = await fetchAccountDaily(accountId, since, until);
@@ -98,15 +97,19 @@ async function fetchCategoryMonth(category, accountIds, year, month) {
       dailyAds[idx] += row.spend ? Math.round(parseFloat(row.spend)) : 0;
       const msgAction = (row.actions || []).find((a) => MSG_ACTION_TYPES.has(a.action_type));
       if (msgAction) dailyInbox[idx] += Number(msgAction.value) || 0;
-      daysWithData.add(day);
     }
   }
 
-  // ตัด array ให้เหลือแค่ถึงวันสุดท้ายที่มีข้อมูลจริง (กัน 0 ท้ายอาร์เรย์ของเดือนที่ยังไม่จบ)
-  const lastDay = daysWithData.size > 0 ? Math.max(...daysWithData) : 0;
+  // ตัด array ให้เหลือแค่ถึงวันที่ "until" (วันนี้/เมื่อวาน หรือวันสุดท้ายของเดือนถ้าจบแล้ว — ดู monthRange) กัน
+  // วันในอนาคตที่ยังไม่เกิดขึ้นจริงโผล่เป็น 0 ท้ายอาร์เรย์ — ใช้วันที่ "until" เดียวกันทุกหมวด แทนการหาแยกราย
+  // หมวดจาก daysWithData เดิม เพราะหมวดที่มีงบ/ยิงจริง 0 บาทในวันใดวันหนึ่ง (ซึ่งเป็นข้อมูลจริง ไม่ใช่ "ยังไม่มา")
+  // จะไม่มีแถวส่งกลับมาจาก Insights API เลยสำหรับวันนั้น ทำให้หมวดนั้นถูกตัดสั้นกว่าหมวดอื่นที่มีงบวันนั้นจริง
+  // (พบจริง: breast_lipo หยุดที่วันที่ 19 ทั้งที่หมวดอื่นมีถึงวันที่ 21 เพราะ breast_lipo ยิงงบ ฿0 สองวันหลังสุด
+  // ทำให้ตอนรวมเป็น "all" (Math.min ของทุกหมวดใน App.jsx) ถูกดึงสั้นลงตามหมวดที่สั้นที่สุดไปด้วย)
+  const untilDay = Number(until.slice(8, 10));
   return {
-    dailyAds: dailyAds.slice(0, lastDay),
-    dailyInbox: dailyInbox.slice(0, lastDay),
+    dailyAds: dailyAds.slice(0, untilDay),
+    dailyInbox: dailyInbox.slice(0, untilDay),
   };
 }
 
