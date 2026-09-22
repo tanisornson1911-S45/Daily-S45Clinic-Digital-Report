@@ -92,17 +92,11 @@ const WORKBOOKS = [
     // added this workbook). "Summary" has month-over-month rollups including Inbox by doctor.
     driveId: "b!xxDvakZnBUOmKljZWLuYZ9g177OXvLtHthxJClpsEqA5xrnAHB8PRI3WaLvrDur8",
     itemId: "01JXWUHPAC7HVGV4MFYJDYUVKEHAQZRYME",
-    sheets: [
-      "Summary",
-      "LOA- มกราคม",
-      "LOA- กุมภาพันธ์",
-      "LOA- มีนาคม",
-      "LOA- เมษายน",
-      "LOA- พฤษภาคม",
-      "LOA- มิถุนายน",
-      "LOA- กรกฎาคม",
-      "LOA- สิงหาคม",
-    ],
+    // "auto" แทนพิมพ์ชื่อเดือนตายตัว — ทีมเพิ่มชีต "LOA- <เดือน>" ใหม่ทุกเดือน (พบจริง 2569-09-22: มีชีต
+    // "LOA- กันยายน" เพิ่มมาแล้วแต่ Dashboard ไม่เห็นเพราะ list นี้ค้างอยู่แค่ "LOA- สิงหาคม") ไม่ต้องแก้โค้ด
+    // ตรงนี้อีกทุกเดือน — build-loa.mjs เป็นตัวกรองเอาเฉพาะชีตที่ชื่อขึ้นต้น "LOA- " (ข้าม "Summary"/"ชีต5"
+    // ที่ไม่ใช่โครงสร้างรายเดือนแบบเดียวกัน)
+    sheets: "auto",
   },
   {
     key: "lead_plus_connect",

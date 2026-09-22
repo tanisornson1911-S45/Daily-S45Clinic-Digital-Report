@@ -55,16 +55,14 @@ const HEADER_TO_KEY = {
   "สกิน": "skin",
 };
 
-const MONTH_SHEETS = [
-  ["LOA- มกราคม", "2026-01"],
-  ["LOA- กุมภาพันธ์", "2026-02"],
-  ["LOA- มีนาคม", "2026-03"],
-  ["LOA- เมษายน", "2026-04"],
-  ["LOA- พฤษภาคม", "2026-05"],
-  ["LOA- มิถุนายน", "2026-06"],
-  ["LOA- กรกฎาคม", "2026-07"], // Aftercare channel only, see caveat above
-  ["LOA- สิงหาคม", "2026-08"], // Aftercare channel only, see caveat above
+// ชื่อชีตแต่ละเดือนคือ "LOA- <เดือนเต็มภาษาไทย>" ไม่มีปีกำกับ — ไฟล์นี้เริ่มใช้ตั้งแต่ ม.ค. 2569 และยังไม่เคยข้ามปี
+// จึงตรึงปี 2026 ไว้ตรงๆ (เหมือนไฟล์ต้นทางอื่นๆ ในโปรเจกต์ที่ไม่มีปีในชื่อชีต) — ถ้าข้ามปีจริงต้องกลับมาแก้ตรงนี้
+const THAI_FULL_MONTHS = [
+  "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+  "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
 ];
+// LOA- กรกฎาคม/สิงหาคม เป็นช่องทาง Aftercare เท่านั้น (ดูหมายเหตุหัวไฟล์) — เดือนใหม่ๆ ถัดไปน่าจะเป็นแบบเดียวกัน
+// จนกว่าจะมีคนย้ายช่องทาง "ปกติ" กลับมาไว้ในไฟล์นี้อีกครั้ง
 
 function parseSheet(sheet) {
   const header = sheet[0];
@@ -130,8 +128,24 @@ function main() {
     process.exit(1);
   }
 
+  // หาชีตเดือนทุกชีตแบบไดนามิก (ชื่อขึ้นต้น "LOA- ") แทน list ตายตัว — ข้าม "Summary"/"ชีต5" ที่ไม่ใช่
+  // โครงสร้างรายเดือนแบบเดียวกัน เดือนใหม่ที่ทีมเพิ่มชีตมาจะถูกดึงเข้ามาเองโดยไม่ต้องแก้โค้ดตรงนี้อีก
+  const monthSheetEntries = Object.keys(sheets)
+    .map((sheetName) => {
+      const m = /^LOA- (.+)$/.exec(sheetName);
+      if (!m) return null;
+      const monthIdx = THAI_FULL_MONTHS.indexOf(m[1]);
+      if (monthIdx === -1) {
+        console.warn(`Sheet "${sheetName}": ไม่รู้จักชื่อเดือน "${m[1]}" — ข้าม`);
+        return null;
+      }
+      return [sheetName, `2026-${String(monthIdx + 1).padStart(2, "0")}`];
+    })
+    .filter(Boolean)
+    .sort((a, b) => a[1].localeCompare(b[1]));
+
   const months = {};
-  for (const [sheetName, monthIso] of MONTH_SHEETS) {
+  for (const [sheetName, monthIso] of monthSheetEntries) {
     const sheet = sheets[sheetName];
     if (!sheet) {
       console.warn(`Sheet "${sheetName}" not found — skipping ${monthIso}.`);
