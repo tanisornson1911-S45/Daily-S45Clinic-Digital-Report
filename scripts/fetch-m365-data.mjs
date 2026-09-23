@@ -66,7 +66,9 @@ const WORKBOOKS = [
     // for how those are de-duplicated.
     driveId: "b!UYH87cOq2UqumY8MIpZRT6PLpRROcdpBpT3eeYIb3NJC5-zjt4pTQ6CIgsAcPJdX",
     itemId: "01HRTVWCEESO57GCA255BYTDGHN5JQ5KDI",
-    sheets: ["Jan 01", "Feb02", "March 03", "April 04", "May 05", "June 06", "July 07", "August 08"],
+    // "auto" แทนพิมพ์ชื่อเดือนตายตัว (เคยค้างอยู่แค่ถึง "August 08" — build-inter.mjs ก็แก้ให้ดึงชีตแบบไดนามิก
+    // แล้วเช่นกัน ดูคอมเมนต์ที่นั่น) — เดือนใหม่ที่ทีมเพิ่มชีตมาจะถูกดึงเข้ามาเองโดยไม่ต้องแก้โค้ดตรงนี้อีก
+    sheets: "auto",
   },
   {
     key: "online_sales_daily",
@@ -74,11 +76,12 @@ const WORKBOOKS = [
     // (personal/sales_sup_s45clinic_com/Documents/Desktop/, 2026-08-25). Per-month sheet
     // named "<เดือนย่อ>.69" (e.g. "ส.ค.69" = สิงหาคม 2569/Aug 2026) holding the daily
     // Ads/Inbox rows per procedure category that FUNNEL_DATA/FUNNEL_DATA_JUL in App.jsx
-    // were originally hand-typed from. Sheet-name guesses for months without a sheet yet
-    // are skipped gracefully (see the try/catch below) — only fetch what actually exists.
+    // were originally hand-typed from. build-funnel.mjs already discovers new month sheets
+    // dynamically from whatever's fetched here (sheetNameToIso, not a hardcoded list) — the
+    // list below was the actual bottleneck (stuck at "ส.ค.69"), so switched to "auto" too.
     driveId: "b!EzzI__YZKkOT4A8owKgx9plShVOjW0VJq7Ee489Af4_1GTH3bJdHTYtt0_IUxba2",
     itemId: "01LCP4JOJGDXP4EFAZNVD22P2GZY4UPDHG",
-    sheets: ["ม.ค.69", "ก.พ.69", "มี.ค.69", "เม.ย.69", "พ.ค.69", "มิ.ย.69", "ก.ค.69", "ส.ค.69"],
+    sheets: "auto",
   },
   {
     key: "loa_broadcast",

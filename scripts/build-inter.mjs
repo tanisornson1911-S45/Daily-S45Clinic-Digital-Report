@@ -57,17 +57,19 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-// ชื่อชีต -> เดือน ISO (ตรงกับ sheets ที่ fetch-m365-data.mjs ระบุไว้ให้ workbook นี้)
-const SHEET_MONTH = {
-  "Jan 01": "2026-01",
-  "Feb02": "2026-02",
-  "March 03": "2026-03",
-  "April 04": "2026-04",
-  "May 05": "2026-05",
-  "June 06": "2026-06", // ไม่เคยเจอจริงในไฟล์ (ดูคอมเมนต์ด้านบน) แต่เผื่อไว้เผื่อมีคนสร้างชีตนี้ในอนาคต
-  "July 07": "2026-07",
-  "August 08": "2026-08",
+// ชื่อชีตขึ้นต้นด้วยชื่อเดือนภาษาอังกฤษเสมอ แต่รูปแบบที่เหลือไม่คงที่ ("Jan 01"/"Feb02"/"March 03" — เว้นวรรค/
+// เลขท้ายไม่ตรงกัน) จึงพาร์สจาก 3 ตัวอักษรแรกของชื่อเดือนแทนการจับคู่ชื่อชีตแบบตายตัว — เดือนใหม่ที่ทีมเพิ่มชีตมา
+// (เช่น "September 09") จะถูกดึงเข้ามาเองโดยไม่ต้องแก้โค้ดตรงนี้อีก (เดิม SHEET_MONTH ค้างอยู่แค่ถึงเดือนสิงหาคม)
+const ENGLISH_MONTH_PREFIXES = {
+  jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+  jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
 };
+function sheetNameToInterMonth(sheetName) {
+  const m = /^([A-Za-z]+)/.exec(sheetName.trim());
+  if (!m) return null;
+  const monthNum = ENGLISH_MONTH_PREFIXES[m[1].toLowerCase().slice(0, 3)];
+  return monthNum ? `2026-${String(monthNum).padStart(2, "0")}` : null;
+}
 
 const SURGERY_MAP = {
   "nose open": "nose_open",
@@ -124,7 +126,15 @@ function main() {
   const unmappedSurgeries = new Set();
   const skipped = [];
 
-  for (const [sheetName, monthIso] of Object.entries(SHEET_MONTH)) {
+  const sheetEntries = Object.keys(wb)
+    .map((sheetName) => {
+      const monthIso = sheetNameToInterMonth(sheetName);
+      return monthIso ? [sheetName, monthIso] : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a[1].localeCompare(b[1]));
+
+  for (const [sheetName, monthIso] of sheetEntries) {
     const sheet = wb[sheetName];
     if (!sheet || sheet.length < 2) continue; // ชีตนี้ไม่มีในไฟล์ตอนนี้ (เช่น June) — ข้ามเงียบๆ
     const header = sheet[0];
