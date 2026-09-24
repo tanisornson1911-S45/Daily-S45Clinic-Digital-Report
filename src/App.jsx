@@ -546,19 +546,23 @@ const LOA_CHANNEL_OPTIONS = [
 // ตั้งแต่ ก.ค. 2569 เป็นต้นไป (loaData.json เช่นกัน) — ทั้ง 2 ช่องทางจึง Filter ตามช่วงวันที่ที่เลือกได้จริง
 // (ไม่ใช่แค่ยอดรวมทั้งเดือนอีกต่อไป) ดู loaRangeRows() ด้านล่าง
 
-// ช่วงเดือนที่แต่ละช่องทางมีข้อมูลรายวันจริง (source ต่างไฟล์กันตามเดือน — ดูหมายเหตุด้านบน)
+// ช่วงเดือนที่แต่ละช่องทางมีข้อมูลรายวันจริง (source ต่างไฟล์กันตามเดือน — ดูหมายเหตุด้านบน) — ดึงรายชื่อเดือน
+// จากคีย์ที่มีจริงใน loaDataByMonth/loaNormalDataByMonth แทนพิมพ์เดือนตายตัว (เคยค้างอยู่แค่ถึง ส.ค. ทำให้
+// เดือนใหม่ที่ทั้งสองไฟล์ดึงมาได้จริงแล้ว เช่น ก.ย., ไม่ถูกใช้เลยสักเดือน แสดงเป็น "ไม่มีข้อมูล" ทั้งที่มีข้อมูลจริง
+// อยู่ในไฟล์แล้ว) — เดือนใหม่ที่ทั้งสอง pipeline ดึงมาได้จะถูกใช้เองโดยไม่ต้องแก้โค้ดตรงนี้อีก
 function loaChannelMonthSources(channel) {
   if (channel === "aftercare") {
-    return [
-      { monthIso: "2026-07", src: loaDataByMonth["2026-07"] },
-      { monthIso: "2026-08", src: loaDataByMonth["2026-08"] },
-    ];
+    return Object.keys(loaDataByMonth)
+      .filter((iso) => iso >= "2026-07")
+      .sort()
+      .map((monthIso) => ({ monthIso, src: loaDataByMonth[monthIso] }));
   }
-  return [
-    { monthIso: "2026-06", src: loaDataByMonth["2026-06"] },
-    { monthIso: "2026-07", src: loaNormalDataByMonth["2026-07"] },
-    { monthIso: "2026-08", src: loaNormalDataByMonth["2026-08"] },
-  ];
+  const juneSource = loaDataByMonth["2026-06"] ? [{ monthIso: "2026-06", src: loaDataByMonth["2026-06"] }] : [];
+  const normalMonths = Object.keys(loaNormalDataByMonth)
+    .filter((iso) => iso >= "2026-07")
+    .sort()
+    .map((monthIso) => ({ monthIso, src: loaNormalDataByMonth[monthIso] }));
+  return [...juneSource, ...normalMonths];
 }
 function loaLastDayIso(monthIso) {
   const [y, m] = monthIso.split("-").map(Number);
