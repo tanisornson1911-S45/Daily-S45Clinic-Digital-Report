@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-01T22:49:28.177Z",
+  "generatedAt": "2026-10-02T22:25:15.370Z",
   "minMonth": "2026-08",
   "months": {
     "2026-08": {
@@ -1174,10 +1174,10 @@
           "ads": 921280,
           "inbox": 2641,
           "or": 1989780,
-          "sales": 8055030,
-          "basket": 223750.83333333334,
-          "closeRate": 0.013631200302915562,
-          "adsCost": 0.11437325497235888,
+          "sales": 8244030,
+          "basket": 222811.62162162163,
+          "closeRate": 0.014009844755774327,
+          "adsCost": 0.11175117024076817,
           "adsCostOr": 0.46300596045794007,
           "dailyAds": [
             53269,
@@ -1305,7 +1305,7 @@
             0,
             0,
             1,
-            1
+            2
           ],
           "dailyDeposit": [
             2,
@@ -1337,7 +1337,7 @@
             0,
             0,
             1,
-            1
+            2
           ],
           "dailyOrCases": [
             0,
@@ -1780,14 +1780,14 @@
         },
         "brow_hairline": {
           "label": "ยกคิ้ว/เลื่อนไรผม/ยกมุมปาก",
-          "ads": 329453,
+          "ads": 329454,
           "inbox": 2162,
           "or": 937080,
           "sales": 1991450,
           "basket": 153188.46153846153,
           "closeRate": 0.006012950971322849,
-          "adsCost": 0.16543372919229707,
-          "adsCostOr": 0.3515740385025825,
+          "adsCost": 0.1654342313389741,
+          "adsCostOr": 0.35157510564733,
           "dailyAds": [
             16341,
             19938,
@@ -1818,7 +1818,7 @@
             5099,
             5120,
             5187,
-            13811
+            13812
           ],
           "dailyInbox": [
             77,
@@ -2062,14 +2062,14 @@
         },
         "all": {
           "label": "รวมทุกหัตถการ",
-          "ads": 1434658,
+          "ads": 1434659,
           "inbox": 6026,
           "or": 3514519,
-          "sales": 11377239,
-          "basket": 155852.5890410959,
-          "closeRate": 0.012114171921672752,
-          "adsCost": 0.12609895951029948,
-          "adsCostOr": 0.40820891848927265,
+          "sales": 11566239,
+          "basket": 156300.52702702704,
+          "closeRate": 0.01228011948224361,
+          "adsCost": 0.12403850551592441,
+          "adsCostOr": 0.4082092030232302,
           "dailyAds": [
             78407,
             77646,
@@ -2100,7 +2100,7 @@
             23972,
             26170,
             23691,
-            29856
+            29857
           ],
           "dailyInbox": [
             262,
@@ -2196,7 +2196,7 @@
             1,
             0,
             5,
-            2
+            3
           ],
           "dailyDeposit": [
             4,
@@ -2228,7 +2228,7 @@
             1,
             0,
             5,
-            2
+            3
           ],
           "dailyOrCases": [
             0,
@@ -2266,10 +2266,10 @@
       },
       "closeCounts": {
         "nose_open": {
-          "consult": 36,
-          "deposit": 36,
-          "consultValue": 8055030,
-          "depositValue": 8055030
+          "consult": 37,
+          "deposit": 37,
+          "consultValue": 8244030,
+          "depositValue": 8244030
         },
         "nose_semi": {
           "consult": 20,
@@ -2290,36 +2290,38 @@
           "depositValue": 1991450
         },
         "all": {
-          "consult": 73,
-          "deposit": 73,
-          "consultValue": 11377239,
-          "depositValue": 11377239
+          "consult": 74,
+          "deposit": 74,
+          "consultValue": 11566239,
+          "depositValue": 11566239
         }
       },
       "sourceKind": "facebook_api"
     },
     "2026-10": {
-      "daysWithData": 1,
+      "daysWithData": 2,
       "data": {
         "nose_open": {
           "label": "เสริมจมูกโอเพ่น (Nose Open)",
-          "ads": 30898,
-          "inbox": 79,
-          "or": 0,
-          "sales": 0,
-          "basket": 0,
-          "closeRate": 0,
-          "adsCost": 0,
-          "adsCostOr": 0,
+          "ads": 64982,
+          "inbox": 207,
+          "or": 384990,
+          "sales": 384990,
+          "basket": 384990,
+          "closeRate": 0.004830917874396135,
+          "adsCost": 0.16878879970908336,
+          "adsCostOr": 0.16878879970908336,
           "dailyAds": [
-            30898
+            31029,
+            33953
           ],
           "dailyInbox": [
-            79
+            79,
+            128
           ],
           "dailyOr": [
             0,
-            0,
+            384990,
             0,
             0,
             0,
@@ -2351,7 +2353,7 @@
             0
           ],
           "dailyConsult": [
-            0,
+            1,
             0,
             0,
             0,
@@ -2384,7 +2386,7 @@
             0
           ],
           "dailyDeposit": [
-            0,
+            1,
             0,
             0,
             0,
@@ -2418,7 +2420,7 @@
           ],
           "dailyOrCases": [
             0,
-            0,
+            1,
             0,
             0,
             0,
@@ -2452,19 +2454,21 @@
         },
         "nose_semi": {
           "label": "เสริมจมูก Semi Open",
-          "ads": 5392,
-          "inbox": 59,
-          "or": 0,
-          "sales": 0,
-          "basket": 0,
-          "closeRate": 0,
-          "adsCost": 0,
-          "adsCostOr": 0,
+          "ads": 11801,
+          "inbox": 113,
+          "or": 52900,
+          "sales": 80800,
+          "basket": 40400,
+          "closeRate": 0.017699115044247787,
+          "adsCost": 0.1460519801980198,
+          "adsCostOr": 0.22308128544423442,
           "dailyAds": [
-            5392
+            5421,
+            6380
           ],
           "dailyInbox": [
-            59
+            59,
+            54
           ],
           "dailyOr": [
             0,
@@ -2475,7 +2479,7 @@
             0,
             0,
             0,
-            0,
+            52900,
             0,
             0,
             0,
@@ -2500,8 +2504,8 @@
             0
           ],
           "dailyConsult": [
-            0,
-            0,
+            1,
+            1,
             0,
             0,
             0,
@@ -2533,8 +2537,8 @@
             0
           ],
           "dailyDeposit": [
-            0,
-            0,
+            1,
+            1,
             0,
             0,
             0,
@@ -2574,7 +2578,7 @@
             0,
             0,
             0,
-            0,
+            1,
             0,
             0,
             0,
@@ -2601,8 +2605,8 @@
         },
         "breast_lipo": {
           "label": "เสริมหน้าอก/ดูดไขมัน",
-          "ads": 525,
-          "inbox": 3,
+          "ads": 1595,
+          "inbox": 13,
           "or": 0,
           "sales": 0,
           "basket": 0,
@@ -2610,10 +2614,12 @@
           "adsCost": 0,
           "adsCostOr": 0,
           "dailyAds": [
-            525
+            528,
+            1067
           ],
           "dailyInbox": [
-            3
+            3,
+            10
           ],
           "dailyOr": [
             0,
@@ -2750,8 +2756,8 @@
         },
         "brow_hairline": {
           "label": "ยกคิ้ว/เลื่อนไรผม/ยกมุมปาก",
-          "ads": 9176,
-          "inbox": 91,
+          "ads": 24344,
+          "inbox": 193,
           "or": 0,
           "sales": 0,
           "basket": 0,
@@ -2759,10 +2765,12 @@
           "adsCost": 0,
           "adsCostOr": 0,
           "dailyAds": [
-            9176
+            15496,
+            8848
           ],
           "dailyInbox": [
-            91
+            139,
+            54
           ],
           "dailyOr": [
             0,
@@ -2899,8 +2907,8 @@
         },
         "inter": {
           "label": "Inter",
-          "ads": 5261,
-          "inbox": 12,
+          "ads": 9769,
+          "inbox": 20,
           "or": null,
           "sales": null,
           "basket": null,
@@ -2908,10 +2916,12 @@
           "adsCost": null,
           "adsCostOr": null,
           "dailyAds": [
-            5261
+            5263,
+            4506
           ],
           "dailyInbox": [
-            12
+            12,
+            8
           ],
           "dailyOr": null,
           "dailyConsult": null,
@@ -2920,30 +2930,32 @@
         },
         "all": {
           "label": "รวมทุกหัตถการ",
-          "ads": 51252,
-          "inbox": 244,
-          "or": 0,
-          "sales": 0,
-          "basket": 0,
-          "closeRate": 0,
-          "adsCost": 0,
-          "adsCostOr": 0,
+          "ads": 112491,
+          "inbox": 546,
+          "or": 437890,
+          "sales": 465790,
+          "basket": 155263.33333333334,
+          "closeRate": 0.005494505494505495,
+          "adsCost": 0.2415058288069731,
+          "adsCostOr": 0.2568932837013862,
           "dailyAds": [
-            51252
+            57737,
+            54754
           ],
           "dailyInbox": [
-            244
+            292,
+            254
           ],
           "dailyOr": [
             0,
+            384990,
             0,
             0,
             0,
             0,
             0,
             0,
-            0,
-            0,
+            52900,
             0,
             0,
             0,
@@ -2968,8 +2980,8 @@
             0
           ],
           "dailyConsult": [
-            0,
-            0,
+            2,
+            1,
             0,
             0,
             0,
@@ -3001,8 +3013,8 @@
             0
           ],
           "dailyDeposit": [
-            0,
-            0,
+            2,
+            1,
             0,
             0,
             0,
@@ -3035,14 +3047,14 @@
           ],
           "dailyOrCases": [
             0,
+            1,
             0,
             0,
             0,
             0,
             0,
             0,
-            0,
-            0,
+            1,
             0,
             0,
             0,
@@ -3070,16 +3082,16 @@
       },
       "closeCounts": {
         "nose_open": {
-          "consult": 0,
-          "deposit": 0,
-          "consultValue": 0,
-          "depositValue": 0
+          "consult": 1,
+          "deposit": 1,
+          "consultValue": 384990,
+          "depositValue": 384990
         },
         "nose_semi": {
-          "consult": 0,
-          "deposit": 0,
-          "consultValue": 0,
-          "depositValue": 0
+          "consult": 2,
+          "deposit": 2,
+          "consultValue": 80800,
+          "depositValue": 80800
         },
         "breast_lipo": {
           "consult": 0,
@@ -3094,10 +3106,10 @@
           "depositValue": 0
         },
         "all": {
-          "consult": 0,
-          "deposit": 0,
-          "consultValue": 0,
-          "depositValue": 0
+          "consult": 3,
+          "deposit": 3,
+          "consultValue": 465790,
+          "depositValue": 465790
         }
       },
       "sourceKind": "facebook_api"
