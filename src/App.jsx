@@ -5227,6 +5227,7 @@ export default function AdsDashboard() {
           </p>
 
           <div className="rounded-xl border border-pink-100 bg-pink-50/50 p-4">
+            <h3 className="text-xs font-semibold text-pink-700 mb-2">แผนเดิมที่คงดำเนินการ</h3>
             <ul className="space-y-2 text-sm text-slate-600 list-disc list-inside">
               <li>
                 จัดสรรงบประมาณเพื่อแยก Ads ออกเป็น <span className="font-semibold">Objective หลายตัว</span> โดยใช้ Creative ตัวเดียวกัน เช่น Sale,
@@ -5244,6 +5245,45 @@ export default function AdsDashboard() {
               <li>
                 และเมื่อสถานการณ์ถึงวิกฤต จะมีการแก้ไขด้วย Ads ที่ใช้กลุ่มกว้าง + <span className="font-semibold">Exclude Bad Lead</span> และ
                 Engage Page ออกทั้งหมด เพื่อให้ Ads รันเข้าไปทุกกลุ่มความสนใจโดยไม่เจาะจง
+              </li>
+            </ul>
+          </div>
+
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 mt-4">
+            <h3 className="text-xs font-semibold text-emerald-700 mb-2">แผนเพิ่มเติมใหม่</h3>
+            <ul className="space-y-2 text-sm text-slate-600 list-disc list-inside">
+              <li>
+                ทีม Digital มีการดำเนินการปรับงบประมาณแยกการทำงานของแต่ละหัตถการ <span className="font-semibold">ตามแผนของ PO ของแต่ละหัตถการ</span> เพื่อควบคุมงบประมาณ,
+                ปริมาณ Inbox ตามแผนงาน, สัดส่วนการใช้งบประมาณของแต่ละหัตถการตลอดทั้งเดือน และแผนงานอื่นๆตามที่ได้ตกลงกับทาง PO ของแต่ละหัตถการไว้
+              </li>
+              <li>
+                หากหัตถการไหนมีการดำเนินการแผนที่มีส่วนของ Awareness หรือการดำเนินการ Upper Funnel ทาง Digital Team จะมีการปรับกลยุทธ์จากส่วนนี้แปลงเป็น
+                Messenger Inbox แทน หาก Awareness ผ่านมาตรฐานดังต่อไปนี้ในระยะ 7 วัน:{" "}
+                <span className="font-semibold">Impression มากกว่า 50,000 · Reach มากกว่า 25,000 · Engagement มากกว่า 5,000</span> — หาก Awareness
+                Ads ไหนที่มีการใช้ CTA Messenger และสามารถเข้าถึง Inbox ได้มากกว่า <span className="font-semibold">7 Inbox ใน 7 วัน</span> จะทำการเปลี่ยนแปลง
+                Objective ทันที
+              </li>
+              <li>
+                เนื่องจากการตรวจสอบแค่ Demo พื้นฐานได้ข้อมูลที่ไม่รองรับกับความต้องการในการวิเคราะห์ข้อมูล Persona ลูกค้า Digital Team มีการเพิ่มการตรวจสอบในช่วงวัน
+                โดยจะใช้เวลา <span className="font-semibold">1 ชั่วโมงในช่วงเย็น</span> ในการตรวจสอบย้อนหลังแชท โดยการไล่จากแชทที่เก่าของวันเดิม ไปยังใหม่ของวันปัจจุบัน
+                เพื่อตรวจสอบ Persona ของลูกค้าบน Online Official ที่ลูกค้าเข้ามาถึง และจะตรวจสอบแค่เฉพาะส่วนที่สำคัญเพื่อนำไปวิเคราะห์หากลุ่มเป้าหมายที่เจาะจงมากกว่าเดิม
+                โดยตรวจสอบ <span className="font-semibold">"ลูกค้าที่โต้ตอบถูกมองว่ามีคุณสมบัติ"</span> และ{" "}
+                <span className="font-semibold">"ลูกค้าที่ปิดปรึกษาหรือปิดมัดจำได้เรียบร้อย"</span> เพื่อตรวจสอบ Customer Journey ที่ลูกค้าสามารถมาถึงได้
+                โดยจะมีการเก็บข้อมูลด้วยการตรวจสอบและกรอกมือจาก Team เอง
+              </li>
+            </ul>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 mt-4">
+            <h3 className="text-xs font-semibold text-slate-500 mb-2">แผนที่จะมีการดำเนินการเพิ่มในอนาคต</h3>
+            <ul className="space-y-2 text-sm text-slate-500 list-disc list-inside">
+              <li>
+                การเก็บข้อมูลสำคัญของลูกค้าจาก OPD เช่น อาชีพ, รายได้, จำนวนเงินที่จ่ายให้หัตถการ, หัตถการที่เลือก, ความสนใจในหัตถการอื่น,
+                พฤติกรรมการซื้อ ตัดสินใจซื้อจากอะไร
+              </li>
+              <li>
+                เพิ่มปริมาณการ Tracking ข้อมูลบน Plus Connect ที่ได้มีการเชื่อมต่อไว้ เพื่อให้ ROAS บน Plus Connect ขึ้นในระบบของ Meta
+                ตามรายการ Ads ที่ทำการปิดการขายได้จริง
               </li>
             </ul>
           </div>
