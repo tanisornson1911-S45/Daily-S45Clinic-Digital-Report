@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-06T00:13:42.413Z",
+  "generatedAt": "2026-10-06T22:45:05.122Z",
   "minMonth": "2026-08",
   "months": {
     "2026-08": {
@@ -2299,31 +2299,33 @@
       "sourceKind": "facebook_api"
     },
     "2026-10": {
-      "daysWithData": 5,
+      "daysWithData": 6,
       "data": {
         "nose_open": {
           "label": "เสริมจมูกโอเพ่น (Nose Open)",
-          "ads": 192839,
-          "inbox": 601,
+          "ads": 230955,
+          "inbox": 717,
           "or": 938355,
-          "sales": 1173345,
-          "basket": 234669,
-          "closeRate": 0.008319467554076539,
-          "adsCost": 0.16434978629473854,
-          "adsCostOr": 0.20550751048377214,
+          "sales": 1322335,
+          "basket": 220389.16666666666,
+          "closeRate": 0.008368200836820083,
+          "adsCost": 0.17465695152892421,
+          "adsCostOr": 0.24612753169109772,
           "dailyAds": [
             31029,
             34189,
             38164,
-            45837,
-            43620
+            45839,
+            43762,
+            37972
           ],
           "dailyInbox": [
             79,
             128,
             120,
             137,
-            137
+            137,
+            116
           ],
           "dailyOr": [
             0,
@@ -2364,7 +2366,7 @@
             2,
             1,
             1,
-            0,
+            1,
             0,
             0,
             0,
@@ -2397,7 +2399,7 @@
             2,
             1,
             1,
-            0,
+            1,
             0,
             0,
             0,
@@ -2460,27 +2462,29 @@
         },
         "nose_semi": {
           "label": "เสริมจมูก Semi Open",
-          "ads": 33892,
-          "inbox": 274,
+          "ads": 41344,
+          "inbox": 342,
           "or": 90800,
           "sales": 118700,
           "basket": 39566.666666666664,
-          "closeRate": 0.010948905109489052,
-          "adsCost": 0.28552653748946927,
-          "adsCostOr": 0.37325991189427316,
+          "closeRate": 0.008771929824561403,
+          "adsCost": 0.3483066554338669,
+          "adsCostOr": 0.45533039647577095,
           "dailyAds": [
             5421,
             6427,
             6317,
             7954,
-            7773
+            7805,
+            7420
           ],
           "dailyInbox": [
             59,
             54,
             58,
             50,
-            53
+            53,
+            68
           ],
           "dailyOr": [
             0,
@@ -2617,27 +2621,29 @@
         },
         "breast_lipo": {
           "label": "เสริมหน้าอก/ดูดไขมัน",
-          "ads": 8358,
-          "inbox": 50,
+          "ads": 11968,
+          "inbox": 69,
           "or": 0,
-          "sales": 0,
-          "basket": 0,
-          "closeRate": 0,
-          "adsCost": 0,
+          "sales": 105890,
+          "basket": 105890,
+          "closeRate": 0.014492753623188406,
+          "adsCost": 0.1130229483426197,
           "adsCostOr": 0,
           "dailyAds": [
             528,
             1070,
             1462,
             1747,
-            3551
+            3580,
+            3581
           ],
           "dailyInbox": [
             3,
             10,
             8,
             8,
-            21
+            21,
+            19
           ],
           "dailyOr": [
             0,
@@ -2678,7 +2684,7 @@
             0,
             0,
             0,
-            0,
+            1,
             0,
             0,
             0,
@@ -2711,7 +2717,7 @@
             0,
             0,
             0,
-            0,
+            1,
             0,
             0,
             0,
@@ -2774,27 +2780,29 @@
         },
         "brow_hairline": {
           "label": "ยกคิ้ว/เลื่อนไรผม/ยกมุมปาก",
-          "ads": 80821,
-          "inbox": 619,
-          "or": 0,
-          "sales": 0,
-          "basket": 0,
-          "closeRate": 0,
-          "adsCost": 0,
-          "adsCostOr": 0,
+          "ads": 102248,
+          "inbox": 728,
+          "or": 225890,
+          "sales": 225890,
+          "basket": 225890,
+          "closeRate": 0.0013736263736263737,
+          "adsCost": 0.4526450927442561,
+          "adsCostOr": 0.4526450927442561,
           "dailyAds": [
             15498,
             14909,
             15540,
-            17777,
-            17097
+            17779,
+            24984,
+            13538
           ],
           "dailyInbox": [
             139,
             96,
             149,
             127,
-            108
+            144,
+            73
           ],
           "dailyOr": [
             0,
@@ -2818,7 +2826,7 @@
             0,
             0,
             0,
-            0,
+            225890,
             0,
             0,
             0,
@@ -2835,7 +2843,7 @@
             0,
             0,
             0,
-            0,
+            1,
             0,
             0,
             0,
@@ -2868,7 +2876,7 @@
             0,
             0,
             0,
-            0,
+            1,
             0,
             0,
             0,
@@ -2917,7 +2925,7 @@
             0,
             0,
             0,
-            0,
+            1,
             0,
             0,
             0,
@@ -2931,8 +2939,8 @@
         },
         "inter": {
           "label": "Inter",
-          "ads": 23775,
-          "inbox": 51,
+          "ads": 26486,
+          "inbox": 58,
           "or": null,
           "sales": null,
           "basket": null,
@@ -2944,14 +2952,16 @@
             4509,
             4524,
             5787,
-            3692
+            3692,
+            2711
           ],
           "dailyInbox": [
             12,
             8,
             7,
             12,
-            12
+            12,
+            7
           ],
           "dailyOr": null,
           "dailyConsult": null,
@@ -2960,27 +2970,29 @@
         },
         "all": {
           "label": "รวมทุกหัตถการ",
-          "ads": 339685,
-          "inbox": 1595,
-          "or": 1029155,
-          "sales": 1292045,
-          "basket": 161505.625,
-          "closeRate": 0.005015673981191223,
-          "adsCost": 0.2629049297818574,
-          "adsCostOr": 0.3300620411891309,
+          "ads": 413001,
+          "inbox": 1914,
+          "or": 1255045,
+          "sales": 1772815,
+          "basket": 161165,
+          "closeRate": 0.005747126436781609,
+          "adsCost": 0.23296339437561167,
+          "adsCostOr": 0.3290726627332088,
           "dailyAds": [
             57739,
             61104,
             66007,
-            79102,
-            75733
+            79106,
+            83823,
+            65222
           ],
           "dailyInbox": [
             292,
             296,
             342,
             334,
-            331
+            367,
+            283
           ],
           "dailyOr": [
             0,
@@ -3004,7 +3016,7 @@
             0,
             0,
             99000,
-            0,
+            225890,
             0,
             0,
             0,
@@ -3021,7 +3033,7 @@
             2,
             1,
             2,
-            0,
+            3,
             0,
             0,
             0,
@@ -3054,7 +3066,7 @@
             2,
             1,
             2,
-            0,
+            3,
             0,
             0,
             0,
@@ -3103,7 +3115,7 @@
             0,
             0,
             1,
-            0,
+            1,
             0,
             0,
             0,
@@ -3118,10 +3130,10 @@
       },
       "closeCounts": {
         "nose_open": {
-          "consult": 5,
-          "deposit": 5,
-          "consultValue": 1173345,
-          "depositValue": 1173345
+          "consult": 6,
+          "deposit": 6,
+          "consultValue": 1322335,
+          "depositValue": 1322335
         },
         "nose_semi": {
           "consult": 3,
@@ -3130,22 +3142,22 @@
           "depositValue": 118700
         },
         "breast_lipo": {
-          "consult": 0,
-          "deposit": 0,
-          "consultValue": 0,
-          "depositValue": 0
+          "consult": 1,
+          "deposit": 1,
+          "consultValue": 105890,
+          "depositValue": 105890
         },
         "brow_hairline": {
-          "consult": 0,
-          "deposit": 0,
-          "consultValue": 0,
-          "depositValue": 0
+          "consult": 1,
+          "deposit": 1,
+          "consultValue": 225890,
+          "depositValue": 225890
         },
         "all": {
-          "consult": 8,
-          "deposit": 8,
-          "consultValue": 1292045,
-          "depositValue": 1292045
+          "consult": 11,
+          "deposit": 11,
+          "consultValue": 1772815,
+          "depositValue": 1772815
         }
       },
       "sourceKind": "facebook_api"
