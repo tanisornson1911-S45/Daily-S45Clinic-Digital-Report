@@ -5365,10 +5365,10 @@ export default function AdsDashboard() {
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-slate-700">Semi Open</p>
                   <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100 rounded-full px-2 py-0.5">
-                    Phase 3 — กำลังดำเนินการ
+                    ผ่าน Phase 3 แล้ว
                   </span>
                 </div>
-                <p className="text-sm text-slate-600 mt-0.5">ผ่าน Phase 2 แล้ว และกำลังดำเนินการ Phase 3 สำหรับแผนของเพจรอง</p>
+                <p className="text-sm text-slate-600 mt-0.5">ผ่าน Phase ที่ 3 แล้ว และกำลังดำเนินการย้ายไปยังเพจรองแบบสมบูรณ์</p>
               </div>
             </div>
 
@@ -5380,10 +5380,12 @@ export default function AdsDashboard() {
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-slate-700">ยกคิ้ว/เลื่อนไรผม</p>
                   <span className="text-[11px] font-semibold text-amber-700 bg-amber-100 rounded-full px-2 py-0.5">
-                    กำลังดำเนินการ
+                    เริ่ม Upper Funnel เพจรอง
                   </span>
                 </div>
-                <p className="text-sm text-slate-600 mt-0.5">ดำเนินการมาอย่างต่อเนื่อง แต่ยังไม่ทำ Funnel Structure ใหม่</p>
+                <p className="text-sm text-slate-600 mt-0.5">
+                  เริ่มทำ Upper Funnel ในเพจรอง แบ่งงบเฉลี่ย <span className="font-semibold">เพจรอง 60% / เพจหลัก 40%</span>
+                </p>
               </div>
             </div>
 
@@ -5395,10 +5397,12 @@ export default function AdsDashboard() {
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-slate-700">เสริมหน้าอก/ดูดไขมัน</p>
                   <span className="text-[11px] font-semibold text-amber-700 bg-amber-100 rounded-full px-2 py-0.5">
-                    กำลังดำเนินการ
+                    Phase แรก — แบ่งงบ 50/50
                   </span>
                 </div>
-                <p className="text-sm text-slate-600 mt-0.5">อยู่ระหว่างไล่ดำเนินการแยกเพจ</p>
+                <p className="text-sm text-slate-600 mt-0.5">
+                  Phase แรกขอใช้เพจรองที่ <span className="font-semibold">50%</span> และยังคง Ads เพจหลักไว้ที่ <span className="font-semibold">50%</span>
+                </p>
               </div>
             </div>
           </div>
@@ -5406,6 +5410,237 @@ export default function AdsDashboard() {
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
             <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <p>สถานะนี้เป็นความคืบหน้าที่ทีม Digital รายงาน ณ ปัจจุบัน ควรอัปเดตทุกครั้งที่มีความคืบหน้าเพิ่มเติม</p>
+          </div>
+        </div>
+)}
+
+        {/* ---- NEW: แผนดำเนินการร่วม Digital & PO ---- */}
+{activePage === "ads" && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <Users size={16} />
+            </div>
+            <h2 className="text-sm font-semibold text-slate-700">แผนดำเนินการร่วม Digital & PO</h2>
+          </div>
+          <p className="text-xs text-slate-400 mb-5 ml-10">
+            สรุปแผนงบโฆษณาแยกหัตถการ (PO) — เดือนตุลาคม 2569 · งบรวมทุกหัตถการ ฿1,829,500
+          </p>
+
+          {/* ภาพรวมงบ/Phase แยกหัตถการ */}
+          <div className="overflow-x-auto mb-5">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[11px] text-slate-400 border-b border-slate-100">
+                  <th className="pb-2 font-medium">หัตถการ</th>
+                  <th className="pb-2 font-medium text-right">งบรวม</th>
+                  <th className="pb-2 font-medium text-right">% งบ</th>
+                  <th className="pb-2 font-medium text-right">จำนวน Phase</th>
+                  <th className="pb-2 font-medium">สัดส่วนงบต่อ Phase</th>
+                </tr>
+              </thead>
+              <tbody className="text-slate-600">
+                <tr className="border-b border-slate-50">
+                  <td className="py-2">Semi-Open</td><td className="py-2 text-right">฿139,500</td><td className="py-2 text-right">7.6%</td>
+                  <td className="py-2 text-right">4</td><td className="py-2">35 / 20 / 20 / 25</td>
+                </tr>
+                <tr className="border-b border-slate-50">
+                  <td className="py-2">Inter</td><td className="py-2 text-right">฿90,000</td><td className="py-2 text-right">4.9%</td>
+                  <td className="py-2 text-right">3</td><td className="py-2">Nose 35/30/35 · Facelift Awareness 100%</td>
+                </tr>
+                <tr className="border-b border-slate-50">
+                  <td className="py-2">Nose Open</td><td className="py-2 text-right">฿970,000</td><td className="py-2 text-right">53.0%</td>
+                  <td className="py-2 text-right">4</td><td className="py-2">35 / 20 / 20 / 25</td>
+                </tr>
+                <tr className="border-b border-slate-50">
+                  <td className="py-2">Facelift</td><td className="py-2 text-right">฿580,000</td><td className="py-2 text-right">31.7%</td>
+                  <td className="py-2 text-right">4</td><td className="py-2">25 / 25 / 25 / 25</td>
+                </tr>
+                <tr className="border-b border-slate-100">
+                  <td className="py-2">หน้าอก (Breast)</td><td className="py-2 text-right">฿50,000</td><td className="py-2 text-right">2.7%</td>
+                  <td className="py-2 text-right">3</td><td className="py-2">60 / 20 / 20</td>
+                </tr>
+                <tr>
+                  <td className="py-2 font-semibold text-slate-700">รวมทั้งหมด</td>
+                  <td className="py-2 text-right font-semibold text-slate-700">฿1,829,500</td>
+                  <td className="py-2 text-right font-semibold text-slate-700">100%</td>
+                  <td className="py-2" colSpan={2}></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* แนวทางหลักแยกหัตถการ */}
+          <h3 className="text-xs font-semibold text-slate-500 mb-2">แนวทางหลักแยกหัตถการ</h3>
+          <div className="space-y-3 mb-5">
+            <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+              <p className="text-sm font-semibold text-slate-700 mb-1">Semi-Open <span className="font-normal text-slate-400">· ฿139,500</span></p>
+              <p className="text-sm text-slate-600">
+                W1 ดัน Ads สร้าง Volume แชท หา Ads ที่ดี · W2 ลดงบ รักษา Performance ติดตามคุณภาพ Lead · W3 คุมงบ Optimize + เก็บฐานลูกค้าเก่า ·
+                W4 เพิ่มงบ กระตุ้นลูกค้าเก่า ดันยอดปลายเดือน
+              </p>
+              <p className="text-xs text-slate-500 mt-1.5">
+                คุม Ads Cost ≤ 10% ตรวจจากยอด Inbox ต่อ Phase — ถ้าเกิน/ไม่ถึงเป้า ลดงบรวมทันทีแต่คงสัดส่วน % ต่อ Phase เดิม
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+              <p className="text-sm font-semibold text-slate-700 mb-1">Inter <span className="font-normal text-slate-400">· ฿90,000</span></p>
+              <p className="text-sm text-slate-600">
+                Nose ฿80,000: ดัน Ads ช่วง Performance ดี คุมงบรายเฟส ปรับแผนตามข้อมูลต่อเนื่อง · Facelift ฿10,000: Awareness 100%
+                สร้างการรับรู้คุณหมอตี้
+              </p>
+              <p className="text-xs text-slate-500 mt-1.5">
+                Facelift Inter: Content เคสผลลัพธ์เด่น/เคสยาก สื่อความเชี่ยวชาญคุณหมอตี้ สร้างฐาน Audience ต่อยอดแคมเปญถัดไป
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+              <p className="text-sm font-semibold text-slate-700 mb-1">Nose Open <span className="font-normal text-slate-400">· ฿970,000</span></p>
+              <p className="text-sm text-slate-600">
+                ต้นเดือน Push Ads สร้าง Volume เก็บ Data · กลางเดือน Control Budget + Optimize · ปลายเดือน เพิ่มแรง Ads + Follow-up Lead เก่า
+                + เร่ง Conversion
+              </p>
+              <p className="text-xs text-slate-500 mt-1.5">
+                ใช้คุณภาพ Lead และ Cost per Inbox ในการ Optimize · LINE OA งบ ฿50,000 บรอดแคสต์ 12 ครั้งในเดือน ต.ค. งบเหลือ Allocate กลับไป
+                Facebook Ads ตาม Performance
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+              <p className="text-sm font-semibold text-slate-700 mb-1">Facelift <span className="font-normal text-slate-400">· ฿580,000</span></p>
+              <p className="text-sm text-slate-600">
+                วางแผนใช้งบเป็น 4 Phase กระจายเท่ากันทุกเฟส (25% ต่อเฟส) · เพจรอง 60% (Awareness/ENG/เพิ่มฐาน) · เพจหลัก 40% (รักษาฐาน/Conversion)
+              </p>
+              <p className="text-xs text-slate-500 mt-1.5">
+                จัดสรร Inter ของ Facelift ฿30,000 (Awareness 100%) · ตั้งเป้ารวม 4,500 Inbox/เดือน เฉลี่ย ~145 Inbox/วัน (เพจหลัก 60/วัน · เพจรอง 85/วัน)
+              </p>
+              <div className="flex items-start gap-1.5 mt-2 pt-2 border-t border-slate-200/60 text-xs text-amber-600">
+                <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+                <p>สัปดาห์แรกแชทเพจรองค่อนข้างน้อย เพราะช่วงนี้เน้นดัน Awareness ก่อน</p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+              <p className="text-sm font-semibold text-slate-700 mb-1">หน้าอก (Breast) <span className="font-normal text-slate-400">· ฿50,000</span></p>
+              <p className="text-sm text-slate-600">
+                ดันแอดช่วงแรกสร้าง Awareness + เพิ่มฐาน Retarget แล้วใช้ข้อมูลคุณภาพ Lead มา Optimize เร่งผลลัพธ์
+              </p>
+              <p className="text-xs text-slate-500 mt-1.5">Funnel: เพจหลัก 40% เน้น BOF · เพจรอง 60% เน้น MOF + BOF (สะสม Audience/Retarget)</p>
+            </div>
+          </div>
+
+          {/* แบ่งงบราย Phase แยกหัตถการ */}
+          <h3 className="text-xs font-semibold text-slate-500 mb-2">แบ่งงบราย Phase แยกหัตถการ</h3>
+          <div className="overflow-x-auto mb-5">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-left text-slate-400 border-b border-slate-100">
+                  <th className="pb-2 font-medium">Phase</th>
+                  <th className="pb-2 font-medium">ช่วงเวลา</th>
+                  <th className="pb-2 font-medium text-right">%</th>
+                  <th className="pb-2 font-medium text-right">งบต่อ Phase</th>
+                  <th className="pb-2 font-medium">โฟกัสของ Phase</th>
+                </tr>
+              </thead>
+              <tbody className="text-slate-600">
+                <tr><td colSpan={5} className="pt-3 pb-1 text-[11px] font-semibold text-slate-700">Semi-Open</td></tr>
+                <tr className="border-b border-slate-50"><td className="py-1.5">Phase 1</td><td className="py-1.5">อาทิตย์ที่ 1</td><td className="py-1.5 text-right">35%</td><td className="py-1.5 text-right">฿48,825</td><td className="py-1.5">ดัน Ads สร้าง Volume แชท เก็บข้อมูล หา Ads Performance ดี</td></tr>
+                <tr className="border-b border-slate-50"><td className="py-1.5">Phase 2</td><td className="py-1.5">อาทิตย์ที่ 2</td><td className="py-1.5 text-right">20%</td><td className="py-1.5 text-right">฿27,900</td><td className="py-1.5">ลดงบ รักษา Performance ติดตามคุณภาพ Lead</td></tr>
+                <tr className="border-b border-slate-50"><td className="py-1.5">Phase 3</td><td className="py-1.5">อาทิตย์ที่ 3</td><td className="py-1.5 text-right">20%</td><td className="py-1.5 text-right">฿27,900</td><td className="py-1.5">คุมงบ Optimize จากข้อมูลก่อนหน้า เก็บฐานลูกค้าเก่า</td></tr>
+                <tr><td className="py-1.5">Phase 4</td><td className="py-1.5">อาทิตย์ที่ 4</td><td className="py-1.5 text-right">25%</td><td className="py-1.5 text-right">฿34,875</td><td className="py-1.5">เพิ่มงบ กระตุ้นลูกค้าเก่า ดันยอดปลายเดือน</td></tr>
+
+                <tr><td colSpan={5} className="pt-3 pb-1 text-[11px] font-semibold text-slate-700">Inter – Nose (฿80,000)</td></tr>
+                <tr className="border-b border-slate-50"><td className="py-1.5">Phase 1</td><td className="py-1.5">-</td><td className="py-1.5 text-right">35%</td><td className="py-1.5 text-right">฿28,000</td><td className="py-1.5">ดัน Ads ช่วง Performance ดี</td></tr>
+                <tr className="border-b border-slate-50"><td className="py-1.5">Phase 2</td><td className="py-1.5">-</td><td className="py-1.5 text-right">30%</td><td className="py-1.5 text-right">฿24,000</td><td className="py-1.5">คุมงบ ปรับแผนตามข้อมูล Performance</td></tr>
+                <tr><td className="py-1.5">Phase 3</td><td className="py-1.5">-</td><td className="py-1.5 text-right">35%</td><td className="py-1.5 text-right">฿28,000</td><td className="py-1.5">ดัน Ads ช่วง Performance ดี</td></tr>
+
+                <tr><td colSpan={5} className="pt-3 pb-1 text-[11px] font-semibold text-slate-700">Inter – Facelift (฿10,000)</td></tr>
+                <tr><td className="py-1.5">ทั้งเดือน</td><td className="py-1.5">ทั้งเดือน</td><td className="py-1.5 text-right">100%</td><td className="py-1.5 text-right">฿10,000</td><td className="py-1.5">Awareness 100% สร้างการรับรู้คุณหมอตี้</td></tr>
+
+                <tr><td colSpan={5} className="pt-3 pb-1 text-[11px] font-semibold text-slate-700">Nose Open</td></tr>
+                <tr className="border-b border-slate-50"><td className="py-1.5">Phase 1</td><td className="py-1.5">ต้นเดือน</td><td className="py-1.5 text-right">35%</td><td className="py-1.5 text-right">฿339,500</td><td className="py-1.5">Push Ads สร้าง Volume เก็บ Data</td></tr>
+                <tr className="border-b border-slate-50"><td className="py-1.5">Phase 2</td><td className="py-1.5">กลางเดือน</td><td className="py-1.5 text-right">20%</td><td className="py-1.5 text-right">฿194,000</td><td className="py-1.5">Control Budget + Optimize</td></tr>
+                <tr className="border-b border-slate-50"><td className="py-1.5">Phase 3</td><td className="py-1.5">กลางเดือน</td><td className="py-1.5 text-right">20%</td><td className="py-1.5 text-right">฿194,000</td><td className="py-1.5">รักษา Performance</td></tr>
+                <tr><td className="py-1.5">Phase 4</td><td className="py-1.5">ปลายเดือน</td><td className="py-1.5 text-right">25%</td><td className="py-1.5 text-right">฿242,500</td><td className="py-1.5">เพิ่มแรงส่ง Ads + Follow-up Lead เก่า + เร่ง Conversion</td></tr>
+
+                <tr><td colSpan={5} className="pt-3 pb-1 text-[11px] font-semibold text-slate-700">Facelift</td></tr>
+                <tr className="border-b border-slate-50"><td className="py-1.5">Phase 1</td><td className="py-1.5">-</td><td className="py-1.5 text-right">25%</td><td className="py-1.5 text-right">฿145,000</td><td className="py-1.5">กระจายงบเท่ากัน</td></tr>
+                <tr className="border-b border-slate-50"><td className="py-1.5">Phase 2</td><td className="py-1.5">-</td><td className="py-1.5 text-right">25%</td><td className="py-1.5 text-right">฿145,000</td><td className="py-1.5">กระจายงบเท่ากัน</td></tr>
+                <tr className="border-b border-slate-50"><td className="py-1.5">Phase 3</td><td className="py-1.5">-</td><td className="py-1.5 text-right">25%</td><td className="py-1.5 text-right">฿145,000</td><td className="py-1.5">กระจายงบเท่ากัน</td></tr>
+                <tr><td className="py-1.5">Phase 4</td><td className="py-1.5">-</td><td className="py-1.5 text-right">25%</td><td className="py-1.5 text-right">฿145,000</td><td className="py-1.5">กระจายงบเท่ากัน</td></tr>
+
+                <tr><td colSpan={5} className="pt-3 pb-1 text-[11px] font-semibold text-slate-700">หน้าอก (Breast)</td></tr>
+                <tr className="border-b border-slate-50"><td className="py-1.5">Phase 1</td><td className="py-1.5">วันที่ 1–10</td><td className="py-1.5 text-right">60%</td><td className="py-1.5 text-right">฿30,000</td><td className="py-1.5">ดันแอดสร้าง Awareness + เพิ่มฐาน Retarget</td></tr>
+                <tr className="border-b border-slate-50"><td className="py-1.5">Phase 2</td><td className="py-1.5">วันที่ 11–21</td><td className="py-1.5 text-right">20%</td><td className="py-1.5 text-right">฿10,000</td><td className="py-1.5">ดูคุณภาพ Lead + Optimize</td></tr>
+                <tr><td className="py-1.5">Phase 3</td><td className="py-1.5">วันที่ 22–31</td><td className="py-1.5 text-right">20%</td><td className="py-1.5 text-right">฿10,000</td><td className="py-1.5">เร่งผลลัพธ์ ติดตามลูกค้าที่มีแนวโน้มตัดสินใจ</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* การแบ่งงบระหว่างเพจ */}
+          <h3 className="text-xs font-semibold text-slate-500 mb-2">เป้าหมาย KPI และการแบ่งงบระหว่างเพจ / ช่องทาง</h3>
+          <div className="overflow-x-auto mb-5">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[11px] text-slate-400 border-b border-slate-100">
+                  <th className="pb-2 font-medium">หัตถการ</th>
+                  <th className="pb-2 font-medium">ช่องทาง / เพจ</th>
+                  <th className="pb-2 font-medium text-right">% งบ</th>
+                  <th className="pb-2 font-medium text-right">งบ</th>
+                  <th className="pb-2 font-medium">บทบาท / เป้าหมาย</th>
+                </tr>
+              </thead>
+              <tbody className="text-slate-600">
+                <tr className="border-b border-slate-50"><td className="py-2">Facelift</td><td className="py-2">เพจรอง</td><td className="py-2 text-right">60%</td><td className="py-2 text-right">฿348,000</td><td className="py-2">Awareness + เพิ่มฐานกลุ่มเป้าหมาย</td></tr>
+                <tr className="border-b border-slate-50"><td className="py-2">Facelift</td><td className="py-2">เพจหลัก</td><td className="py-2 text-right">40%</td><td className="py-2 text-right">฿232,000</td><td className="py-2">รักษาฐานลูกค้า + สนับสนุน Conversion</td></tr>
+                <tr className="border-b border-slate-50"><td className="py-2">Facelift</td><td className="py-2">Inter (Awareness)</td><td className="py-2 text-right">—</td><td className="py-2 text-right">฿30,000</td><td className="py-2">Awareness 100% เพิ่มฐานกลุ่มเป้าหมาย Facelift</td></tr>
+                <tr className="border-b border-slate-50"><td className="py-2">หน้าอก (Breast)</td><td className="py-2">เพจหลัก</td><td className="py-2 text-right">40%</td><td className="py-2 text-right">฿20,000</td><td className="py-2">BOF — กระตุ้นกลุ่มที่มีแนวโน้มตัดสินใจ ให้เกิด Lead/Conversion</td></tr>
+                <tr className="border-b border-slate-50"><td className="py-2">หน้าอก (Breast)</td><td className="py-2">เพจรอง</td><td className="py-2 text-right">60%</td><td className="py-2 text-right">฿30,000</td><td className="py-2">MOF + BOF — สร้างความสนใจ สะสม Audience และ Retarget</td></tr>
+                <tr><td className="py-2">Nose Open</td><td className="py-2">LINE OA</td><td className="py-2 text-right">—</td><td className="py-2 text-right">฿50,000</td><td className="py-2">บรอดแคสต์ 12 ครั้งในเดือน ต.ค. · งบเหลือ Allocate กลับไป Facebook Ads</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* เป้า Inbox — Facelift */}
+          <h3 className="text-xs font-semibold text-slate-500 mb-2">เป้า Inbox — Facelift</h3>
+          <div className="overflow-x-auto mb-5">
+            <table className="w-full text-sm max-w-md">
+              <thead>
+                <tr className="text-left text-[11px] text-slate-400 border-b border-slate-100">
+                  <th className="pb-2 font-medium">ช่องทาง</th>
+                  <th className="pb-2 font-medium text-right">Inbox / วัน</th>
+                  <th className="pb-2 font-medium text-right">Inbox / เดือน (31 วัน)</th>
+                </tr>
+              </thead>
+              <tbody className="text-slate-600">
+                <tr className="border-b border-slate-50"><td className="py-2">เพจหลัก</td><td className="py-2 text-right">60</td><td className="py-2 text-right">1,860</td></tr>
+                <tr className="border-b border-slate-50"><td className="py-2">เพจรอง</td><td className="py-2 text-right">85</td><td className="py-2 text-right">2,635</td></tr>
+                <tr><td className="py-2 font-semibold text-slate-700">รวม</td><td className="py-2 text-right font-semibold text-slate-700">145</td><td className="py-2 text-right font-semibold text-slate-700">4,495</td></tr>
+              </tbody>
+            </table>
+            <p className="text-xs text-slate-400 mt-1">แผนตั้งเป้า 4,500 Inbox/เดือน (เฉลี่ย ~145 Inbox/วัน)</p>
+          </div>
+
+          {/* ประเด็นที่ควรยืนยันกับทีม */}
+          <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle size={14} className="text-amber-500" />
+              <h3 className="text-xs font-semibold text-amber-700">ประเด็นที่ควรยืนยันกับทีม</h3>
+            </div>
+            <ul className="space-y-1.5 text-xs text-slate-600 list-disc list-inside">
+              <li>Nose Open: งบ LINE OA ฿50,000 ไม่ชัดว่ารวมอยู่ใน ฿970,000 หรือเป็นงบแยก — ในไฟล์นี้ไม่ได้บวกเพิ่มในยอดรวม</li>
+              <li>Facelift: งบ Inter ฿30,000 ไม่ชัดว่าอยู่ใน ฿580,000 หรือแยก และซ้อนกับ Inter–Facelift ฿10,000 ในแผน Inter หรือไม่ — ไม่ได้บวกเพิ่มในยอดรวม</li>
+              <li>Facelift: การแบ่งเพจ 60/40 คำนวณจากงบรวม ฿580,000 (ยังไม่หักงบ Inter)</li>
+              <li>Inter–Nose และ Facelift: แผนไม่ได้ระบุช่วงวันของแต่ละ Phase</li>
+              <li>Semi-Open: กฎคุม Ads Cost ≤ 10% — ถ้าเกินให้ลดงบรวมแต่คงสัดส่วน % ต่อ Phase</li>
+              <li>ช่วงวันที่ 1 ปล่อยแอดเพจรองเป็น Awareness/ENG ก่อน แล้วค่อยเปลี่ยนมาเป็น Inbox — ถ้าไม่เปลี่ยน Inbox เพจรองจะไม่เป็นไปตามเป้าที่วางไว้</li>
+            </ul>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
+            <ClipboardCheck size={14} className="text-slate-400 mt-0.5 shrink-0" />
+            <p>ตัวเลขทั้งหมดในหัวข้อนี้มาจากแผนกลยุทธ์ Ads ที่ทีม Digital/PO ส่งมาสำหรับเดือนตุลาคม 2569 — ใช้เป็นแนวทางติดตามเทียบกับผลลัพธ์จริงเมื่อถึงรอบรายงาน</p>
           </div>
         </div>
 )}
