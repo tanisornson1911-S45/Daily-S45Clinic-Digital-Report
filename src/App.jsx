@@ -5397,11 +5397,11 @@ export default function AdsDashboard() {
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-slate-700">เสริมหน้าอก/ดูดไขมัน</p>
                   <span className="text-[11px] font-semibold text-amber-700 bg-amber-100 rounded-full px-2 py-0.5">
-                    Phase แรก — แบ่งงบ 50/50
+                    Phase แรก — แบ่งงบ 60/40
                   </span>
                 </div>
                 <p className="text-sm text-slate-600 mt-0.5">
-                  Phase แรกขอใช้เพจรองที่ <span className="font-semibold">50%</span> และยังคง Ads เพจหลักไว้ที่ <span className="font-semibold">50%</span>
+                  Phase แรกแบ่งงบเป็น <span className="font-semibold">เพจรอง 60%</span> และ <span className="font-semibold">เพจหลัก 40%</span>
                 </p>
               </div>
             </div>
