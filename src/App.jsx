@@ -5253,23 +5253,16 @@ export default function AdsDashboard() {
             <h3 className="text-xs font-semibold text-emerald-700 mb-2">แผนเพิ่มเติมใหม่</h3>
             <ul className="space-y-2 text-sm text-slate-600 list-disc list-inside">
               <li>
-                ทีม Digital มีการดำเนินการปรับงบประมาณแยกการทำงานของแต่ละหัตถการ <span className="font-semibold">ตามแผนของ PO ของแต่ละหัตถการ</span> เพื่อควบคุมงบประมาณ,
-                ปริมาณ Inbox ตามแผนงาน, สัดส่วนการใช้งบประมาณของแต่ละหัตถการตลอดทั้งเดือน และแผนงานอื่นๆตามที่ได้ตกลงกับทาง PO ของแต่ละหัตถการไว้
+                ปรับงบประมาณแยกตามหัตถการ <span className="font-semibold">ตามแผนของ PO แต่ละหัตถการ</span> เพื่อคุมงบ, ปริมาณ Inbox และสัดส่วนการใช้งบตลอดเดือน
               </li>
               <li>
-                หากหัตถการไหนมีการดำเนินการแผนที่มีส่วนของ Awareness หรือการดำเนินการ Upper Funnel ทาง Digital Team จะมีการปรับกลยุทธ์จากส่วนนี้แปลงเป็น
-                Messenger Inbox แทน หาก Awareness ผ่านมาตรฐานดังต่อไปนี้ในระยะ 7 วัน:{" "}
-                <span className="font-semibold">Impression มากกว่า 50,000 · Reach มากกว่า 25,000 · Engagement มากกว่า 5,000</span> — หาก Awareness
-                Ads ไหนที่มีการใช้ CTA Messenger และสามารถเข้าถึง Inbox ได้มากกว่า <span className="font-semibold">7 Inbox ใน 7 วัน</span> จะทำการเปลี่ยนแปลง
-                Objective ทันที
+                หัตถการที่มีแผน Awareness/Upper Funnel: ถ้าใน 7 วันผ่านเกณฑ์{" "}
+                <span className="font-semibold">Impression &gt;50,000 · Reach &gt;25,000 · Engagement &gt;5,000</span> จะปรับมาเป็น Messenger Inbox
+                แทน และถ้า Ads ไหนมี CTA Messenger แล้วได้ <span className="font-semibold">Inbox &gt;7 ใน 7 วัน</span> จะเปลี่ยน Objective ทันที
               </li>
               <li>
-                เนื่องจากการตรวจสอบแค่ Demo พื้นฐานได้ข้อมูลที่ไม่รองรับกับความต้องการในการวิเคราะห์ข้อมูล Persona ลูกค้า Digital Team มีการเพิ่มการตรวจสอบในช่วงวัน
-                โดยจะใช้เวลา <span className="font-semibold">1 ชั่วโมงในช่วงเย็น</span> ในการตรวจสอบย้อนหลังแชท โดยการไล่จากแชทที่เก่าของวันเดิม ไปยังใหม่ของวันปัจจุบัน
-                เพื่อตรวจสอบ Persona ของลูกค้าบน Online Official ที่ลูกค้าเข้ามาถึง และจะตรวจสอบแค่เฉพาะส่วนที่สำคัญเพื่อนำไปวิเคราะห์หากลุ่มเป้าหมายที่เจาะจงมากกว่าเดิม
-                โดยตรวจสอบ <span className="font-semibold">"ลูกค้าที่โต้ตอบถูกมองว่ามีคุณสมบัติ"</span> และ{" "}
-                <span className="font-semibold">"ลูกค้าที่ปิดปรึกษาหรือปิดมัดจำได้เรียบร้อย"</span> เพื่อตรวจสอบ Customer Journey ที่ลูกค้าสามารถมาถึงได้
-                โดยจะมีการเก็บข้อมูลด้วยการตรวจสอบและกรอกมือจาก Team เอง
+                เพิ่มการตรวจแชทย้อนหลังวันละ <span className="font-semibold">1 ชั่วโมงช่วงเย็น</span> (มือ) เพื่อดู Persona ลูกค้า โดยเจาะกลุ่ม{" "}
+                <span className="font-semibold">"มีคุณสมบัติ"</span> และ <span className="font-semibold">"ปิดปรึกษา/ปิดมัดจำแล้ว"</span> สำหรับวิเคราะห์ Customer Journey
               </li>
             </ul>
           </div>
@@ -5277,14 +5270,8 @@ export default function AdsDashboard() {
           <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 mt-4">
             <h3 className="text-xs font-semibold text-slate-500 mb-2">แผนที่จะมีการดำเนินการเพิ่มในอนาคต</h3>
             <ul className="space-y-2 text-sm text-slate-500 list-disc list-inside">
-              <li>
-                การเก็บข้อมูลสำคัญของลูกค้าจาก OPD เช่น อาชีพ, รายได้, จำนวนเงินที่จ่ายให้หัตถการ, หัตถการที่เลือก, ความสนใจในหัตถการอื่น,
-                พฤติกรรมการซื้อ ตัดสินใจซื้อจากอะไร
-              </li>
-              <li>
-                เพิ่มปริมาณการ Tracking ข้อมูลบน Plus Connect ที่ได้มีการเชื่อมต่อไว้ เพื่อให้ ROAS บน Plus Connect ขึ้นในระบบของ Meta
-                ตามรายการ Ads ที่ทำการปิดการขายได้จริง
-              </li>
+              <li>เก็บข้อมูลลูกค้าจาก OPD (อาชีพ, รายได้, ยอดจ่าย, หัตถการที่เลือก/สนใจ, พฤติกรรม/เหตุผลการตัดสินใจซื้อ)</li>
+              <li>เพิ่ม Tracking บน Plus Connect ให้ ROAS ขึ้นในระบบ Meta ตาม Ads ที่ปิดการขายได้จริง</li>
             </ul>
           </div>
 
