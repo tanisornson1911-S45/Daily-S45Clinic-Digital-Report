@@ -1822,6 +1822,11 @@ export default function AdsDashboard() {
   const [heroCaseFilter, setHeroCaseFilter] = useState("doctor_tee");
   const [antArmyProcFilter, setAntArmyProcFilter] = useState("all");
   const [antArmyVisibleCount, setAntArmyVisibleCount] = useState(ANT_ARMY_PAGE_SIZE);
+  // รูปโพสต์มาจาก Facebook CDN (fullPicture) ซึ่งเป็นลิงก์หมดอายุ/ถูกบล็อกจาก Referer ได้โดยที่ข้อมูลใน
+  // JSON ยังมี URL อยู่ (ไม่ใช่ "ไม่มีรูปภาพ" จริง) — ต้องแยก error ตอนโหลดจริงออกจากกรณี fullPicture ว่าง
+  // ไม่งั้นรูปจะหายไปเงียบๆ (broken image icon) แทนที่จะโชว่าป้าย "ไม่มีรูปภาพ" ที่มีอยู่แล้ว
+  const [antArmyImgErrors, setAntArmyImgErrors] = useState(() => new Set());
+  const [heroImgErrors, setHeroImgErrors] = useState(() => new Set());
   const [interDoctorFilter, setInterDoctorFilter] = useState("all");
   const [badLeadTagFilter, setBadLeadTagFilter] = useState("all");
   const [interProcFilter, setInterProcFilter] = useState("all");
@@ -4935,8 +4940,14 @@ export default function AdsDashboard() {
                 className="group flex flex-col rounded-xl border border-slate-100 overflow-hidden hover:border-amber-200 transition-colors"
               >
                 <div className="aspect-[4/3] bg-slate-100 overflow-hidden">
-                  {p.fullPicture ? (
-                    <img src={p.fullPicture} alt="Ant army post" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                  {p.fullPicture && !antArmyImgErrors.has(p.postId) ? (
+                    <img
+                      src={p.fullPicture}
+                      alt="Ant army post"
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      onError={() => setAntArmyImgErrors((s) => new Set(s).add(p.postId))}
+                    />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-amber-50 to-slate-50 flex flex-col items-center justify-center gap-2">
                       <ImageIcon size={28} className="text-amber-300" />
@@ -5015,8 +5026,14 @@ export default function AdsDashboard() {
                 className="group flex flex-col rounded-xl border border-slate-100 overflow-hidden hover:border-pink-200 transition-colors"
               >
                 <div className="aspect-[4/3] bg-slate-100 overflow-hidden">
-                  {c.fullPicture ? (
-                    <img src={c.fullPicture} alt={`${selectedHeroDoctor.label} case`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                  {c.fullPicture && !heroImgErrors.has(c.postId || i) ? (
+                    <img
+                      src={c.fullPicture}
+                      alt={`${selectedHeroDoctor.label} case`}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      onError={() => setHeroImgErrors((s) => new Set(s).add(c.postId || i))}
+                    />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-pink-50 to-slate-50 flex flex-col items-center justify-center gap-2">
                       <ImageIcon size={28} className="text-pink-300" />
