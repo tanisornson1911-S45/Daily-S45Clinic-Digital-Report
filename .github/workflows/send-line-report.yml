@@ -1,0 +1,60 @@
+name: Send daily Digital Report to LINE OA
+
+# ทุกวัน 18:30 เวลาไทย: ดึงรายชื่อแคมเปญ Facebook ที่ Active อยู่ตอนนี้ (เทียบกับเมื่อวานเพื่อหา
+# Ads ที่เปิด/ปิดใหม่ — "Monitor Ads"), อ่านตัวเลขที่ทีมกรอกเองในชีต "S45 - LINE Report Manual
+# Input" (Ads Revenue/ROAS/Target Lead/Persona Check), แล้วประกอบเป็นข้อความ "Digital Report"
+# ส่งเข้า LINE OA ผ่าน Messaging API
+#
+# ต้องตั้ง repo secret เพิ่มจากที่มีอยู่แล้ว (FB_ACCESS_TOKEN, GOOGLE_SERVICE_ACCOUNT_KEY):
+#   - LINE_CHANNEL_ACCESS_TOKEN  (Channel access token จาก LINE Developers Console ของ LINE OA บัญชีนี้)
+#   - LINE_TEST_USER_ID          (LINE user id ของตัวเอง — ใช้ตอน LINE_SEND_MODE=test เท่านั้น)
+#
+# LINE_SEND_MODE ด้านล่างตั้งเป็น "test" ไว้ก่อน (ส่ง Push เข้าหา LINE_TEST_USER_ID คนเดียว) —
+# เปลี่ยนเป็น "broadcast" เมื่อทีมเช็ครูปแบบ/ตัวเลขแล้วมั่นใจว่าถูกต้อง ถึงจะส่งจริงเข้าผู้ติดตามทั้งหมด
+
+on:
+  schedule:
+    # 18:30 เวลาไทย (ICT = UTC+7) = 11:30 UTC
+    - cron: "30 11 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Fetch Facebook active-campaign snapshot (for Monitor Ads diff)
+        env:
+          FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
+        run: node scripts/fetch-fb-campaign-snapshot.mjs
+
+      - name: Commit campaign snapshot if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/data/campaignSnapshot.json
+          if git diff --cached --quiet -- src/data/campaignSnapshot.json; then
+            echo "No change — nothing to commit."
+          else
+            git commit -m "chore: update Facebook campaign snapshot (automated)"
+            git push origin HEAD:main
+          fi
+
+      - name: Build + send Digital Report to LINE OA
+        env:
+          FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_TEST_USER_ID: ${{ secrets.LINE_TEST_USER_ID }}
+          LINE_SEND_MODE: test
+        run: node scripts/send-line-report.mjs
