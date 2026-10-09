@@ -326,13 +326,17 @@ async function main() {
   const googleAccessToken = await getGoogleAccessToken(JSON.parse(GOOGLE_SERVICE_ACCOUNT_KEY_RAW));
   const manual = await fetchManualInputRow(googleAccessToken);
 
-  // ---- Budget ทุกหัตถการ (งบ Facebook สัปดาห์นี้ จาก weeklyBudget.json) ----
+  // ---- Budget ทุกหัตถการ (งบ Facebook สะสมตั้งแต่ W1 ถึงสัปดาห์ปัจจุบัน จาก weeklyBudget.json) ----
+  // สะสมรวมทุกสัปดาห์ที่ผ่านมาแล้ว (ไม่ใช่แค่สัปดาห์นี้สัปดาห์เดียว) เพื่อให้เทียบกับ Ads Spend ซึ่งเป็นยอด
+  // สะสม MTD อยู่แล้วได้ตรงกัน — ไม่งั้น Budget (แค่สัปดาห์เดียว) จะดูน้อยกว่า Ads Spend (สะสมทั้งเดือน)
+  // เสมอทั้งที่ไม่ได้เกินแผนจริง (พบจากผู้ใช้รายงาน 2026-10-09)
   const weekIdx = d <= 7 ? 0 : d <= 14 ? 1 : d <= 21 ? 2 : 3;
   const weeklyFor = (procName) => {
     const p = weeklyBudget?.procedures?.[procName];
-    if (!p) return null;
-    const v = p.weeks?.[weekIdx];
-    return typeof v === "number" ? v : null;
+    if (!p || !Array.isArray(p.weeks)) return null;
+    const weeksSoFar = p.weeks.slice(0, weekIdx + 1);
+    if (weeksSoFar.some((v) => typeof v !== "number")) return null; // สัปดาห์ก่อนหน้าที่ยังไม่มีเลข (เซลล์ว่าง) — ไม่สะสมทับด้วยเลขที่ขาดไป
+    return weeksSoFar.reduce((s, v) => s + v, 0);
   };
   const budgetByCategory = {};
   for (const [procName, catKey] of Object.entries(WEEKLY_BUDGET_KEY_TO_CATEGORY)) budgetByCategory[catKey] = weeklyFor(procName);
