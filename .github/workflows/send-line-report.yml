@@ -9,8 +9,9 @@ name: Send daily Digital Report to LINE OA
 #   - LINE_CHANNEL_ACCESS_TOKEN  (Channel access token จาก LINE Developers Console ของ LINE OA บัญชีนี้)
 #   - LINE_TEST_USER_ID          (LINE user id ของตัวเอง — ใช้ตอน LINE_SEND_MODE=test เท่านั้น)
 #
-# LINE_SEND_MODE ด้านล่างตั้งเป็น "test" ไว้ก่อน (ส่ง Push เข้าหา LINE_TEST_USER_ID คนเดียว) —
-# เปลี่ยนเป็น "broadcast" เมื่อทีมเช็ครูปแบบ/ตัวเลขแล้วมั่นใจว่าถูกต้อง ถึงจะส่งจริงเข้าผู้ติดตามทั้งหมด
+# LINE_SEND_MODE = "broadcast" — ส่งจริงเข้าผู้ติดตาม LINE OA ทั้งหมดทุกวัน 18:30 น. (เปลี่ยนจาก "test"
+# ตามที่ผู้ใช้ยืนยันโดยตรง 2026-10-09 แม้ยังไม่เคยมีรอบทดสอบที่ส่งสำเร็จเลยสักครั้ง — เพราะติด bug อ่านชีต
+# Manual Input ไม่ได้ สิทธิ์ยังไม่ได้แชร์ให้ Service Account)
 
 on:
   schedule:
@@ -60,5 +61,5 @@ jobs:
           GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LINE_TEST_USER_ID: ${{ secrets.LINE_TEST_USER_ID }}
-          LINE_SEND_MODE: test
+          LINE_SEND_MODE: broadcast
         run: node scripts/send-line-report.mjs
