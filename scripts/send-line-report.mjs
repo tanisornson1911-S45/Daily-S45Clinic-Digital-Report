@@ -5,41 +5,54 @@
  * Builds the daily "Digital Report" text (same format the team used to type
  * by hand into LINE OA every evening) and sends it via the LINE Messaging
  * API. Rewritten 2026-10-09 to match the team's revised format, which
- * drills into Nose Open + Inter specifically instead of one combined
- * Budget/ROAS/CPR for all procedures (confirmed field-by-field with the
- * user on 2026-10-08/09):
+ * drills into each procedure individually (Nose Open, Inter, Browlift,
+ * Breast, Semi Open) instead of one combined Budget/ROAS/CPR for all of
+ * them (confirmed field-by-field with the user on 2026-10-08/09):
  *
- *   - Budget Nose Open / Budget Inter = this week's Facebook budget
- *     forecast (src/data/weeklyBudget.json, written by
- *     fetch-budget-allocate.mjs from the "<Month><YY> by Week" tab of the
- *     "S45 - Budget Allocate" Google Sheet) — which week (W1-W4) is picked
- *     from today's day-of-month.
+ *   - Budget per procedure = this week's Facebook budget forecast
+ *     (src/data/weeklyBudget.json, written by fetch-budget-allocate.mjs
+ *     from the "<Month><YY> by Week" tab of the "S45 - Budget Allocate"
+ *     Google Sheet) — which week (W1-W4) is picked from today's
+ *     day-of-month.
  *   - Ads Spend Nose Open = Nose Open 01+02+Freelance combined, Inter-named
  *     campaigns excluded (src/data/adSpend.json's "nose_open", unchanged).
  *   - Ads Spend Inter = the dedicated Inter account + Nose Open 02's
  *     Inter-named campaigns combined (adSpend.json's "inter", unchanged —
  *     confirmed 2026-10-09 this combined definition is what's wanted).
- *   - Target Nose Open/Inter Inbox = 3,600 / 300 per month (constants).
+ *   - Ads Spend Browlift/Breast/Semi Open = each procedure's single
+ *     dedicated ad account, straight from adSpend.json — no Inter-style
+ *     cross-account splitting needed.
+ *   - Target Inbox/month per procedure = 3,600 (Nose Open) / 300 (Inter) /
+ *     3,900 (Browlift) / 750 (Breast) / 1,050 (Semi Open) — constants
+ *     confirmed with the user 2026-10-09 (they sum to 9,600, matching the
+ *     old pre-split combined constant — a useful sanity check).
  *   - ROAS ต่อยอดขาย = 4.0 (constant).
- *   - ROAS ที่ได้ ณ ปัจจุบัน = (Ads Revenue Nose Open + Ads Revenue Inter) ÷
- *     (Ads Spend Nose Open + Ads Spend Inter) — "N/A" if Ads Revenue Inter
- *     is "N/A" (see below), per user direction 2026-10-09.
- *   - Ads Revenue Nose Open = sum of src/data/orSales.json ("ยอดORจริง+
- *     Forecast พี่เปา") entries for nose_open this month, joined against
- *     src/data/rawTx.json ("ปิดมัด"/มัดจำ 2026) by (OR date, doctor, proc)
- *     to find each case's channel (orSales itself has no channel column),
- *     filtered to Facebook/Line/Instagram/WhatsApp. "N/A" if there are no
- *     orSales entries for nose_open this month at all.
+ *   - ROAS ที่ได้ ณ ปัจจุบัน = sum of every procedure's Ads Revenue ÷ sum of
+ *     their Ads Spend (only procedures with a non-"N/A" Ads Revenue are
+ *     included) — confirmed 2026-10-09 to cover all 5 procedures, not just
+ *     Nose Open/Inter. "N/A" only if NO procedure has an Ads Revenue value.
+ *   - Ads Revenue per procedure (except Inter) = sum of src/data/orSales.json
+ *     ("ยอดORจริง+Forecast พี่เปา") entries for that procedure this month,
+ *     joined against src/data/rawTx.json ("ปิดมัด"/มัดจำ 2026) by (OR date,
+ *     doctor, proc) to find each case's channel (orSales itself has no
+ *     channel column), filtered to Facebook/Line/Instagram/WhatsApp. "N/A"
+ *     if there are no orSales entries for that procedure this month at all
+ *     (0 บาท is a real, different outcome — entries exist but none matched
+ *     an allowed channel).
  *   - Ads Revenue Inter = "N/A" always for now — src/data/interSale.json
  *     ("Inter S45 2026 - Sale part") has NO channel column at all (checked
  *     2026-10-09: neither it nor orSales.json tracks Inter cases by
  *     channel), so there is currently no data source to compute this from.
  *     Revisit once the team points to one (e.g. a "Consultation" sheet in
  *     the same workbook has a "Platform" column but isn't wired in yet).
- *   - CPR Nose Open / CPR Inter = src/data/cprAccountDaily.json (written by
- *     fetch-fb-cpr-breakdown.mjs — see that script's header for the exact
- *     account/campaign scope, which is narrower than Ads Spend's). "N/A" if
- *     that file/month has no data yet or Inbox is 0.
+ *   - CPR + Inbox ที่ได้ (cumulative MTD) for Nose Open/Inter =
+ *     src/data/cprAccountDaily.json (written by fetch-fb-cpr-breakdown.mjs
+ *     — see that script's header for the exact account/campaign scope,
+ *     which is narrower than Ads Spend's). "N/A" if that file/month has no
+ *     data yet or Inbox is 0.
+ *   - CPR + Inbox ที่ได้ for Browlift/Breast/Semi Open = computed directly
+ *     from adSpend.json/adDaily.json (MTD spend ÷ MTD Inbox) — each
+ *     procedure's single dedicated account needs no extra breakdown script.
  *
  * The Monitor Ads / Persona Check / per-category budget-status sections
  * below the top metrics are unchanged from the original report design.
@@ -79,6 +92,10 @@ if (LINE_SEND_MODE === "test" && !LINE_TEST_USER_ID) {
 }
 
 const CATEGORY_ORDER = ["nose_open", "nose_semi", "brow_hairline", "breast_lipo", "inter"];
+// ลำดับที่โชว์ในบล็อกตัวเลขหลักของรายงาน (Budget/Ads Spend/Inbox/Ads Revenue/CPR) — ตามลำดับที่ผู้ใช้ขอเพิ่ม
+// Browlift/Breast/Semi Open ต่อจาก Nose Open/Inter เดิม (2026-10-09) — คนละอันกับ CATEGORY_ORDER ด้านบน
+// ซึ่งใช้แค่กับส่วน "การใช้งบประมาณของ Digital" ท้ายรายงานเท่านั้น
+const REPORT_METRICS_ORDER = ["nose_open", "inter", "brow_hairline", "breast_lipo", "nose_semi"];
 const CATEGORY_DISPLAY_LABEL = {
   nose_open: "Nose Open",
   nose_semi: "Semi Open",
@@ -94,6 +111,29 @@ const PROC_BUDGET_KEY_TO_CATEGORY = {
   "เสริมหน้าอก/ดูดไขมัน/ตัดหนัง": "breast_lipo",
   Inter: "inter",
 };
+// weeklyBudget.json มาจากแท็บ "<เดือน><ปีย่อ> by Week" ของชีตเดียวกัน แต่สะกดชื่อหัตถการต่างจากแท็บปกติ
+// เล็กน้อย (ยืนยันจากข้อมูลจริง 2026-10-09: "ยกคิ้ว/เลื่อนไรผม/ยกมุมปาก" ไม่ใช่ "ยกคิ้ว/ดึงหน้า/เลื่อนไรผม"
+// เหมือนแท็บปกติ) — ใช้ mapping แยกต่างหาก ห้ามใช้ร่วมกับ PROC_BUDGET_KEY_TO_CATEGORY
+const WEEKLY_BUDGET_KEY_TO_CATEGORY = {
+  เสริมจมูกโอเพ่น: "nose_open",
+  "เสริมจมูก Semi Open": "nose_semi",
+  "ยกคิ้ว/เลื่อนไรผม/ยกมุมปาก": "brow_hairline",
+  "เสริมหน้าอก/ดูดไขมัน/ตัดหนัง": "breast_lipo",
+  Inter: "inter",
+};
+// เป้าหมาย Inbox ต่อเดือนแต่ละหัตถการ (ค่าคงที่ ยืนยันกับผู้ใช้ 2026-10-09 — รวมกันได้ 9,600 เท่ากับ
+// ค่าคงที่รวมเดิมที่ใช้ก่อนแยกรายหัตถการ ถือเป็น sanity check ว่าตัวเลขสอดคล้องกัน)
+const TARGET_INBOX_PER_MONTH = {
+  nose_open: 3600,
+  inter: 300,
+  brow_hairline: 3900,
+  breast_lipo: 750,
+  nose_semi: 1050,
+};
+// หัตถการที่มี CPR/Inbox ที่ได้ มาจาก cprAccountDaily.json โดยเฉพาะ (ขอบเขตบัญชีแคบกว่า adSpend/adDaily
+// ธรรมดา — ดูคอมเมนต์หัวไฟล์) ส่วนหัตถการอื่น (Browlift/Breast/Semi Open) ใช้บัญชีเดียวตรงๆ ไม่มีความซับซ้อน
+// แบบ Nose Open/Inter เลยคำนวณ CPR/Inbox จาก adSpend.json/adDaily.json ตรงๆ ได้โดยไม่ต้อง fetch เพิ่ม
+const CPR_ACCOUNT_DAILY_FIELD = { nose_open: "nose_open_cpr", inter: "inter_cpr" };
 
 const ADS_REVENUE_CHANNELS = new Set(["Facebook", "Line", "Instagram", "WhatsApp"]);
 const NA = "N/A";
@@ -261,6 +301,7 @@ async function main() {
 
   const procedureBudget = JSON.parse(readFileSync(path.resolve("src/data/procedureBudget.json"), "utf8"));
   const adSpend = JSON.parse(readFileSync(path.resolve("src/data/adSpend.json"), "utf8"));
+  const adDaily = JSON.parse(readFileSync(path.resolve("src/data/adDaily.json"), "utf8"));
   const orSales = JSON.parse(readFileSync(path.resolve("src/data/orSales.json"), "utf8"));
   const rawTx = JSON.parse(readFileSync(path.resolve("src/data/rawTx.json"), "utf8"));
   let campaignSnapshot = null;
@@ -285,7 +326,7 @@ async function main() {
   const googleAccessToken = await getGoogleAccessToken(JSON.parse(GOOGLE_SERVICE_ACCOUNT_KEY_RAW));
   const manual = await fetchManualInputRow(googleAccessToken);
 
-  // ---- Budget Nose Open / Inter (งบ Facebook สัปดาห์นี้ จาก weeklyBudget.json) ----
+  // ---- Budget ทุกหัตถการ (งบ Facebook สัปดาห์นี้ จาก weeklyBudget.json) ----
   const weekIdx = d <= 7 ? 0 : d <= 14 ? 1 : d <= 21 ? 2 : 3;
   const weeklyFor = (procName) => {
     const p = weeklyBudget?.procedures?.[procName];
@@ -293,33 +334,48 @@ async function main() {
     const v = p.weeks?.[weekIdx];
     return typeof v === "number" ? v : null;
   };
-  const budgetNoseOpen = weeklyFor("เสริมจมูกโอเพ่น");
-  const budgetInter = weeklyFor("Inter");
+  const budgetByCategory = {};
+  for (const [procName, catKey] of Object.entries(WEEKLY_BUDGET_KEY_TO_CATEGORY)) budgetByCategory[catKey] = weeklyFor(procName);
 
-  // ---- Ads Spend Nose Open / Inter (สะสม MTD) ----
-  const adsSpendNoseOpen = adSpend.months?.[monthKey]?.nose_open ?? null;
-  const adsSpendInter = adSpend.months?.[monthKey]?.inter ?? null;
+  // ---- Ads Spend ทุกหัตถการ (สะสม MTD) ----
+  const adsSpendByCategory = {};
+  for (const catKey of REPORT_METRICS_ORDER) adsSpendByCategory[catKey] = adSpend.months?.[monthKey]?.[catKey] ?? null;
 
-  // ---- Ads Revenue Nose Open / Inter ----
+  // ---- Ads Revenue ทุกหัตถการ (join orSales.json กับ rawTx.json หาช่องทาง — ดูคอมเมนต์หัวไฟล์) ----
+  // Inter ไม่มี proc "inter" ใน orSales.json เลย (ไม่มีคอลัมน์ช่องทางในแหล่งข้อมูล Inter เลยด้วย) — N/A เสมอตอนนี้
   const rawTxIndex = buildRawTxIndex(rawTx);
-  const adsRevenueNoseOpen = computeAdsRevenue(orSales.entries, rawTxIndex, "nose_open", monthStart, revenueMonthEnd);
-  const adsRevenueInter = null; // ไม่มีคอลัมน์ช่องทางในแหล่งข้อมูล Inter เลย (ดูคอมเมนต์หัวไฟล์) — N/A เสมอตอนนี้
+  const adsRevenueByCategory = {};
+  for (const catKey of REPORT_METRICS_ORDER) {
+    adsRevenueByCategory[catKey] = catKey === "inter" ? null : computeAdsRevenue(orSales.entries, rawTxIndex, catKey, monthStart, revenueMonthEnd);
+  }
 
-  // ---- ROAS ----
-  // ถ้ามี Ads Revenue ไม่ครบทั้ง Nose Open และ Inter ให้เอาเฉพาะส่วนที่มีมาคำนวณ (เทียบกับ Ads Spend ของ
-  // หัตถการนั้นๆ เท่านั้น) — เป็น N/A ก็ต่อเมื่อไม่มี Ads Revenue เลยสักตัว (ยืนยันกับผู้ใช้ 2026-10-09)
+  // ---- Target Inbox / Inbox ที่ได้ / CPR ทุกหัตถการ ----
+  // Nose Open/Inter ใช้ cprAccountDaily.json (ขอบเขตบัญชีเฉพาะ — ดูคอมเมนต์หัวไฟล์) หัตถการอื่นใช้
+  // adSpend.json/adDaily.json ตรงๆ เพราะแต่ละหัตถการผูกกับบัญชีเดียว ไม่มีความซับซ้อนแบบ Nose Open/Inter
+  const inboxByCategory = {};
+  const cprByCategory = {};
+  for (const catKey of REPORT_METRICS_ORDER) {
+    const cprField = CPR_ACCOUNT_DAILY_FIELD[catKey];
+    if (cprField) {
+      inboxByCategory[catKey] = inboxSumFor(cprAccountDaily, monthKey, cprField);
+      cprByCategory[catKey] = cprFor(cprAccountDaily, monthKey, cprField);
+    } else {
+      const inboxSum = (adDaily.months?.[monthKey]?.[catKey]?.dailyInbox || []).reduce((a, b) => a + b, 0);
+      inboxByCategory[catKey] = inboxSum > 0 ? inboxSum : null;
+      const spend = adsSpendByCategory[catKey];
+      cprByCategory[catKey] = spend != null && inboxSum > 0 ? Math.round(spend / inboxSum) : null;
+    }
+  }
+
+  // ---- ROAS (รวมทุกหัตถการที่มี Ads Revenue — ยืนยันกับผู้ใช้ 2026-10-09) ----
+  // ถ้าบางหัตถการไม่มี Ads Revenue ให้เอาเฉพาะส่วนที่มีมาคำนวณ (เทียบกับ Ads Spend ของหัตถการนั้นๆ เท่านั้น)
+  // เป็น N/A ก็ต่อเมื่อไม่มี Ads Revenue เลยสักหัตถการ
   const roasTarget = 4.0;
-  const roasParts = [];
-  if (adsRevenueNoseOpen != null && adsSpendNoseOpen != null) roasParts.push({ revenue: adsRevenueNoseOpen, spend: adsSpendNoseOpen });
-  if (adsRevenueInter != null && adsSpendInter != null) roasParts.push({ revenue: adsRevenueInter, spend: adsSpendInter });
+  const roasParts = REPORT_METRICS_ORDER.filter(
+    (catKey) => adsRevenueByCategory[catKey] != null && adsSpendByCategory[catKey] != null
+  ).map((catKey) => ({ revenue: adsRevenueByCategory[catKey], spend: adsSpendByCategory[catKey] }));
   const roasActualSpend = roasParts.reduce((s, p) => s + p.spend, 0);
   const roasActual = roasParts.length === 0 || roasActualSpend <= 0 ? null : roasParts.reduce((s, p) => s + p.revenue, 0) / roasActualSpend;
-
-  // ---- CPR ----
-  const cprNoseOpen = cprFor(cprAccountDaily, monthKey, "nose_open_cpr");
-  const cprInter = cprFor(cprAccountDaily, monthKey, "inter_cpr");
-  const inboxNoseOpen = inboxSumFor(cprAccountDaily, monthKey, "nose_open_cpr");
-  const inboxInter = inboxSumFor(cprAccountDaily, monthKey, "inter_cpr");
 
   // ---- Monitor Ads ----
   const monitorAdsText = buildMonitorAdsSection(campaignSnapshot);
@@ -338,22 +394,24 @@ async function main() {
   const inboxCount = (v) => (v == null ? NA : `${fmtTHB(v)} Inbox`);
   const roasStr = (v) => (v == null ? NA : `${v.toFixed(1)}X`);
 
+  const budgetLines = REPORT_METRICS_ORDER.map((k) => `💰Budget ${CATEGORY_DISPLAY_LABEL[k]} = ${baht(budgetByCategory[k])}`).join("\n");
+  const adsSpendLines = REPORT_METRICS_ORDER.map((k) => `💸Ads Spend ${CATEGORY_DISPLAY_LABEL[k]} = ${baht(adsSpendByCategory[k])}`).join("\n");
+  const inboxLines = REPORT_METRICS_ORDER.map(
+    (k) =>
+      `📥 Target ${CATEGORY_DISPLAY_LABEL[k]} Inbox ${fmtTHB(TARGET_INBOX_PER_MONTH[k])} Inbox /เดือน\nInbox ที่ได้ = ${inboxCount(inboxByCategory[k])}`
+  ).join("\n");
+  const adsRevenueLines = REPORT_METRICS_ORDER.map((k) => `💵Ads Revenue ${CATEGORY_DISPLAY_LABEL[k]} = ${baht(adsRevenueByCategory[k])}`).join("\n");
+  const cprLines = REPORT_METRICS_ORDER.map((k) => `✅CPR ${CATEGORY_DISPLAY_LABEL[k]} = ${perInbox(cprByCategory[k])}`).join("\n");
+
   const message = `Digital Report ${dateHeaderLabel}
 
-💰Budget Nose Open = ${baht(budgetNoseOpen)}
-💰Budget Inter = ${baht(budgetInter)}
-💸Ads Spend Nose Open = ${baht(adsSpendNoseOpen)}
-💸Ads Spend Inter = ${baht(adsSpendInter)}
-📥 Target Nose Open Inbox 3,600 Inbox /เดือน
-Inbox ที่ได้ = ${inboxCount(inboxNoseOpen)}
-📥 Target Inter Inbox 300 Inbox /เดือน
-Inbox ที่ได้ = ${inboxCount(inboxInter)}
+${budgetLines}
+${adsSpendLines}
+${inboxLines}
 📈ROAS ต่อยอดขาย = ${roasStr(roasTarget)}
 📍ROAS ที่ได้ ณ ปัจจุบัน = ${roasStr(roasActual)}
-💵Ads Revenue Nose Open = ${baht(adsRevenueNoseOpen)}
-💵Ads Revenue Inter = ${baht(adsRevenueInter)}
-✅CPR Nose Open = ${perInbox(cprNoseOpen)}
-✅CPR Inter = ${perInbox(cprInter)}
+${adsRevenueLines}
+${cprLines}
 
 
 🖥️Monitor Ads
