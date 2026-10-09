@@ -398,23 +398,30 @@ async function main() {
   const inboxCount = (v) => (v == null ? NA : `${fmtTHB(v)} Inbox`);
   const roasStr = (v) => (v == null ? NA : `${v.toFixed(1)}X`);
 
+  // บรรทัดแต่ละกลุ่มเว้นบรรทัดว่างคั่นระหว่างกลุ่ม (Budget/Ads Spend/Inbox/ROAS/Ads Revenue/CPR) และระหว่าง
+  // แต่ละหัตถการในกลุ่ม Inbox (มี 2 บรรทัดต่อหัตถการ) ให้อ่านง่ายขึ้น ไม่เป็นบล็อกทึบยาวเกินไป (ผู้ใช้ขอ 2026-10-09)
   const budgetLines = REPORT_METRICS_ORDER.map((k) => `💰Budget ${CATEGORY_DISPLAY_LABEL[k]} = ${baht(budgetByCategory[k])}`).join("\n");
   const adsSpendLines = REPORT_METRICS_ORDER.map((k) => `💸Ads Spend ${CATEGORY_DISPLAY_LABEL[k]} = ${baht(adsSpendByCategory[k])}`).join("\n");
   const inboxLines = REPORT_METRICS_ORDER.map(
     (k) =>
       `📥 Target ${CATEGORY_DISPLAY_LABEL[k]} Inbox ${fmtTHB(TARGET_INBOX_PER_MONTH[k])} Inbox /เดือน\nInbox ที่ได้ = ${inboxCount(inboxByCategory[k])}`
-  ).join("\n");
+  ).join("\n\n");
   const adsRevenueLines = REPORT_METRICS_ORDER.map((k) => `💵Ads Revenue ${CATEGORY_DISPLAY_LABEL[k]} = ${baht(adsRevenueByCategory[k])}`).join("\n");
   const cprLines = REPORT_METRICS_ORDER.map((k) => `✅CPR ${CATEGORY_DISPLAY_LABEL[k]} = ${perInbox(cprByCategory[k])}`).join("\n");
 
   const message = `Digital Report ${dateHeaderLabel}
 
 ${budgetLines}
+
 ${adsSpendLines}
+
 ${inboxLines}
+
 📈ROAS ต่อยอดขาย = ${roasStr(roasTarget)}
 📍ROAS ที่ได้ ณ ปัจจุบัน = ${roasStr(roasActual)}
+
 ${adsRevenueLines}
+
 ${cprLines}
 
 
