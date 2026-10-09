@@ -1,17 +1,16 @@
 name: Send daily Digital Report to LINE OA
 
-# ทุกวัน 18:30 เวลาไทย: ดึงรายชื่อแคมเปญ Facebook ที่ Active อยู่ตอนนี้ (เทียบกับเมื่อวานเพื่อหา
-# Ads ที่เปิด/ปิดใหม่ — "Monitor Ads") + ยอดใช้งบ/Inbox รายวันแยกบัญชีสำหรับ CPR Nose Open/Inter
-# โดยเฉพาะ, อ่าน Persona Check ที่ทีมกรอกเองในชีต "S45 - LINE Report Manual Input", แล้วประกอบเป็น
-# ข้อความ "Digital Report" ส่งเข้า LINE OA ผ่าน Messaging API
+# ทุกวัน 18:30 เวลาไทย: ดึงรายชื่อแคมเปญ Facebook ที่ Active อยู่ตอนนี้ (เทียบกับเมื่อวานเพื่อหา Ads ที่
+# เปิด/ปิดใหม่ — "Monitor Ads") + ยอดใช้งบ/Inbox รายวันแยกบัญชีสำหรับ CPR Nose Open/Inter โดยเฉพาะ แล้ว
+# ประกอบเป็นข้อความ "Digital Report" (ใช้ข้อมูลจาก pipeline ในนี้ล้วนๆ ไม่มี Google Sheet ภายนอกแล้ว —
+# ตัดส่วน Persona Check/Manual Input ออกตามคำขอผู้ใช้ 2026-10-09) ส่งเข้า LINE OA ผ่าน Messaging API
 #
-# ต้องตั้ง repo secret เพิ่มจากที่มีอยู่แล้ว (FB_ACCESS_TOKEN, GOOGLE_SERVICE_ACCOUNT_KEY):
+# ต้องตั้ง repo secret เพิ่มจากที่มีอยู่แล้ว (FB_ACCESS_TOKEN):
 #   - LINE_CHANNEL_ACCESS_TOKEN  (Channel access token จาก LINE Developers Console ของ LINE OA บัญชีนี้)
 #   - LINE_TEST_USER_ID          (LINE user id ของตัวเอง — ใช้ตอน LINE_SEND_MODE=test เท่านั้น)
 #
-# LINE_SEND_MODE = "broadcast" — ส่งจริงเข้าผู้ติดตาม LINE OA ทั้งหมดทุกวัน 18:30 น. (เปลี่ยนจาก "test"
-# ตามที่ผู้ใช้ยืนยันโดยตรง 2026-10-09 แม้ยังไม่เคยมีรอบทดสอบที่ส่งสำเร็จเลยสักครั้ง — เพราะติด bug อ่านชีต
-# Manual Input ไม่ได้ สิทธิ์ยังไม่ได้แชร์ให้ Service Account)
+# LINE_SEND_MODE = "broadcast" — ส่งจริงเข้าผู้ติดตาม LINE OA ทั้งหมดทุกวัน 18:30 น. (ยืนยันโดยตรงจาก
+# ผู้ใช้ 2026-10-09)
 
 on:
   schedule:
@@ -58,7 +57,6 @@ jobs:
 
       - name: Build + send Digital Report to LINE OA
         env:
-          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LINE_TEST_USER_ID: ${{ secrets.LINE_TEST_USER_ID }}
           LINE_SEND_MODE: broadcast

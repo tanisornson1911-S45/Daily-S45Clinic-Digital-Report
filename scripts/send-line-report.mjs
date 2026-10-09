@@ -54,34 +54,28 @@
  *     from adSpend.json/adDaily.json (MTD spend ÷ MTD Inbox) — each
  *     procedure's single dedicated account needs no extra breakdown script.
  *
- * The Monitor Ads / Persona Check / per-category budget-status sections
- * below the top metrics are unchanged from the original report design.
+ * The Monitor Ads / per-category budget-status sections below the top
+ * metrics are unchanged from the original report design. The Persona
+ * Check section (and the Google Sheet it used to read from) was removed
+ * 2026-10-09 per user direction — the report now only uses the dashboard's
+ * own data pipeline, no external manual-input sheet.
  *
  * Run manually (test push to yourself):
- *   GOOGLE_SERVICE_ACCOUNT_KEY='{...}' LINE_CHANNEL_ACCESS_TOKEN=... \
- *   LINE_SEND_MODE=test LINE_TEST_USER_ID=U... node scripts/send-line-report.mjs
+ *   LINE_CHANNEL_ACCESS_TOKEN=... LINE_SEND_MODE=test LINE_TEST_USER_ID=U... \
+ *   node scripts/send-line-report.mjs
  *
- * Run automatically: see .github/workflows/send-line-report.yml (defaults to
- * LINE_SEND_MODE=test until the team confirms the report looks right, then
- * flip the workflow's env to LINE_SEND_MODE=broadcast).
+ * Run automatically: see .github/workflows/send-line-report.yml — runs daily
+ * at 18:30 ICT, LINE_SEND_MODE=broadcast (confirmed by the user 2026-10-09).
  * ---------------------------------------------------------------
  */
 
 import { readFileSync } from "node:fs";
-import { createSign } from "node:crypto";
 import path from "node:path";
 
-const GOOGLE_SERVICE_ACCOUNT_KEY_RAW = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
 const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
 const LINE_SEND_MODE = process.env.LINE_SEND_MODE || "test"; // "test" | "broadcast"
 const LINE_TEST_USER_ID = process.env.LINE_TEST_USER_ID;
 
-const MANUAL_INPUT_SHEET_ID = "1zuZjIzEzRGOuQD0e_1QslEri29DHL6mVJ9BFE6I87bE"; // "S45 - LINE Report Manual Input"
-
-if (!GOOGLE_SERVICE_ACCOUNT_KEY_RAW) {
-  console.error("Missing GOOGLE_SERVICE_ACCOUNT_KEY environment variable.");
-  process.exit(1);
-}
 if (!LINE_CHANNEL_ACCESS_TOKEN) {
   console.error("Missing LINE_CHANNEL_ACCESS_TOKEN environment variable.");
   process.exit(1);
@@ -137,58 +131,6 @@ const CPR_ACCOUNT_DAILY_FIELD = { nose_open: "nose_open_cpr", inter: "inter_cpr"
 
 const ADS_REVENUE_CHANNELS = new Set(["Facebook", "Line", "Instagram", "WhatsApp"]);
 const NA = "N/A";
-
-function base64url(buf) {
-  return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-async function getGoogleAccessToken(serviceAccount) {
-  const now = Math.floor(Date.now() / 1000);
-  const header = { alg: "RS256", typ: "JWT" };
-  const claim = {
-    iss: serviceAccount.client_email,
-    scope: "https://www.googleapis.com/auth/spreadsheets.readonly",
-    aud: "https://oauth2.googleapis.com/token",
-    exp: now + 3600,
-    iat: now,
-  };
-  const signInput = `${base64url(Buffer.from(JSON.stringify(header)))}.${base64url(Buffer.from(JSON.stringify(claim)))}`;
-  const signer = createSign("RSA-SHA256");
-  signer.update(signInput);
-  signer.end();
-  const signature = signer.sign(serviceAccount.private_key);
-  const jwt = `${signInput}.${base64url(signature)}`;
-
-  const res = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: jwt }),
-  });
-  const json = await res.json();
-  if (!json.access_token) throw new Error(`Failed to get Google access token: ${JSON.stringify(json)}`);
-  return json.access_token;
-}
-
-async function fetchManualInputRow(accessToken) {
-  const range = "A1:I1000";
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${MANUAL_INPUT_SHEET_ID}/values/${encodeURIComponent(
-    range
-  )}?valueRenderOption=UNFORMATTED_VALUE`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-  const json = await res.json();
-  if (json.error) throw new Error(`Manual input sheet read error: ${json.error.message}`);
-  const rows = (json.values || []).filter((r) => r.some((c) => c !== "" && c != null));
-  if (rows.length < 2) throw new Error("Manual input sheet has no data rows yet (only header, or empty).");
-  const last = rows[rows.length - 1]; // แถวล่างสุดที่มีข้อมูล = วันล่าสุดที่ทีมกรอก
-  const col = (i) => last[i] ?? "";
-  // คอลัมน์ 1-4 (Ads Revenue/ROAS/Target Lead) ไม่ใช้แล้วหลังปรับรูปแบบรายงาน 2026-10-09 — เหลือแต่ Persona Check
-  return {
-    personaNoseOpenBrowliftInter: String(col(5)),
-    personaBrowlift: String(col(6)),
-    personaBreast: String(col(7)),
-    personaSemiOpen: String(col(8)),
-  };
-}
 
 function fmtTHB(n) {
   return new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 }).format(Math.round(n));
@@ -323,9 +265,6 @@ async function main() {
     console.warn("No src/data/cprAccountDaily.json found — CPR Nose Open/Inter will be N/A.");
   }
 
-  const googleAccessToken = await getGoogleAccessToken(JSON.parse(GOOGLE_SERVICE_ACCOUNT_KEY_RAW));
-  const manual = await fetchManualInputRow(googleAccessToken);
-
   // ---- Budget ทุกหัตถการ (งบ Facebook สะสมตั้งแต่ W1 ถึงสัปดาห์ปัจจุบัน จาก weeklyBudget.json) ----
   // สะสมรวมทุกสัปดาห์ที่ผ่านมาแล้ว (ไม่ใช่แค่สัปดาห์นี้สัปดาห์เดียว) เพื่อให้เทียบกับ Ads Spend ซึ่งเป็นยอด
   // สะสม MTD อยู่แล้วได้ตรงกัน — ไม่งั้น Budget (แค่สัปดาห์เดียว) จะดูน้อยกว่า Ads Spend (สะสมทั้งเดือน)
@@ -420,19 +359,6 @@ ${cprLines}
 
 🖥️Monitor Ads
 ${monitorAdsText}
-
-📊Persona Check
-Nose Open,Browlift,Inter
-${manual.personaNoseOpenBrowliftInter}
-
-ยกคิ้ว-ดึงหน้า
-${manual.personaBrowlift}
-
-Breast
-${manual.personaBreast}
-
-Semi Open
-${manual.personaSemiOpen}
 
 ‼️การใช้งบประมาณของ Digital
 ${budgetStatusLines}`;
