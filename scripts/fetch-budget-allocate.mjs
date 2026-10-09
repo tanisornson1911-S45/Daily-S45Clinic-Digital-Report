@@ -72,6 +72,9 @@ const MONTH_NUM = {
 // เอาเฉพาะชีตที่ชื่อ "<เดือน><ปีย่อ 2 หลัก>" ตรงเป๊ะ ไม่มีหาง (V.2)/.2/ฯลฯ — เดือนที่มีหลายเวอร์ชัน
 // (เช่น "Jan26(V.2)"+"Jan26(V.3)", "Mar26"+"Mar26.2") ข้ามไปเลย แทนที่จะเดาว่าเวอร์ชันไหนถูกต้อง
 const MONTH_TAB_RE = new RegExp(`^(${Object.keys(MONTH_NUM).join("|")})(\\d{2})$`);
+// ชีต "<เดือน><ปีย่อ> by Week" (เช่น "October26 by Week") — แยกงบ Facebook รายสัปดาห์ (W1-W4) ต่อหัตถการ
+// ใช้เป็นฐานของ "Budget Nose Open"/"Budget Inter" ในรายงาน LINE OA รายวัน (ดู scripts/send-line-report.mjs)
+const WEEK_TAB_RE = new RegExp(`^(${Object.keys(MONTH_NUM).join("|")})(\\d{2}) by Week$`);
 
 function base64url(buf) {
   return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -317,6 +320,53 @@ function parseAllProcedureDoctorBudgets(sheet, title) {
   return { tabTitle: title, grandTotal, procedures };
 }
 
+// แยกงบ Facebook รายสัปดาห์ (Forecast W1-W4) ต่อหัตถการ จากชีต "<เดือน><ปีย่อ> by Week" — โครงสร้างคล้าย
+// parseAllProcedureDoctorBudgets (แถวหัวตาราง "หัตถการ"/"Target", แถว "Total" ปิดท้าย) แต่มีแค่กลุ่ม Facebook
+// กลุ่มเดียว (ไม่มี Line/Google เหมือนชีตงบรายเดือนปกติ) ย่อยเป็น "งบที่ตั้งไว้" + 4 คอลัมน์ Forecast รายสัปดาห์
+// ยืนยันโครงสร้างจริงจากการดึงไฟล์ xlsx ทั้งเล่มมาตรวจ 2569-10-09 (แท็บ "October26 by Week")
+function parseWeeklyBudgetSheet(sheet, title) {
+  const labelCol = sheet.reduce((found, row) => (found !== -1 ? found : row.indexOf("หัตถการ") !== -1 ? row.indexOf("หัตถการ") : -1), -1);
+  const topGroupRowIdx = sheet.findIndex((row) => row.includes("หัตถการ"));
+  if (labelCol === -1 || topGroupRowIdx === -1) {
+    console.warn(`  ! "${title}": ไม่พบแถวหัวตาราง ("หัตถการ") — ข้าม`);
+    return null;
+  }
+  const topGroupRow = sheet[topGroupRowIdx];
+  const subHeaderRow = sheet[topGroupRowIdx + 1] || [];
+  const targetCol = topGroupRow.indexOf("Target");
+  const totalRowIdx = sheet.findIndex((row, i) => i > topGroupRowIdx + 1 && String(row[labelCol] ?? "").trim() === "Total");
+  if (targetCol === -1 || totalRowIdx === -1) {
+    console.warn(`  ! "${title}": ไม่พบคอลัมน์ "Target" หรือแถว "Total" — ข้าม`);
+    return null;
+  }
+
+  const fbBudgetCol = subHeaderRow.findIndex((v) => String(v ?? "").trim() === "งบที่ตั้งไว้");
+  // ป้ายคอลัมน์มีช่องว่างท้าย/จำนวนช่องว่างไม่เท่ากันในชีตจริง (เช่น "Forcast (W1) 1-7 ") — จับคู่แบบ fuzzy
+  const weekCol = (n) => subHeaderRow.findIndex((v) => new RegExp(`Forcast\\s*\\(W${n}\\)`, "i").test(String(v ?? "")));
+  const weekCols = [weekCol(1), weekCol(2), weekCol(3), weekCol(4)];
+  if (fbBudgetCol === -1 || weekCols.some((c) => c === -1)) {
+    console.warn(`  ! "${title}": โครงสร้างคอลัมน์ไม่ตรงกับที่คาดไว้ (งบที่ตั้งไว้/Forecast W1-W4) — ข้าม`);
+    return null;
+  }
+
+  const num = (v) => (typeof v === "number" ? v : 0);
+  const procedures = {};
+  for (let i = topGroupRowIdx + 2; i < totalRowIdx; i++) {
+    const row = sheet[i];
+    const label = String(row[labelCol] ?? "").trim();
+    if (!label || typeof row[targetCol] !== "number") continue; // แถวย่อย (คุณหมอ/หัตถการย่อยของ Inter) ไม่มีเลขในคอลัมน์ Target
+    procedures[label] = {
+      facebookBudgetTotal: num(row[fbBudgetCol]),
+      weeks: weekCols.map((c) => num(row[c])),
+    };
+  }
+  if (Object.keys(procedures).length === 0) {
+    console.warn(`  ! "${title}": ไม่พบหัตถการที่มีงบรายสัปดาห์เลย`);
+    return null;
+  }
+  return { tabTitle: title, procedures };
+}
+
 async function main() {
   const serviceAccount = JSON.parse(SERVICE_ACCOUNT_KEY_RAW);
   const accessToken = await getAccessToken(serviceAccount);
@@ -357,6 +407,22 @@ async function main() {
           console.log(`  ${proc.key} per-doctor budget (${title}):`, JSON.stringify(proc.doctors));
         }
       }
+    }
+  }
+
+  // ชีต "<เดือน><ปีย่อ> by Week" ของเดือนล่าสุด (latestIso) — ถ้ามี ดึงมาแยกงบ Facebook รายสัปดาห์ด้วย
+  let weeklyBudget = null;
+  if (latestIso) {
+    const weekTitle = titles.find((t) => {
+      const m = WEEK_TAB_RE.exec(t);
+      return m && `20${m[2]}-${MONTH_NUM[m[1]]}` === latestIso;
+    });
+    if (weekTitle) {
+      const weekSheet = await fetchSheetValues(accessToken, weekTitle);
+      weeklyBudget = parseWeeklyBudgetSheet(weekSheet, weekTitle);
+      if (weeklyBudget) console.log(`${latestIso} weekly budget (${weekTitle}):`, JSON.stringify(weeklyBudget.procedures));
+    } else {
+      console.warn(`  ! ไม่พบชีต "<เดือน><ปีย่อ> by Week" ของเดือนล่าสุด (${latestIso}) — จะไม่เขียน weeklyBudget.json`);
     }
   }
 
@@ -411,6 +477,29 @@ async function main() {
     console.log(`Wrote ${procedureOutPath}`);
   } else {
     console.warn("  ! ไม่สามารถดึงงบรายคุณหมอของเดือนล่าสุดได้ — จะไม่เขียน procedureBudget.json (ใช้ไฟล์เดิมถ้ามี)");
+  }
+
+  if (weeklyBudget) {
+    const weeklyOutPath = path.join(outDir, "weeklyBudget.json");
+    await writeFile(
+      weeklyOutPath,
+      JSON.stringify(
+        {
+          generatedAt: new Date().toISOString(),
+          source:
+            "Generated by scripts/fetch-budget-allocate.mjs — งบ Facebook รายสัปดาห์ (Forecast W1-W4) ต่อหัตถการ " +
+            `ของเดือนล่าสุด (${weeklyBudget.tabTitle}) จากชีต "S45 - Budget Allocate". weeks = [W1 (1-7), W2 (8-14), ` +
+            "W3 (15-21), W4 (22-สิ้นเดือน)] — ใช้เป็นฐานของ \"Budget Nose Open\"/\"Budget Inter\" ในรายงาน LINE OA รายวัน " +
+            "(scripts/send-line-report.mjs เลือกสัปดาห์ตามวันที่ปัจจุบันเอง)",
+          month: latestIso,
+          tabTitle: weeklyBudget.tabTitle,
+          procedures: weeklyBudget.procedures,
+        },
+        null,
+        2
+      )
+    );
+    console.log(`Wrote ${weeklyOutPath}`);
   }
 }
 

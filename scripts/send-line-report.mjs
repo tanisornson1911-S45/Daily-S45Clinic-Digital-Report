@@ -3,37 +3,49 @@
  * send-line-report.mjs
  * ---------------------------------------------------------------
  * Builds the daily "Digital Report" text (same format the team used to type
- * by hand into LINE OA every evening) from the dashboard's own data files +
- * one small manually-filled Google Sheet, then sends it via the LINE
- * Messaging API.
+ * by hand into LINE OA every evening) and sends it via the LINE Messaging
+ * API. Rewritten 2026-10-09 to match the team's revised format, which
+ * drills into Nose Open + Inter specifically instead of one combined
+ * Budget/ROAS/CPR for all procedures (confirmed field-by-field with the
+ * user on 2026-10-08/09):
  *
- * Field sources (confirmed against real data with the user on 2026-10-08):
- *   - Budget            = this month's grandTotal (src/data/procedureBudget.json)
- *                          ÷ days in month — i.e. today's pacing budget.
- *   - Ads Spend          = this month's "total" so far (src/data/adSpend.json,
- *                          refreshed nightly by fetch-fb-spend.mjs).
- *   - Inbox /เดือน (เป้า) = 9,600 — same hardcoded monthly target already shown
- *                          on the Ads Plan page in App.jsx.
- *   - Inbox /เดือน (จริง) = sum of dailyInbox across every category this month
- *                          so far (src/data/adDaily.json).
- *   - CPR                = Ads Spend ÷ Inbox จริง (both MTD, this month).
- *   - Monitor Ads         = src/data/campaignSnapshot.json's diff, written by
- *                          scripts/fetch-fb-campaign-snapshot.mjs (run right
- *                          before this script — see the workflow).
- *   - งบประมาณของ Digital (ตามแผน/เกิน/ต่ำกว่าแผน) = per-category MTD spend
- *                          (adSpend.json) vs. that category's Facebook budget
- *                          (procedureBudget.json facebookBudgetTotal) prorated
- *                          to today's day-of-month; ±15% = "ตามแผน".
- *   - Ads Revenue, ROAS เป้า/จริง, Target Lead %, Persona Check = NOT
- *                          computable from this dashboard's data (confirmed
- *                          with the user 2026-10-08 — these are numbers the
- *                          team tracks from another source) — read from the
- *                          "S45 - LINE Report Manual Input" Google Sheet's
- *                          last filled-in row instead (same service-account
- *                          JWT auth as fetch-budget-allocate.mjs).
+ *   - Budget Nose Open / Budget Inter = this week's Facebook budget
+ *     forecast (src/data/weeklyBudget.json, written by
+ *     fetch-budget-allocate.mjs from the "<Month><YY> by Week" tab of the
+ *     "S45 - Budget Allocate" Google Sheet) — which week (W1-W4) is picked
+ *     from today's day-of-month.
+ *   - Ads Spend Nose Open = Nose Open 01+02+Freelance combined, Inter-named
+ *     campaigns excluded (src/data/adSpend.json's "nose_open", unchanged).
+ *   - Ads Spend Inter = the dedicated Inter account + Nose Open 02's
+ *     Inter-named campaigns combined (adSpend.json's "inter", unchanged —
+ *     confirmed 2026-10-09 this combined definition is what's wanted).
+ *   - Target Nose Open/Inter Inbox = 3,600 / 300 per month (constants).
+ *   - ROAS ต่อยอดขาย = 4.0 (constant).
+ *   - ROAS ที่ได้ ณ ปัจจุบัน = (Ads Revenue Nose Open + Ads Revenue Inter) ÷
+ *     (Ads Spend Nose Open + Ads Spend Inter) — "N/A" if Ads Revenue Inter
+ *     is "N/A" (see below), per user direction 2026-10-09.
+ *   - Ads Revenue Nose Open = sum of src/data/orSales.json ("ยอดORจริง+
+ *     Forecast พี่เปา") entries for nose_open this month, joined against
+ *     src/data/rawTx.json ("ปิดมัด"/มัดจำ 2026) by (OR date, doctor, proc)
+ *     to find each case's channel (orSales itself has no channel column),
+ *     filtered to Facebook/Line/Instagram/WhatsApp. "N/A" if there are no
+ *     orSales entries for nose_open this month at all.
+ *   - Ads Revenue Inter = "N/A" always for now — src/data/interSale.json
+ *     ("Inter S45 2026 - Sale part") has NO channel column at all (checked
+ *     2026-10-09: neither it nor orSales.json tracks Inter cases by
+ *     channel), so there is currently no data source to compute this from.
+ *     Revisit once the team points to one (e.g. a "Consultation" sheet in
+ *     the same workbook has a "Platform" column but isn't wired in yet).
+ *   - CPR Nose Open / CPR Inter = src/data/cprAccountDaily.json (written by
+ *     fetch-fb-cpr-breakdown.mjs — see that script's header for the exact
+ *     account/campaign scope, which is narrower than Ads Spend's). "N/A" if
+ *     that file/month has no data yet or Inbox is 0.
+ *
+ * The Monitor Ads / Persona Check / per-category budget-status sections
+ * below the top metrics are unchanged from the original report design.
  *
  * Run manually (test push to yourself):
- *   FB_ACCESS_TOKEN=... GOOGLE_SERVICE_ACCOUNT_KEY='{...}' LINE_CHANNEL_ACCESS_TOKEN=... \
+ *   GOOGLE_SERVICE_ACCOUNT_KEY='{...}' LINE_CHANNEL_ACCESS_TOKEN=... \
  *   LINE_SEND_MODE=test LINE_TEST_USER_ID=U... node scripts/send-line-report.mjs
  *
  * Run automatically: see .github/workflows/send-line-report.yml (defaults to
@@ -46,7 +58,6 @@ import { readFileSync } from "node:fs";
 import { createSign } from "node:crypto";
 import path from "node:path";
 
-const FB_ACCESS_TOKEN = process.env.FB_ACCESS_TOKEN;
 const GOOGLE_SERVICE_ACCOUNT_KEY_RAW = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
 const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
 const LINE_SEND_MODE = process.env.LINE_SEND_MODE || "test"; // "test" | "broadcast"
@@ -75,7 +86,7 @@ const CATEGORY_DISPLAY_LABEL = {
   breast_lipo: "Breast",
   inter: "Inter",
 };
-// procedureBudget.json ใช้ชื่อหัตถการภาษาไทยเป็น key — map ไปหา category key แบบเดียวกับ adSpend.json
+// procedureBudget.json/weeklyBudget.json ใช้ชื่อหัตถการภาษาไทยเป็น key — map ไปหา category key แบบเดียวกับ adSpend.json
 const PROC_BUDGET_KEY_TO_CATEGORY = {
   เสริมจมูกโอเพ่น: "nose_open",
   "เสริมจมูก Semi Open": "nose_semi",
@@ -83,6 +94,9 @@ const PROC_BUDGET_KEY_TO_CATEGORY = {
   "เสริมหน้าอก/ดูดไขมัน/ตัดหนัง": "breast_lipo",
   Inter: "inter",
 };
+
+const ADS_REVENUE_CHANNELS = new Set(["Facebook", "Line", "Instagram", "WhatsApp"]);
+const NA = "N/A";
 
 function base64url(buf) {
   return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -127,12 +141,8 @@ async function fetchManualInputRow(accessToken) {
   if (rows.length < 2) throw new Error("Manual input sheet has no data rows yet (only header, or empty).");
   const last = rows[rows.length - 1]; // แถวล่างสุดที่มีข้อมูล = วันล่าสุดที่ทีมกรอก
   const col = (i) => last[i] ?? "";
+  // คอลัมน์ 1-4 (Ads Revenue/ROAS/Target Lead) ไม่ใช้แล้วหลังปรับรูปแบบรายงาน 2026-10-09 — เหลือแต่ Persona Check
   return {
-    dateLabel: String(col(0)),
-    adsRevenue: Number(col(1)) || 0,
-    roasTarget: Number(col(2)) || 0,
-    roasActual: Number(col(3)) || 0,
-    targetLeadPct: Number(col(4)) || 0,
     personaNoseOpenBrowliftInter: String(col(5)),
     personaBrowlift: String(col(6)),
     personaBreast: String(col(7)),
@@ -187,6 +197,42 @@ function budgetStatusLine(label, spendMtd, fbBudgetTotal, dayOfMonth, daysInMont
   return `${label} = งบประมาณเป็นไปตามแผน`;
 }
 
+// รวมยอด orSales.json เฉพาะหัตถการ+ช่วงเดือนนี้ แล้ว join กับ rawTx.json ด้วย (OR date, doctor, proc) เพื่อหา
+// ช่องทาง (orSales เองไม่มีคอลัมน์ช่องทาง) — คืนค่า null (= "N/A") ถ้าเดือนนี้ไม่มี entry ของหัตถการนี้เลย
+function computeAdsRevenue(orSalesEntries, rawTxIndex, procKey, monthStart, monthEnd) {
+  const entries = orSalesEntries.filter((e) => e.proc === procKey && e.d >= monthStart && e.d <= monthEnd);
+  if (entries.length === 0) return null;
+  let total = 0;
+  for (const e of entries) {
+    const key = `${e.d}|${e.doctor}|${e.proc}`;
+    const matches = rawTxIndex.get(key);
+    if (!matches || matches.length === 0) continue; // จับคู่ไม่เจอ — ไม่รู้ช่องทาง ไม่นับ
+    const ch = matches[0].ch;
+    if (ADS_REVENUE_CHANNELS.has(ch)) total += e.amount;
+  }
+  return total;
+}
+
+function buildRawTxIndex(rawTx) {
+  const idx = new Map();
+  for (const t of rawTx) {
+    if (!t.or) continue;
+    const key = `${t.or}|${t.doc}|${t.p}`;
+    if (!idx.has(key)) idx.set(key, []);
+    idx.get(key).push(t);
+  }
+  return idx;
+}
+
+function cprFor(cprAccountDaily, monthKey, field) {
+  const m = cprAccountDaily?.months?.[monthKey]?.[field];
+  if (!m) return null;
+  const spend = (m.dailyAds || []).reduce((a, b) => a + b, 0);
+  const inbox = (m.dailyInbox || []).reduce((a, b) => a + b, 0);
+  if (inbox <= 0) return null;
+  return Math.round(spend / inbox);
+}
+
 async function main() {
   const nowIct = new Date(Date.now() + 7 * 60 * 60 * 1000); // เวลาไทย (ICT = UTC+7)
   const y = nowIct.getUTCFullYear();
@@ -195,40 +241,77 @@ async function main() {
   const monthKey = `${y}-${String(m).padStart(2, "0")}`;
   const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const dateHeaderLabel = `${d}/${m}/${String(y).slice(-2)}`;
-  const dateTodayLabel = `${d}/${m}/${y}`;
+  const monthStart = `${monthKey}-01`;
+  // ยอดขาย/OR "นิ่งแล้ว" เฉพาะถึงเมื่อวาน (เหมือน adSpend.json/adDaily.json) — ไม่ใช้ถึง "วันนี้" เพราะ
+  // orSales.json ผสม Forecast ของทั้งเดือนไว้ด้วย วันนี้เองอาจมีแถว Forecast ที่ดันบังเอิญจับคู่กับ RAW_TX
+  // ได้ (บันทึกมัดจำวันเดียวกัน) ทั้งที่เคสยังไม่ปิดจริงแน่นอน
+  const yesterdayIct = new Date(nowIct.getTime() - 24 * 60 * 60 * 1000);
+  const revenueMonthEnd =
+    yesterdayIct.getUTCFullYear() === y && yesterdayIct.getUTCMonth() + 1 === m
+      ? `${monthKey}-${String(yesterdayIct.getUTCDate()).padStart(2, "0")}`
+      : `${monthKey}-00`; // เมื่อวานข้ามไปเดือนก่อน (วันนี้คือวันที่ 1) — เดือนนี้ยังไม่มีวันที่ "นิ่งแล้ว" เลย (ช่วงว่าง เพราะ "-00" < "-01" เสมอ)
 
   const procedureBudget = JSON.parse(readFileSync(path.resolve("src/data/procedureBudget.json"), "utf8"));
   const adSpend = JSON.parse(readFileSync(path.resolve("src/data/adSpend.json"), "utf8"));
-  const adDaily = JSON.parse(readFileSync(path.resolve("src/data/adDaily.json"), "utf8"));
+  const orSales = JSON.parse(readFileSync(path.resolve("src/data/orSales.json"), "utf8"));
+  const rawTx = JSON.parse(readFileSync(path.resolve("src/data/rawTx.json"), "utf8"));
   let campaignSnapshot = null;
   try {
     campaignSnapshot = JSON.parse(readFileSync(path.resolve("src/data/campaignSnapshot.json"), "utf8"));
   } catch {
     console.warn("No src/data/campaignSnapshot.json found — Monitor Ads section will be empty.");
   }
+  let weeklyBudget = null;
+  try {
+    weeklyBudget = JSON.parse(readFileSync(path.resolve("src/data/weeklyBudget.json"), "utf8"));
+  } catch {
+    console.warn("No src/data/weeklyBudget.json found — Budget Nose Open/Inter will be N/A.");
+  }
+  let cprAccountDaily = null;
+  try {
+    cprAccountDaily = JSON.parse(readFileSync(path.resolve("src/data/cprAccountDaily.json"), "utf8"));
+  } catch {
+    console.warn("No src/data/cprAccountDaily.json found — CPR Nose Open/Inter will be N/A.");
+  }
 
   const googleAccessToken = await getGoogleAccessToken(JSON.parse(GOOGLE_SERVICE_ACCOUNT_KEY_RAW));
   const manual = await fetchManualInputRow(googleAccessToken);
 
-  // ---- Budget (เป้าใช้งบวันนี้) ----
-  const grandTotal = procedureBudget.grandTotal || 0;
-  const budgetToday = grandTotal / daysInMonth;
+  // ---- Budget Nose Open / Inter (งบ Facebook สัปดาห์นี้ จาก weeklyBudget.json) ----
+  const weekIdx = d <= 7 ? 0 : d <= 14 ? 1 : d <= 21 ? 2 : 3;
+  const weeklyFor = (procName) => {
+    const p = weeklyBudget?.procedures?.[procName];
+    if (!p) return null;
+    const v = p.weeks?.[weekIdx];
+    return typeof v === "number" ? v : null;
+  };
+  const budgetNoseOpen = weeklyFor("เสริมจมูกโอเพ่น");
+  const budgetInter = weeklyFor("Inter");
 
-  // ---- Ads Spend MTD ----
-  const adsSpendMtd = adSpend.months?.[monthKey]?.total || 0;
+  // ---- Ads Spend Nose Open / Inter (สะสม MTD) ----
+  const adsSpendNoseOpen = adSpend.months?.[monthKey]?.nose_open ?? null;
+  const adsSpendInter = adSpend.months?.[monthKey]?.inter ?? null;
 
-  // ---- Inbox MTD (จริง) + เป้า ----
-  const INBOX_TARGET_PER_MONTH = 9600;
-  const monthAdDaily = adDaily.months?.[monthKey] || {};
-  const inboxActualMtd = Object.values(monthAdDaily).reduce((s, v) => s + (v.dailyInbox || []).reduce((a, b) => a + b, 0), 0);
+  // ---- Ads Revenue Nose Open / Inter ----
+  const rawTxIndex = buildRawTxIndex(rawTx);
+  const adsRevenueNoseOpen = computeAdsRevenue(orSales.entries, rawTxIndex, "nose_open", monthStart, revenueMonthEnd);
+  const adsRevenueInter = null; // ไม่มีคอลัมน์ช่องทางในแหล่งข้อมูล Inter เลย (ดูคอมเมนต์หัวไฟล์) — N/A เสมอตอนนี้
+
+  // ---- ROAS ----
+  const roasTarget = 4.0;
+  const roasActual =
+    adsRevenueInter == null || adsRevenueNoseOpen == null || adsSpendNoseOpen == null || adsSpendInter == null
+      ? null
+      : (adsRevenueNoseOpen + adsRevenueInter) / (adsSpendNoseOpen + adsSpendInter);
 
   // ---- CPR ----
-  const cpr = inboxActualMtd > 0 ? adsSpendMtd / inboxActualMtd : 0;
+  const cprNoseOpen = cprFor(cprAccountDaily, monthKey, "nose_open_cpr");
+  const cprInter = cprFor(cprAccountDaily, monthKey, "inter_cpr");
 
   // ---- Monitor Ads ----
   const monitorAdsText = buildMonitorAdsSection(campaignSnapshot);
 
-  // ---- งบประมาณของ Digital แยกหัตถการ ----
+  // ---- งบประมาณของ Digital แยกหัตถการ (เหมือนเดิม ไม่เปลี่ยน) ----
   const budgetStatusLines = CATEGORY_ORDER.map((catKey) => {
     const procEntry = Object.entries(PROC_BUDGET_KEY_TO_CATEGORY).find(([, v]) => v === catKey);
     const procName = procEntry?.[0];
@@ -237,17 +320,24 @@ async function main() {
     return budgetStatusLine(CATEGORY_DISPLAY_LABEL[catKey], spendMtd, fbBudgetTotal, d, daysInMonth);
   }).join("\n");
 
+  const baht = (v) => (v == null ? NA : `${fmtTHB(v)} บาท`);
+  const perInbox = (v) => (v == null ? NA : `${fmtTHB(v)}/Inbox`);
+  const roasStr = (v) => (v == null ? NA : `${v.toFixed(1)}X`);
+
   const message = `Digital Report ${dateHeaderLabel}
 
-💰Budget = ${fmtTHB(budgetToday)} บาท
-💸Ads Spend = ${fmtTHB(adsSpendMtd)} บาท
-📬${fmtTHB(INBOX_TARGET_PER_MONTH)} Inbox / เดือน
-📥${fmtTHB(inboxActualMtd)} Inbox /เดือน
-📈ROAS ต่อยอดขาย = ${manual.roasTarget.toFixed(1)}X
-📍ROAS ที่ได้ ณ ปัจจุบัน = ${manual.roasActual.toFixed(1)}X
-💵Ads Revenue = ${fmtTHB(manual.adsRevenue)} (ณ วันนี้ ${dateTodayLabel})
-✅CPR = ${fmtTHB(cpr)}/Inbox
-❇️Target Lead = ${manual.targetLeadPct}%
+💰Budget Nose Open = ${baht(budgetNoseOpen)}
+💰Budget Inter = ${baht(budgetInter)}
+💸Ads Spend Nose Open = ${baht(adsSpendNoseOpen)}
+💸Ads Spend Inter = ${baht(adsSpendInter)}
+📥 Target Nose Open Inbox 3,600 Inbox /เดือน
+📥 Target Inter Inbox 300 Inbox /เดือน
+📈ROAS ต่อยอดขาย = ${roasStr(roasTarget)}
+📍ROAS ที่ได้ ณ ปัจจุบัน = ${roasStr(roasActual)}
+💵Ads Revenue Nose Open = ${baht(adsRevenueNoseOpen)}
+💵Ads Revenue Inter = ${baht(adsRevenueInter)}
+✅CPR Nose Open = ${perInbox(cprNoseOpen)}
+✅CPR Inter = ${perInbox(cprInter)}
 
 
 🖥️Monitor Ads

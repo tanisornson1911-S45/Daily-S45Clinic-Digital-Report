@@ -1,9 +1,9 @@
 name: Send daily Digital Report to LINE OA
 
 # ทุกวัน 18:30 เวลาไทย: ดึงรายชื่อแคมเปญ Facebook ที่ Active อยู่ตอนนี้ (เทียบกับเมื่อวานเพื่อหา
-# Ads ที่เปิด/ปิดใหม่ — "Monitor Ads"), อ่านตัวเลขที่ทีมกรอกเองในชีต "S45 - LINE Report Manual
-# Input" (Ads Revenue/ROAS/Target Lead/Persona Check), แล้วประกอบเป็นข้อความ "Digital Report"
-# ส่งเข้า LINE OA ผ่าน Messaging API
+# Ads ที่เปิด/ปิดใหม่ — "Monitor Ads") + ยอดใช้งบ/Inbox รายวันแยกบัญชีสำหรับ CPR Nose Open/Inter
+# โดยเฉพาะ, อ่าน Persona Check ที่ทีมกรอกเองในชีต "S45 - LINE Report Manual Input", แล้วประกอบเป็น
+# ข้อความ "Digital Report" ส่งเข้า LINE OA ผ่าน Messaging API
 #
 # ต้องตั้ง repo secret เพิ่มจากที่มีอยู่แล้ว (FB_ACCESS_TOKEN, GOOGLE_SERVICE_ACCOUNT_KEY):
 #   - LINE_CHANNEL_ACCESS_TOKEN  (Channel access token จาก LINE Developers Console ของ LINE OA บัญชีนี้)
@@ -38,21 +38,25 @@ jobs:
           FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
         run: node scripts/fetch-fb-campaign-snapshot.mjs
 
-      - name: Commit campaign snapshot if changed
+      - name: Fetch per-account daily spend/Inbox (for CPR Nose Open/Inter)
+        env:
+          FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
+        run: node scripts/fetch-fb-cpr-breakdown.mjs
+
+      - name: Commit data snapshots if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src/data/campaignSnapshot.json
-          if git diff --cached --quiet -- src/data/campaignSnapshot.json; then
+          git add src/data/campaignSnapshot.json src/data/cprAccountDaily.json
+          if git diff --cached --quiet -- src/data/campaignSnapshot.json src/data/cprAccountDaily.json; then
             echo "No change — nothing to commit."
           else
-            git commit -m "chore: update Facebook campaign snapshot (automated)"
+            git commit -m "chore: update Facebook campaign snapshot + per-account CPR data (automated)"
             git push origin HEAD:main
           fi
 
       - name: Build + send Digital Report to LINE OA
         env:
-          FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
           GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LINE_TEST_USER_ID: ${{ secrets.LINE_TEST_USER_ID }}
