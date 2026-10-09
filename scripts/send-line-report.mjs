@@ -233,6 +233,14 @@ function cprFor(cprAccountDaily, monthKey, field) {
   return Math.round(spend / inbox);
 }
 
+// Inbox สะสม MTD (เดือนนี้จนถึงวันล่าสุดที่มีข้อมูล) ของขอบเขตบัญชีเดียวกับที่ใช้คำนวณ CPR — สะสมเพิ่มเข้า
+// ไปทุกวันตามข้อมูลจริงที่ fetch-fb-cpr-breakdown.mjs ดึงมา (ไม่ใช่แค่ของวันล่าสุดวันเดียว)
+function inboxSumFor(cprAccountDaily, monthKey, field) {
+  const m = cprAccountDaily?.months?.[monthKey]?.[field];
+  if (!m) return null;
+  return (m.dailyInbox || []).reduce((a, b) => a + b, 0);
+}
+
 async function main() {
   const nowIct = new Date(Date.now() + 7 * 60 * 60 * 1000); // เวลาไทย (ICT = UTC+7)
   const y = nowIct.getUTCFullYear();
@@ -298,15 +306,20 @@ async function main() {
   const adsRevenueInter = null; // ไม่มีคอลัมน์ช่องทางในแหล่งข้อมูล Inter เลย (ดูคอมเมนต์หัวไฟล์) — N/A เสมอตอนนี้
 
   // ---- ROAS ----
+  // ถ้ามี Ads Revenue ไม่ครบทั้ง Nose Open และ Inter ให้เอาเฉพาะส่วนที่มีมาคำนวณ (เทียบกับ Ads Spend ของ
+  // หัตถการนั้นๆ เท่านั้น) — เป็น N/A ก็ต่อเมื่อไม่มี Ads Revenue เลยสักตัว (ยืนยันกับผู้ใช้ 2026-10-09)
   const roasTarget = 4.0;
-  const roasActual =
-    adsRevenueInter == null || adsRevenueNoseOpen == null || adsSpendNoseOpen == null || adsSpendInter == null
-      ? null
-      : (adsRevenueNoseOpen + adsRevenueInter) / (adsSpendNoseOpen + adsSpendInter);
+  const roasParts = [];
+  if (adsRevenueNoseOpen != null && adsSpendNoseOpen != null) roasParts.push({ revenue: adsRevenueNoseOpen, spend: adsSpendNoseOpen });
+  if (adsRevenueInter != null && adsSpendInter != null) roasParts.push({ revenue: adsRevenueInter, spend: adsSpendInter });
+  const roasActualSpend = roasParts.reduce((s, p) => s + p.spend, 0);
+  const roasActual = roasParts.length === 0 || roasActualSpend <= 0 ? null : roasParts.reduce((s, p) => s + p.revenue, 0) / roasActualSpend;
 
   // ---- CPR ----
   const cprNoseOpen = cprFor(cprAccountDaily, monthKey, "nose_open_cpr");
   const cprInter = cprFor(cprAccountDaily, monthKey, "inter_cpr");
+  const inboxNoseOpen = inboxSumFor(cprAccountDaily, monthKey, "nose_open_cpr");
+  const inboxInter = inboxSumFor(cprAccountDaily, monthKey, "inter_cpr");
 
   // ---- Monitor Ads ----
   const monitorAdsText = buildMonitorAdsSection(campaignSnapshot);
@@ -322,6 +335,7 @@ async function main() {
 
   const baht = (v) => (v == null ? NA : `${fmtTHB(v)} บาท`);
   const perInbox = (v) => (v == null ? NA : `${fmtTHB(v)}/Inbox`);
+  const inboxCount = (v) => (v == null ? NA : `${fmtTHB(v)} Inbox`);
   const roasStr = (v) => (v == null ? NA : `${v.toFixed(1)}X`);
 
   const message = `Digital Report ${dateHeaderLabel}
@@ -331,7 +345,9 @@ async function main() {
 💸Ads Spend Nose Open = ${baht(adsSpendNoseOpen)}
 💸Ads Spend Inter = ${baht(adsSpendInter)}
 📥 Target Nose Open Inbox 3,600 Inbox /เดือน
+Inbox ที่ได้ = ${inboxCount(inboxNoseOpen)}
 📥 Target Inter Inbox 300 Inbox /เดือน
+Inbox ที่ได้ = ${inboxCount(inboxInter)}
 📈ROAS ต่อยอดขาย = ${roasStr(roasTarget)}
 📍ROAS ที่ได้ ณ ปัจจุบัน = ${roasStr(roasActual)}
 💵Ads Revenue Nose Open = ${baht(adsRevenueNoseOpen)}
