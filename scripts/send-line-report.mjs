@@ -97,17 +97,9 @@ const CATEGORY_DISPLAY_LABEL = {
   breast_lipo: "Breast",
   inter: "Inter",
 };
-// procedureBudget.json/weeklyBudget.json ใช้ชื่อหัตถการภาษาไทยเป็น key — map ไปหา category key แบบเดียวกับ adSpend.json
-const PROC_BUDGET_KEY_TO_CATEGORY = {
-  เสริมจมูกโอเพ่น: "nose_open",
-  "เสริมจมูก Semi Open": "nose_semi",
-  "ยกคิ้ว/ดึงหน้า/เลื่อนไรผม": "brow_hairline",
-  "เสริมหน้าอก/ดูดไขมัน/ตัดหนัง": "breast_lipo",
-  Inter: "inter",
-};
-// weeklyBudget.json มาจากแท็บ "<เดือน><ปีย่อ> by Week" ของชีตเดียวกัน แต่สะกดชื่อหัตถการต่างจากแท็บปกติ
-// เล็กน้อย (ยืนยันจากข้อมูลจริง 2026-10-09: "ยกคิ้ว/เลื่อนไรผม/ยกมุมปาก" ไม่ใช่ "ยกคิ้ว/ดึงหน้า/เลื่อนไรผม"
-// เหมือนแท็บปกติ) — ใช้ mapping แยกต่างหาก ห้ามใช้ร่วมกับ PROC_BUDGET_KEY_TO_CATEGORY
+// weeklyBudget.json (แท็บ "<เดือน><ปีย่อ> by Week") ใช้ชื่อหัตถการภาษาไทยเป็น key ที่สะกดต่างจากแท็บ
+// งบรายเดือนปกติเล็กน้อย (ยืนยันจากข้อมูลจริง 2026-10-09: "ยกคิ้ว/เลื่อนไรผม/ยกมุมปาก" ไม่ใช่ "ยกคิ้ว/ดึงหน้า/
+// เลื่อนไรผม") — map ไปหา category key แบบเดียวกับ adSpend.json
 const WEEKLY_BUDGET_KEY_TO_CATEGORY = {
   เสริมจมูกโอเพ่น: "nose_open",
   "เสริมจมูก Semi Open": "nose_semi",
@@ -169,11 +161,14 @@ function buildMonitorAdsSection(snapshot) {
   return blocks.length > 0 ? blocks.join("\n\n") : "ไม่มีการเปิด/ปิด Ads ใหม่เมื่อเทียบกับเมื่อวาน";
 }
 
-function budgetStatusLine(label, spendMtd, fbBudgetTotal, dayOfMonth, daysInMonth) {
-  if (!fbBudgetTotal) return `${label} = ไม่มีงบเดือนนี้`;
-  const expected = fbBudgetTotal * (dayOfMonth / daysInMonth);
-  if (expected <= 0) return `${label} = งบประมาณเป็นไปตามแผน`;
-  const ratio = spendMtd / expected;
+// เทียบ Ads Spend สะสม MTD กับ Budget สะสมของสัปดาห์ (ตัวเดียวกับที่โชว์บนสุดของรายงาน — budgetByCategory/
+// adsSpendByCategory ในเนื้อ main()) ไม่ใช้สูตรเฉลี่ยงบรายเดือนตามสัดส่วนวันแบบเดิมแล้ว เพราะนิยามคนละแบบกับ
+// บล็อก Budget/Ads Spend ด้านบนจนตัวเลข % ดูสูงผิดปกติ (งบรายสัปดาห์จริงไม่ได้กระจายเท่ากันทุกวัน เช่น Nose
+// Open W1 สูงกว่า W2/W3) — แก้ให้ใช้นิยามเดียวกันทั้งฉบับตามที่ผู้ใช้ขอ 2026-10-10
+function budgetStatusLine(label, spendMtd, budgetMtd) {
+  if (budgetMtd == null || budgetMtd <= 0) return `${label} = ไม่มีงบเดือนนี้`;
+  if (spendMtd == null) return `${label} = N/A`;
+  const ratio = spendMtd / budgetMtd;
   if (ratio > 1.15) return `${label} = งบประมาณเกินแผน (ใช้ไปแล้ว ${(ratio * 100).toFixed(0)}% ของแผนสะสม)`;
   if (ratio < 0.85) return `${label} = งบประมาณต่ำกว่าแผน (ใช้ไปแล้ว ${(ratio * 100).toFixed(0)}% ของแผนสะสม)`;
   return `${label} = งบประมาณเป็นไปตามแผน`;
@@ -229,7 +224,6 @@ async function main() {
   const m = nowIct.getUTCMonth() + 1;
   const d = nowIct.getUTCDate();
   const monthKey = `${y}-${String(m).padStart(2, "0")}`;
-  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const dateHeaderLabel = `${d}/${m}/${String(y).slice(-2)}`;
   const monthStart = `${monthKey}-01`;
   // ยอดขาย/OR "นิ่งแล้ว" เฉพาะถึงเมื่อวาน (เหมือน adSpend.json/adDaily.json) — ไม่ใช้ถึง "วันนี้" เพราะ
@@ -241,7 +235,6 @@ async function main() {
       ? `${monthKey}-${String(yesterdayIct.getUTCDate()).padStart(2, "0")}`
       : `${monthKey}-00`; // เมื่อวานข้ามไปเดือนก่อน (วันนี้คือวันที่ 1) — เดือนนี้ยังไม่มีวันที่ "นิ่งแล้ว" เลย (ช่วงว่าง เพราะ "-00" < "-01" เสมอ)
 
-  const procedureBudget = JSON.parse(readFileSync(path.resolve("src/data/procedureBudget.json"), "utf8"));
   const adSpend = JSON.parse(readFileSync(path.resolve("src/data/adSpend.json"), "utf8"));
   const adDaily = JSON.parse(readFileSync(path.resolve("src/data/adDaily.json"), "utf8"));
   const orSales = JSON.parse(readFileSync(path.resolve("src/data/orSales.json"), "utf8"));
@@ -323,14 +316,10 @@ async function main() {
   // ---- Monitor Ads ----
   const monitorAdsText = buildMonitorAdsSection(campaignSnapshot);
 
-  // ---- งบประมาณของ Digital แยกหัตถการ (เหมือนเดิม ไม่เปลี่ยน) ----
-  const budgetStatusLines = CATEGORY_ORDER.map((catKey) => {
-    const procEntry = Object.entries(PROC_BUDGET_KEY_TO_CATEGORY).find(([, v]) => v === catKey);
-    const procName = procEntry?.[0];
-    const fbBudgetTotal = procName ? procedureBudget.procedures?.[procName]?.facebookBudgetTotal || 0 : 0;
-    const spendMtd = adSpend.months?.[monthKey]?.[catKey] || 0;
-    return budgetStatusLine(CATEGORY_DISPLAY_LABEL[catKey], spendMtd, fbBudgetTotal, d, daysInMonth);
-  }).join("\n");
+  // ---- งบประมาณของ Digital แยกหัตถการ (ใช้ Budget/Ads Spend สะสมตัวเดียวกับบล็อกบนสุดของรายงาน) ----
+  const budgetStatusLines = CATEGORY_ORDER.map((catKey) =>
+    budgetStatusLine(CATEGORY_DISPLAY_LABEL[catKey], adsSpendByCategory[catKey], budgetByCategory[catKey])
+  ).join("\n");
 
   const baht = (v) => (v == null ? NA : `${fmtTHB(v)} บาท`);
   const perInbox = (v) => (v == null ? NA : `${fmtTHB(v)}/Inbox`);
