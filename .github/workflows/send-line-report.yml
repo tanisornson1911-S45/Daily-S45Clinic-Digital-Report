@@ -9,13 +9,16 @@ name: Send daily Digital Report to LINE OA
 #   - LINE_CHANNEL_ACCESS_TOKEN  (Channel access token จาก LINE Developers Console ของ LINE OA บัญชีนี้)
 #   - LINE_TEST_USER_ID          (LINE user id ของตัวเอง — ใช้ตอน LINE_SEND_MODE=test เท่านั้น)
 #
-# LINE_SEND_MODE = "broadcast" — ส่งจริงเข้าผู้ติดตาม LINE OA ทั้งหมดทุกวัน 18:30 น. (ยืนยันโดยตรงจาก
-# ผู้ใช้ 2026-10-09)
+# LINE_SEND_MODE = "broadcast" — ส่งจริงเข้าผู้ติดตาม LINE OA ทั้งหมดทุกวัน (ยืนยันโดยตรงจากผู้ใช้
+# 2026-10-09) ตั้งเป้าไว้ที่ 18:30 น. แต่ GitHub Actions schedule ไม่รับประกันเวลารันเป๊ะ — เจอดีเลย์จริง
+# 5-6 ชม. ใน 2 รอบแรก (คืน 9/10 ต.ค. 2026) ซึ่งเป็นข้อจำกัดของ GitHub เอง ไม่ใช่ cron ผิด — ผู้ใช้ขอให้ตั้ง
+# เวลายิงเร็วขึ้นเผื่อดีเลย์ (2026-10-10) จึงเลื่อนมาเป็น 16:50 น. (เลี่ยงตั้งตรงชั่วโมงเป๊ะเพื่อไม่ให้ไปรอคิว
+# พร้อมกับ workflow อื่นๆ ทั่ว GitHub ที่มักตั้งเวลาเป็นเลขกลมๆ)
 
 on:
   schedule:
-    # 18:30 เวลาไทย (ICT = UTC+7) = 11:30 UTC
-    - cron: "30 11 * * *"
+    # 16:50 เวลาไทย (ICT = UTC+7) = 09:50 UTC
+    - cron: "50 9 * * *"
   workflow_dispatch: {}
 
 permissions:
