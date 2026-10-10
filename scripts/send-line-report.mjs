@@ -338,11 +338,16 @@ async function main() {
   const message = `Digital Report ${dateHeaderLabel}
 
 ${budgetLines}
+
 ${adsSpendLines}
+
 ${inboxLines}
+
 📈ROAS ต่อยอดขาย = ${roasStr(roasTarget)}
 📍ROAS ที่ได้ ณ ปัจจุบัน = ${roasStr(roasActual)}
+
 ${adsRevenueLines}
+
 ${cprLines}
 
 
