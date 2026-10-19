@@ -132,15 +132,16 @@ function buildMonitorAdsSection(snapshot) {
   if (!snapshot) return "ยังไม่มีข้อมูล Monitor Ads (รอรัน fetch-fb-campaign-snapshot.mjs ครั้งแรก)";
   const { diff } = snapshot;
   const byCategory = {};
-  for (const key of CATEGORY_ORDER) byCategory[key] = { reNew: [], newAds: [], deletedReNew: [] };
+  for (const key of CATEGORY_ORDER) byCategory[key] = { reNew: [], newAds: [], deletedReNew: [], turnedOff: [] };
   for (const e of diff.reNew || []) byCategory[e.category]?.reNew.push(e.name);
   for (const e of diff.newAds || []) byCategory[e.category]?.newAds.push(e.name);
   for (const e of diff.deletedReNew || []) byCategory[e.category]?.deletedReNew.push(e.name);
+  for (const e of diff.turnedOff || []) byCategory[e.category]?.turnedOff.push(e.name);
 
   const blocks = [];
   for (const key of CATEGORY_ORDER) {
     const g = byCategory[key];
-    if (g.reNew.length === 0 && g.newAds.length === 0 && g.deletedReNew.length === 0) continue;
+    if (g.reNew.length === 0 && g.newAds.length === 0 && g.deletedReNew.length === 0 && g.turnedOff.length === 0) continue;
     const lines = [CATEGORY_DISPLAY_LABEL[key]];
     if (g.reNew.length) {
       lines.push("[Re-new]");
@@ -150,6 +151,11 @@ function buildMonitorAdsSection(snapshot) {
       lines.push("");
       lines.push("[ลบถาวร]");
       for (const n of g.deletedReNew) lines.push(n);
+    }
+    if (g.turnedOff.length) {
+      lines.push("");
+      lines.push("[Off - ปิดชั่วคราว ไม่ได้ลบ]");
+      for (const n of g.turnedOff) lines.push(n);
     }
     if (g.newAds.length) {
       lines.push("");

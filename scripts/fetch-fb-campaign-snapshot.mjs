@@ -2,26 +2,36 @@
 /**
  * fetch-fb-campaign-snapshot.mjs
  * ---------------------------------------------------------------
- * Pulls the list of currently-ACTIVE Facebook ad campaigns (id + name) across
- * all 7 ad accounts (same accounts as fetch-fb-spend.mjs's ACCOUNTS + the
- * dedicated Inter account), and diffs that list against yesterday's snapshot
- * (src/data/campaignSnapshot.json from the previous run) to find which
- * campaigns were turned on/off since yesterday.
+ * Pulls the list of currently NON-DELETED Facebook ad campaigns (id + name +
+ * effective_status — so both ACTIVE and PAUSED/off-but-not-deleted ones)
+ * across all 7 ad accounts (same accounts as fetch-fb-spend.mjs's ACCOUNTS +
+ * the dedicated Inter account), and diffs that list against yesterday's
+ * snapshot (src/data/campaignSnapshot.json from the previous run) to find
+ * which campaigns were turned on/off, or truly deleted, since yesterday.
  *
  * This feeds the "Monitor Ads" section of the daily LINE OA report
- * (scripts/send-line-report.mjs) — per user direction (2026-10-08):
- *   - A campaign that's new today (wasn't active yesterday) whose name
- *     contains "[Re-new]" -> listed under "[Re-new]"
- *   - A campaign that's gone today (was active yesterday) whose name
- *     contained "[Re-new]" -> listed under "[ลบถาวร]"
- *   - A campaign that's new today WITHOUT "[Re-new]" in its name -> listed
- *     under "[Ads ขึ้นใหม่]"
- *   - A campaign that's gone today without "[Re-new]" in its name is NOT
- *     reported (per user's rule — only [Re-new] removals are tracked)
+ * (scripts/send-line-report.mjs) — per user direction (2026-10-08, extended
+ * 2026-10-19 to also report Off-but-not-deleted):
+ *   - A campaign that's newly ACTIVE today (wasn't active yesterday) whose
+ *     name contains "[Re-new]" -> listed under "[Re-new]"
+ *   - A campaign that's newly ACTIVE today WITHOUT "[Re-new]" in its name ->
+ *     listed under "[Ads ขึ้นใหม่]"
+ *   - A campaign that was active yesterday and is GONE entirely today (not
+ *     found in the API response at all — truly deleted/archived) whose name
+ *     contained "[Re-new]" -> listed under "[ลบถาวร]" (per user's rule — only
+ *     [Re-new] full deletions are tracked)
+ *   - A campaign that was active yesterday and STILL EXISTS today but with a
+ *     non-ACTIVE effective_status (e.g. PAUSED — turned off, not deleted) ->
+ *     listed under "[Off - ปิดชั่วคราว ไม่ได้ลบ]", regardless of [Re-new] tag
+ *     (added 2026-10-19 per user request to surface this case explicitly,
+ *     since it used to be silently indistinguishable from "still active")
  *
- * Uses the Marketing API's /campaigns edge (effective_status filter), NOT
- * /insights — a campaign with ฿0 spend on a given day still shows up here,
- * which insights-based endpoints would silently miss.
+ * Uses the Marketing API's /campaigns edge, NOT /insights — a campaign with
+ * ฿0 spend on a given day still shows up here, which insights-based endpoints
+ * would silently miss. No effective_status filter is applied on the request
+ * itself (so the default scope — ACTIVE + PAUSED, excluding DELETED/ARCHIVED —
+ * comes back), which is exactly what lets us tell "paused" apart from "truly
+ * gone" by whether the campaign id still appears in the response at all.
  *
  * First-ever run (no previous snapshot file on disk): writes the snapshot
  * with an empty diff (nothing to compare against yet) rather than reporting
@@ -67,11 +77,12 @@ const CATEGORY_LABELS = {
   inter: "Inter",
 };
 
-async function fetchActiveCampaigns(accountId) {
-  const campaigns = {};
+async function fetchCampaigns(accountId) {
+  // ไม่ใส่ effective_status filter — ขอบเขต default ของ API คือ ACTIVE + PAUSED (ไม่รวม DELETED/ARCHIVED)
+  // ซึ่งตรงกับที่ต้องการพอดี: แคมเปญที่ "ยังอยู่แต่ Off" จะโผล่มาเป็น PAUSED ส่วนแคมเปญที่ถูกลบจริงจะหายไปเลย
+  const campaigns = {}; // { id: { name, status } }
   let url = new URL(`https://graph.facebook.com/${API_VERSION}/act_${accountId}/campaigns`);
   url.searchParams.set("fields", "id,name,effective_status");
-  url.searchParams.set("filtering", JSON.stringify([{ field: "effective_status", operator: "IN", value: ["ACTIVE"] }]));
   url.searchParams.set("limit", "200");
   url.searchParams.set("access_token", FB_ACCESS_TOKEN);
 
@@ -82,7 +93,7 @@ async function fetchActiveCampaigns(accountId) {
       console.error(`  ! act_${accountId}: ${json.error.message}`);
       break;
     }
-    for (const c of json.data || []) campaigns[c.id] = c.name;
+    for (const c of json.data || []) campaigns[c.id] = { name: c.name, status: c.effective_status };
     url = json.paging?.next ? new URL(json.paging.next) : null;
   }
   return campaigns;
@@ -103,28 +114,48 @@ async function main() {
   const previousCampaigns = previous?.campaigns || {};
   const isBootstrap = previous === null;
 
-  // { id: { name, category } }
+  // แคมเปญเก่า (ก่อน 2026-10-19) ไม่มี status บันทึกไว้ เพราะตอนนั้น fetch เฉพาะ ACTIVE เท่านั้น — ถ้าไม่มี
+  // status ให้ถือว่าเป็น ACTIVE (สมมติฐานที่ถูกต้องสำหรับ snapshot เก่าแบบนั้น)
+  const wasActiveYesterday = (prev) => (prev.status ?? "ACTIVE") === "ACTIVE";
+
+  // { id: { name, category, status } } — รวมทั้ง ACTIVE และ PAUSED (ไม่ใช่แค่ ACTIVE แล้ว ตั้งแต่ 2026-10-19
+  // เพื่อให้แยกออกว่าแคมเปญที่หายไปจาก snapshot คือ "ถูกลบจริง" ไม่ใช่แค่ "ถูก Off")
   const current = {};
   for (const [accountName, { id, category }] of Object.entries(ACCOUNTS)) {
-    console.log(`Fetching active campaigns for ${accountName}...`);
-    const campaigns = await fetchActiveCampaigns(id);
-    for (const [campId, name] of Object.entries(campaigns)) {
-      current[campId] = { name, category: categoryFor(category, name) };
+    console.log(`Fetching campaigns for ${accountName}...`);
+    const campaigns = await fetchCampaigns(id);
+    for (const [campId, { name, status }] of Object.entries(campaigns)) {
+      current[campId] = { name, category: categoryFor(category, name), status };
     }
   }
-  console.log(`Found ${Object.keys(current).length} active campaign(s) across ${Object.keys(ACCOUNTS).length} account(s).`);
+  const activeCount = Object.values(current).filter((c) => c.status === "ACTIVE").length;
+  console.log(
+    `Found ${Object.keys(current).length} campaign(s) (${activeCount} active) across ${Object.keys(ACCOUNTS).length} account(s).`
+  );
 
-  const diff = { reNew: [], newAds: [], deletedReNew: [] };
+  const diff = { reNew: [], newAds: [], deletedReNew: [], turnedOff: [] };
   if (!isBootstrap) {
-    for (const [campId, { name, category }] of Object.entries(current)) {
-      if (previousCampaigns[campId]) continue; // มีอยู่แล้วเมื่อวาน ไม่ใช่แคมเปญใหม่
+    for (const [campId, { name, category, status }] of Object.entries(current)) {
+      if (status !== "ACTIVE") continue; // ไม่ใช่แคมเปญที่เพิ่งเปิดใหม่ (Active) วันนี้
+      if (previousCampaigns[campId] && wasActiveYesterday(previousCampaigns[campId])) continue; // แอคทีฟอยู่แล้วเมื่อวาน ไม่ใช่ของใหม่
       const entry = { id: campId, name, category };
       if (RENEW_TAG_RE.test(name)) diff.reNew.push(entry);
       else diff.newAds.push(entry);
     }
     for (const [campId, prev] of Object.entries(previousCampaigns)) {
-      if (current[campId]) continue; // ยังแอคทีฟอยู่ ไม่ได้ถูกลบ
-      if (RENEW_TAG_RE.test(prev.name)) diff.deletedReNew.push({ id: campId, name: prev.name, category: prev.category });
+      if (!wasActiveYesterday(prev)) continue; // เมื่อวานก็ Off อยู่แล้ว ไม่ใช่การเปลี่ยนแปลงใหม่
+      if (!current[campId]) {
+        // หายไปจาก API เลย = ถูกลบ/archived จริง (ไม่ใช่แค่ Off)
+        if (RENEW_TAG_RE.test(prev.name)) diff.deletedReNew.push({ id: campId, name: prev.name, category: prev.category });
+      } else if (current[campId].status !== "ACTIVE") {
+        // ยังอยู่ในระบบ แต่ไม่ใช่ ACTIVE แล้ว = ถูก Off ไม่ได้ลบ
+        diff.turnedOff.push({
+          id: campId,
+          name: current[campId].name,
+          category: current[campId].category,
+          status: current[campId].status,
+        });
+      }
     }
   } else {
     console.log("No previous snapshot found — first run, writing baseline (no diff reported).");
@@ -136,12 +167,15 @@ async function main() {
       {
         generatedAt: now.toISOString(),
         source:
-          'Generated by scripts/fetch-fb-campaign-snapshot.mjs (Facebook Marketing API /campaigns edge, effective_status=ACTIVE, ' +
-          "across all 7 ad accounts — same accounts as adSpend.json). campaigns = today's full active-campaign snapshot (becomes " +
-          "tomorrow's run's 'yesterday' to diff against). diff = campaigns that turned on/off since the previous run's snapshot " +
-          '— reNew (new today, name has "[Re-new]"), newAds (new today, no tag), deletedReNew (gone today, had "[Re-new]" ' +
-          "tag — other removals aren't tracked, per user direction 2026-10-08). Feeds the \"Monitor Ads\" section of the daily " +
-          "LINE OA report (scripts/send-line-report.mjs).",
+          "Generated by scripts/fetch-fb-campaign-snapshot.mjs (Facebook Marketing API /campaigns edge, no effective_status " +
+          "filter -> default scope ACTIVE+PAUSED, excludes DELETED/ARCHIVED, across all 7 ad accounts — same accounts as " +
+          "adSpend.json). campaigns = today's full non-deleted-campaign snapshot incl. status (becomes tomorrow's run's " +
+          "'yesterday' to diff against). diff = changes since the previous run's snapshot — reNew (newly ACTIVE today, name " +
+          'has "[Re-new]"), newAds (newly ACTIVE today, no tag), deletedReNew (active yesterday, gone entirely from the API ' +
+          'today i.e. truly deleted/archived, had "[Re-new]" tag — other full deletions aren\'t tracked, per user direction ' +
+          "2026-10-08), turnedOff (active yesterday, still exists today but effective_status != ACTIVE i.e. paused/off, NOT " +
+          "deleted — any name, added 2026-10-19 per user request). Feeds the \"Monitor Ads\" section of the daily LINE OA " +
+          "report (scripts/send-line-report.mjs).",
         date: today,
         campaigns: current,
         diff,
@@ -151,7 +185,9 @@ async function main() {
       2
     )
   );
-  console.log(`Wrote ${outPath} (reNew: ${diff.reNew.length}, newAds: ${diff.newAds.length}, deletedReNew: ${diff.deletedReNew.length})`);
+  console.log(
+    `Wrote ${outPath} (reNew: ${diff.reNew.length}, newAds: ${diff.newAds.length}, deletedReNew: ${diff.deletedReNew.length}, turnedOff: ${diff.turnedOff.length})`
+  );
 }
 
 main().catch((err) => {
