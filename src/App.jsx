@@ -1119,6 +1119,20 @@ function computeOrSalesForRange(range, proc) {
 function computeOrCasesForRange(range, proc) {
   return OR_SALES_DATA.entries.filter((e) => e.d >= range.start && e.d <= range.end && (proc === "all" || e.proc === proc)).length;
 }
+// วันสุดท้ายของเดือนปฏิทินที่ dateStr (YYYY-MM-DD) อยู่ เช่น "2026-10-19" -> "2026-10-31"
+function calendarMonthEnd(dateStr) {
+  const [y, m] = dateStr.split("-").map(Number);
+  const lastDay = new Date(y, m, 0).getDate();
+  return `${dateStr.slice(0, 7)}-${String(lastDay).padStart(2, "0")}`;
+}
+// "ยอดขายปิด OR แล้ว (รวม Forecast)" — ตามที่ผู้ใช้ขอ 2026-10-19: นับทุกเคสที่ "ปิด" แล้ว (วางมัดจำ/ยืนยันเคส
+// แล้วในชีต "ยอดORจริง+Forecast พี่เปา") รวมทั้งเคสที่ถึงวัน OR แล้วจริง และเคสที่ปิดแล้วแต่ยังไม่ถึงวัน OR (Forecast
+// ในอนาคตของเดือนเดียวกัน) — ต่างจาก computeOrSalesForRange ธรรมดาตรงที่ "เดือนนี้"/ค่า default ของ dateRange จะตัด
+// ที่วันนี้เสมอ (ดูคอมเมนต์ defaultDateRanges/REAL_TODAY) จึงไม่นับเคส Forecast ที่ยังไม่ถึงวันผ่าตัด ฟังก์ชันนี้ยืด
+// ขอบเขตวันสิ้นสุดออกไปถึงสิ้นเดือนปฏิทินของ range.end เสมอ เพื่อให้รวมเคส Forecast ในเดือนเดียวกันเข้ามาด้วย
+function computeOrSalesClosedAll(range, proc) {
+  return computeOrSalesForRange({ start: range.start, end: calendarMonthEnd(range.end) }, proc);
+}
 // "ยอดขายรวม (Facebook)" = Total Price ของเคสที่ปิดมัดจำแล้ว (RAW_TX/มัดจำ 2026) + Online Price ของเคสที่ยัง
 // อยู่แค่ขั้นปรึกษา ยังไม่ปิดมัดจำ (จากชีต "ปรึกษา 2026" — src/data/consultPipeline.json สร้างโดย
 // scripts/build-consult-pipeline.mjs) ไม่รวมซ้ำกับเคสที่ปิดมัดจำแล้ว เพราะกรองสถานะ "ปรึกษา"/"ปรึกษาออนไลน์"
@@ -2178,6 +2192,9 @@ export default function AdsDashboard() {
         // (ดูคอมเมนต์ที่ computeOrSalesForRange ด้านบน — RAW_TX นับยอดขายจริงตกหล่นไปมาก)
         sales: computeOrSalesForRange(dateRange, procFilter),
       };
+  // "ยอดขายปิด OR แล้ว (รวม Forecast)" การ์ดใหม่ — คำนวณสดเสมอจาก orSales.json ไม่มีค่า isJunFull แบบ hardcode
+  // คู่กัน (เป็น metric ใหม่ ไม่มีของเดิมให้ validate อ้างอิง) ดูคอมเมนต์ที่ computeOrSalesClosedAll ด้านบน
+  const orClosedAllTotal = computeOrSalesClosedAll(dateRange, procFilter);
   const rangeSpend = (() => {
     if (isJunFull) return procFilter === "all" ? GRAND_TOTAL.spend : CATEGORIES[procFilter].spend;
     const spendByCat = categorySpendForRange(dateRange);
@@ -3024,7 +3041,7 @@ export default function AdsDashboard() {
               : (procFilter === "all" ? "รวมทุกหัตถการ" : CATEGORIES[procFilter].label + " (ค่าโฆษณาประมาณการตามสัดส่วนของหัตถการนี้)") + ` · ยอดขายทุกช่องทาง · เทียบค่าโฆษณา Facebook ฿${fmtTHB(rangeSpend)}`}
           </p>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="bg-amber-50 rounded-xl p-3 flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-[11px] text-amber-600 font-medium mb-0.5">ยอดมัดจำรวม</p>
@@ -3073,6 +3090,19 @@ export default function AdsDashboard() {
                   : rangeTotals.sales != null && rangeSpend > 0
                   ? (rangeTotals.sales / rangeSpend).toFixed(2)
                   : "—"}
+                x
+              </p>
+            </div>
+            <div className="bg-violet-50 rounded-xl p-3 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] text-violet-600 font-medium mb-0.5">ยอดขายปิด OR แล้ว (รวม Forecast)</p>
+                <p className="text-lg font-bold text-violet-700 truncate">
+                  {orClosedAllTotal != null ? `฿${fmtTHB(orClosedAllTotal)}` : "ไม่มีข้อมูล"}
+                </p>
+                <p className="text-[11px] text-violet-500 mt-1">รวมเคสที่ปิด/วางมัดจำแล้วทั้งหมด ไม่ว่าจะถึงวัน OR แล้วหรือยัง</p>
+              </div>
+              <p className="text-2xl font-bold text-violet-700 shrink-0">
+                {orClosedAllTotal != null && rangeSpend > 0 ? (orClosedAllTotal / rangeSpend).toFixed(2) : "—"}
                 x
               </p>
             </div>
