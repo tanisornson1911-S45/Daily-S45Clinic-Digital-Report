@@ -132,16 +132,27 @@ function buildMonitorAdsSection(snapshot) {
   if (!snapshot) return "ยังไม่มีข้อมูล Monitor Ads (รอรัน fetch-fb-campaign-snapshot.mjs ครั้งแรก)";
   const { diff } = snapshot;
   const byCategory = {};
-  for (const key of CATEGORY_ORDER) byCategory[key] = { reNew: [], newAds: [], deletedReNew: [], turnedOff: [] };
+  for (const key of CATEGORY_ORDER)
+    byCategory[key] = { reNew: [], newAds: [], deletedReNew: [], turnedOff: [], reNewPaused: [], newAdsPaused: [] };
   for (const e of diff.reNew || []) byCategory[e.category]?.reNew.push(e.name);
   for (const e of diff.newAds || []) byCategory[e.category]?.newAds.push(e.name);
   for (const e of diff.deletedReNew || []) byCategory[e.category]?.deletedReNew.push(e.name);
   for (const e of diff.turnedOff || []) byCategory[e.category]?.turnedOff.push(e.name);
+  for (const e of diff.reNewPaused || []) byCategory[e.category]?.reNewPaused.push(e.name);
+  for (const e of diff.newAdsPaused || []) byCategory[e.category]?.newAdsPaused.push(e.name);
 
   const blocks = [];
   for (const key of CATEGORY_ORDER) {
     const g = byCategory[key];
-    if (g.reNew.length === 0 && g.newAds.length === 0 && g.deletedReNew.length === 0 && g.turnedOff.length === 0) continue;
+    if (
+      g.reNew.length === 0 &&
+      g.newAds.length === 0 &&
+      g.deletedReNew.length === 0 &&
+      g.turnedOff.length === 0 &&
+      g.reNewPaused.length === 0 &&
+      g.newAdsPaused.length === 0
+    )
+      continue;
     const lines = [CATEGORY_DISPLAY_LABEL[key]];
     if (g.reNew.length) {
       lines.push("[Re-new]");
@@ -161,6 +172,13 @@ function buildMonitorAdsSection(snapshot) {
       lines.push("");
       lines.push("[Ads ขึ้นใหม่]");
       for (const n of g.newAds) lines.push(n);
+    }
+    // สร้าง Campaign ใหม่วันนี้แต่ยังไม่ได้เปิด Active (ตัวที่ผู้ใช้แจ้งว่าหายไปจากรายงานทั้งที่สร้างแล้ว 2026-10-24)
+    if (g.reNewPaused.length || g.newAdsPaused.length) {
+      lines.push("");
+      lines.push("[Ads สร้างใหม่ แต่ยังไม่เปิด]");
+      for (const n of g.reNewPaused) lines.push(n);
+      for (const n of g.newAdsPaused) lines.push(n);
     }
     blocks.push(lines.join("\n"));
   }

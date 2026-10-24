@@ -173,14 +173,23 @@ async function main() {
     if (restored > 0) console.warn(`  restored ${restored} campaign(s) from yesterday's snapshot for incomplete account(s).`);
   }
 
-  const diff = { reNew: [], newAds: [], deletedReNew: [], turnedOff: [] };
+  const diff = { reNew: [], newAds: [], deletedReNew: [], turnedOff: [], reNewPaused: [], newAdsPaused: [] };
   if (!isBootstrap) {
     for (const [campId, { name, category, status }] of Object.entries(current)) {
-      if (status !== "ACTIVE") continue; // ไม่ใช่แคมเปญที่เพิ่งเปิดใหม่ (Active) วันนี้
-      if (previousCampaigns[campId] && wasActiveYesterday(previousCampaigns[campId])) continue; // แอคทีฟอยู่แล้วเมื่อวาน ไม่ใช่ของใหม่
-      const entry = { id: campId, name, category };
-      if (RENEW_TAG_RE.test(name)) diff.reNew.push(entry);
-      else diff.newAds.push(entry);
+      if (status === "ACTIVE") {
+        if (previousCampaigns[campId] && wasActiveYesterday(previousCampaigns[campId])) continue; // แอคทีฟอยู่แล้วเมื่อวาน ไม่ใช่ของใหม่
+        const entry = { id: campId, name, category };
+        if (RENEW_TAG_RE.test(name)) diff.reNew.push(entry);
+        else diff.newAds.push(entry);
+      } else if (!previousCampaigns[campId]) {
+        // สร้างแคมเปญใหม่วันนี้ แต่ยังไม่เปิด Active (สร้าง Ads เสร็จแล้วแต่ไม่ได้กดเปิด) — เพิ่ม 2026-10-24 ตามที่
+        // ผู้ใช้แจ้งว่ามี Ads สร้างใหม่รวม Re-new 8 ตัว แต่ระบบเดิมมองไม่เห็นเพราะกรองด้วย status==="ACTIVE" เท่านั้น
+        // ก่อนหน้านี้ — เงื่อนไขนี้ต่างจาก reNew/newAds ด้านบนตรงที่ไม่สนใจว่าเมื่อวาน active หรือไม่ เพราะ ID ไม่เคย
+        // มีอยู่ใน snapshot เมื่อวานเลย (ถ้าเคยมีแล้วแค่ยัง Paused ต่อเนื่อง จะไม่ถูกนับซ้ำทุกวัน)
+        const entry = { id: campId, name, category, status };
+        if (RENEW_TAG_RE.test(name)) diff.reNewPaused.push(entry);
+        else diff.newAdsPaused.push(entry);
+      }
     }
     for (const [campId, prev] of Object.entries(previousCampaigns)) {
       if (!wasActiveYesterday(prev)) continue; // เมื่อวานก็ Off อยู่แล้ว ไม่ใช่การเปลี่ยนแปลงใหม่
@@ -217,11 +226,16 @@ async function main() {
           'has "[Re-new]"), newAds (newly ACTIVE today, no tag), deletedReNew (active yesterday, gone entirely from the API ' +
           'today i.e. truly deleted/archived, had "[Re-new]" tag — other full deletions aren\'t tracked, per user direction ' +
           "2026-10-08), turnedOff (active yesterday, still exists today but effective_status != ACTIVE i.e. paused/off, NOT " +
-          "deleted — any name, added 2026-10-19 per user request). incompleteAccounts (added 2026-10-24, per user report " +
-          'that a day\'s real ad churn was undercounted) = account names whose /campaigns fetch failed 3x even with retry ' +
-          "this run — diff for their previously-known campaigns is skipped (can't tell a real deletion from a fetch gap), " +
-          "so Monitor Ads may be undercounted for these accounts specifically that day. Feeds the \"Monitor Ads\" section " +
-          "of the daily LINE OA report (scripts/send-line-report.mjs).",
+          "deleted — any name, added 2026-10-19 per user request). reNewPaused/newAdsPaused (added 2026-10-24, per user " +
+          'report of campaigns created today but left Paused, which the old reNew/newAds logic silently skipped since it ' +
+          'only looked at status==="ACTIVE") = campaign id did not exist in yesterday\'s snapshot at all (brand new today) ' +
+          'but is NOT ACTIVE right now (created, not yet turned on) — split by "[Re-new]" tag same as reNew/newAds. A ' +
+          "campaign that already existed yesterday and is still just sitting Paused today is NOT re-reported here every " +
+          "day (only truly brand-new ids count). incompleteAccounts (added 2026-10-24, per user report that a day's real " +
+          "ad churn was undercounted) = account names whose /campaigns fetch failed 3x even with retry this run — diff " +
+          "for their previously-known campaigns is skipped (can't tell a real deletion from a fetch gap), so Monitor Ads " +
+          "may be undercounted for these accounts specifically that day. Feeds the \"Monitor Ads\" section of the daily " +
+          "LINE OA report (scripts/send-line-report.mjs).",
         date: today,
         campaigns: current,
         diff,
@@ -233,7 +247,7 @@ async function main() {
     )
   );
   console.log(
-    `Wrote ${outPath} (reNew: ${diff.reNew.length}, newAds: ${diff.newAds.length}, deletedReNew: ${diff.deletedReNew.length}, turnedOff: ${diff.turnedOff.length}, incompleteAccounts: ${incompleteAccounts.length})`
+    `Wrote ${outPath} (reNew: ${diff.reNew.length}, newAds: ${diff.newAds.length}, deletedReNew: ${diff.deletedReNew.length}, turnedOff: ${diff.turnedOff.length}, reNewPaused: ${diff.reNewPaused.length}, newAdsPaused: ${diff.newAdsPaused.length}, incompleteAccounts: ${incompleteAccounts.length})`
   );
 }
 
