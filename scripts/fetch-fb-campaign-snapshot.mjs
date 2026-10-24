@@ -77,6 +77,24 @@ const CATEGORY_LABELS = {
   inter: "Inter",
 };
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ดึงหนึ่งหน้า พร้อม retry (backoff 1s/2s/4s) สำหรับ error ชั่วคราว (rate limit ฯลฯ) — คืน null ถ้า fail
+// ครบ 3 ครั้งแล้วยังไม่ได้ (ต่างจากเดิมที่ log error แล้ว break เงียบๆ จนได้ผลลัพธ์ไม่ครบไปปนกับของจริง)
+async function fetchPage(url, accountId, pageNum) {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!json.error) return json;
+    console.error(`  ! act_${accountId} page ${pageNum} attempt ${attempt}/3: ${json.error.message}`);
+    if (attempt < 3) await sleep(1000 * 2 ** (attempt - 1));
+  }
+  return null;
+}
+
+// คืน { campaigns, complete } — complete=false หมายถึงบัญชีนี้ดึงไม่ครบ (error ค้างหลัง retry หรือโดนตัดหน้า
+// กลางคัน) ต้องไม่เอาผลไม่ครบไปปนกับของจริงในการ diff (เคยทำให้แคมเปญที่ยังไม่ถูกลบจริงขึ้น "[ลบถาวร]" ผิดๆ
+// เพราะหน้าที่ดึงไม่ทันไปอยู่ในหน้าที่ error ทิ้งไป — ผู้ใช้แจ้ง 2026-10-24: "วันนี้มี Ads ลบและขึ้นใหม่เยอะกว่านี้")
 async function fetchCampaigns(accountId) {
   // ไม่ใส่ effective_status filter — ขอบเขต default ของ API คือ ACTIVE + PAUSED (ไม่รวม DELETED/ARCHIVED)
   // ซึ่งตรงกับที่ต้องการพอดี: แคมเปญที่ "ยังอยู่แต่ Off" จะโผล่มาเป็น PAUSED ส่วนแคมเปญที่ถูกลบจริงจะหายไปเลย
@@ -86,17 +104,19 @@ async function fetchCampaigns(accountId) {
   url.searchParams.set("limit", "200");
   url.searchParams.set("access_token", FB_ACCESS_TOKEN);
 
+  let pageNum = 0;
   while (url) {
-    const res = await fetch(url);
-    const json = await res.json();
-    if (json.error) {
-      console.error(`  ! act_${accountId}: ${json.error.message}`);
-      break;
+    pageNum++;
+    const json = await fetchPage(url, accountId, pageNum);
+    if (json === null) {
+      console.error(`  ! act_${accountId}: giving up after page ${pageNum} failed 3x — marking account INCOMPLETE`);
+      return { campaigns, complete: false };
     }
     for (const c of json.data || []) campaigns[c.id] = { name: c.name, status: c.effective_status };
     url = json.paging?.next ? new URL(json.paging.next) : null;
   }
-  return campaigns;
+  console.log(`  act_${accountId}: ${pageNum} page(s), ${Object.keys(campaigns).length} campaign(s)`);
+  return { campaigns, complete: true };
 }
 
 function categoryFor(accountCategory, campaignName) {
@@ -118,20 +138,40 @@ async function main() {
   // status ให้ถือว่าเป็น ACTIVE (สมมติฐานที่ถูกต้องสำหรับ snapshot เก่าแบบนั้น)
   const wasActiveYesterday = (prev) => (prev.status ?? "ACTIVE") === "ACTIVE";
 
-  // { id: { name, category, status } } — รวมทั้ง ACTIVE และ PAUSED (ไม่ใช่แค่ ACTIVE แล้ว ตั้งแต่ 2026-10-19
-  // เพื่อให้แยกออกว่าแคมเปญที่หายไปจาก snapshot คือ "ถูกลบจริง" ไม่ใช่แค่ "ถูก Off")
+  // { id: { name, category, status, account } } — รวมทั้ง ACTIVE และ PAUSED (ไม่ใช่แค่ ACTIVE แล้ว ตั้งแต่
+  // 2026-10-19 เพื่อให้แยกออกว่าแคมเปญที่หายไปจาก snapshot คือ "ถูกลบจริง" ไม่ใช่แค่ "ถูก Off") — account เก็บไว้
+  // ตั้งแต่ 2026-10-24 เพื่อให้รู้ได้ว่าแคมเปญเก่าเป็นของบัญชีไหน ตอนบัญชีนั้นดึงข้อมูลวันถัดไปไม่ครบ (ดู incompleteAccounts)
   const current = {};
+  const incompleteAccounts = []; // accountName ที่ดึงไม่ครบ (error ค้างหลัง retry) — ดูคอมเมนต์ fetchCampaigns
   for (const [accountName, { id, category }] of Object.entries(ACCOUNTS)) {
     console.log(`Fetching campaigns for ${accountName}...`);
-    const campaigns = await fetchCampaigns(id);
+    const { campaigns, complete } = await fetchCampaigns(id);
+    if (!complete) incompleteAccounts.push(accountName);
     for (const [campId, { name, status }] of Object.entries(campaigns)) {
-      current[campId] = { name, category: categoryFor(category, name), status };
+      current[campId] = { name, category: categoryFor(category, name), status, account: accountName };
     }
   }
   const activeCount = Object.values(current).filter((c) => c.status === "ACTIVE").length;
   console.log(
     `Found ${Object.keys(current).length} campaign(s) (${activeCount} active) across ${Object.keys(ACCOUNTS).length} account(s).`
   );
+  if (incompleteAccounts.length > 0) {
+    console.warn(
+      `INCOMPLETE fetch for: ${incompleteAccounts.join(", ")} — diff for these accounts' previously-known campaigns ` +
+        "is skipped this run (can't tell real deletions from fetch gaps), new campaigns found are still reported."
+    );
+    // เติมแคมเปญเดิมของบัญชีที่ดึงไม่ครบกลับเข้า current (ถ้ามี account tag จาก snapshot ก่อนหน้า) เพื่อไม่ให้
+    // snapshot วันนี้ที่ไม่ครบไปกลายเป็น baseline ของพรุ่งนี้ — ไม่งั้นพอพรุ่งนี้ดึงครบปกติ แคมเปญเดิมที่หายไปจาก
+    // snapshot วันนี้ (เพราะดึงไม่ครบ ไม่ใช่เพราะถูกลบ) จะโผล่มาเป็น "ขึ้นใหม่"/"Re-new" ผิดๆ ซ้อนอีกชั้น
+    let restored = 0;
+    for (const [campId, prev] of Object.entries(previousCampaigns)) {
+      if (prev.account && incompleteAccounts.includes(prev.account) && !current[campId]) {
+        current[campId] = prev;
+        restored++;
+      }
+    }
+    if (restored > 0) console.warn(`  restored ${restored} campaign(s) from yesterday's snapshot for incomplete account(s).`);
+  }
 
   const diff = { reNew: [], newAds: [], deletedReNew: [], turnedOff: [] };
   if (!isBootstrap) {
@@ -144,6 +184,9 @@ async function main() {
     }
     for (const [campId, prev] of Object.entries(previousCampaigns)) {
       if (!wasActiveYesterday(prev)) continue; // เมื่อวานก็ Off อยู่แล้ว ไม่ใช่การเปลี่ยนแปลงใหม่
+      // บัญชีเดิมของแคมเปญนี้ดึงวันนี้ไม่ครบ -> ข้าม ไม่ตัดสินว่า "ลบ"/"Off" เพราะอาจแค่ไม่ได้ถูกดึงมา ไม่ใช่หายไปจริง
+      // (snapshot เก่าก่อน 2026-10-24 ไม่มี prev.account บันทึกไว้ -> ข้ามการป้องกันนี้ไม่ได้สำหรับรอบแรกหลังอัปเดต)
+      if (prev.account && incompleteAccounts.includes(prev.account)) continue;
       if (!current[campId]) {
         // หายไปจาก API เลย = ถูกลบ/archived จริง (ไม่ใช่แค่ Off)
         if (RENEW_TAG_RE.test(prev.name)) diff.deletedReNew.push({ id: campId, name: prev.name, category: prev.category });
@@ -174,11 +217,15 @@ async function main() {
           'has "[Re-new]"), newAds (newly ACTIVE today, no tag), deletedReNew (active yesterday, gone entirely from the API ' +
           'today i.e. truly deleted/archived, had "[Re-new]" tag — other full deletions aren\'t tracked, per user direction ' +
           "2026-10-08), turnedOff (active yesterday, still exists today but effective_status != ACTIVE i.e. paused/off, NOT " +
-          "deleted — any name, added 2026-10-19 per user request). Feeds the \"Monitor Ads\" section of the daily LINE OA " +
-          "report (scripts/send-line-report.mjs).",
+          "deleted — any name, added 2026-10-19 per user request). incompleteAccounts (added 2026-10-24, per user report " +
+          'that a day\'s real ad churn was undercounted) = account names whose /campaigns fetch failed 3x even with retry ' +
+          "this run — diff for their previously-known campaigns is skipped (can't tell a real deletion from a fetch gap), " +
+          "so Monitor Ads may be undercounted for these accounts specifically that day. Feeds the \"Monitor Ads\" section " +
+          "of the daily LINE OA report (scripts/send-line-report.mjs).",
         date: today,
         campaigns: current,
         diff,
+        incompleteAccounts,
         categoryLabels: CATEGORY_LABELS,
       },
       null,
@@ -186,7 +233,7 @@ async function main() {
     )
   );
   console.log(
-    `Wrote ${outPath} (reNew: ${diff.reNew.length}, newAds: ${diff.newAds.length}, deletedReNew: ${diff.deletedReNew.length}, turnedOff: ${diff.turnedOff.length})`
+    `Wrote ${outPath} (reNew: ${diff.reNew.length}, newAds: ${diff.newAds.length}, deletedReNew: ${diff.deletedReNew.length}, turnedOff: ${diff.turnedOff.length}, incompleteAccounts: ${incompleteAccounts.length})`
   );
 }
 

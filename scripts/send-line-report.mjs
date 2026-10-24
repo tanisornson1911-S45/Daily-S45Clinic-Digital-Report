@@ -164,7 +164,14 @@ function buildMonitorAdsSection(snapshot) {
     }
     blocks.push(lines.join("\n"));
   }
-  return blocks.length > 0 ? blocks.join("\n\n") : "ไม่มีการเปิด/ปิด Ads ใหม่เมื่อเทียบกับเมื่อวาน";
+  let result = blocks.length > 0 ? blocks.join("\n\n") : "ไม่มีการเปิด/ปิด Ads ใหม่เมื่อเทียบกับเมื่อวาน";
+  // แจ้งเตือนถ้าบัญชีไหนดึงข้อมูล Facebook ไม่ครบวันนี้ (error ค้างหลัง retry 3 ครั้ง) — ข้อมูล Monitor Ads ของ
+  // บัญชีนั้นอาจนับไม่ครบ (ดูคอมเมนต์ incompleteAccounts ใน fetch-fb-campaign-snapshot.mjs — เพิ่ม 2026-10-24
+  // หลังผู้ใช้แจ้งว่ายอด Ads ลบ/ขึ้นใหม่จริงมีมากกว่าที่รายงานแสดง)
+  if (snapshot.incompleteAccounts?.length) {
+    result += `\n\n⚠️ ดึงข้อมูลบัญชี ${snapshot.incompleteAccounts.join(", ")} ไม่ครบวันนี้ (Facebook API error) — รายการ Ads ลบ/ขึ้นใหม่ของบัญชีนี้อาจไม่ครบ`;
+  }
+  return result;
 }
 
 // เทียบ Ads Spend สะสม MTD กับ Budget สะสมของสัปดาห์ (ตัวเดียวกับที่โชว์บนสุดของรายงาน — budgetByCategory/
