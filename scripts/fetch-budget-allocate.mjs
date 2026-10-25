@@ -293,8 +293,11 @@ function parseAllProcedureDoctorBudgets(sheet, title) {
     }
     const doctors = Object.values(doctorsByName);
     if (doctors.length === 0) {
-      console.warn(`  ! "${title}": หัตถการ "${label}" ไม่พบคุณหมอที่มีงบตั้งไว้ — ข้ามหัตถการนี้`);
-      continue;
+      // Keep the procedure's own row totals (used e.g. as the whole-account
+      // "งบที่ใช้ได้" figure elsewhere) even when no individual doctor has a
+      // budget set this month — only the per-doctor reallocation plan
+      // genuinely needs a non-empty doctors list, not this top-level total.
+      console.warn(`  ! "${title}": หัตถการ "${label}" ไม่พบคุณหมอที่มีงบตั้งไว้ — เก็บยอดรวมหัตถการไว้ แต่ doctors จะว่าง`);
     }
 
     procedures.push({
