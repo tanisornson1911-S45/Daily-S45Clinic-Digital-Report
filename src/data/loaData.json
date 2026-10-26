@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-25T21:02:15.621Z",
+  "generatedAt": "2026-10-26T22:49:10.915Z",
   "months": {
     "2026-01": {
       "open": {
@@ -1249,13 +1249,6 @@
         "dailyReach": []
       },
       "brow": {
-        "broadcastReach": 0,
-        "budgetUsed": 0,
-        "budgetLeft": 10000,
-        "quotaLeft": 166666,
-        "dailyReach": []
-      },
-      "skin": {
         "broadcastReach": 0,
         "budgetUsed": 0,
         "budgetLeft": 10000,
