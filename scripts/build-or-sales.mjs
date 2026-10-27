@@ -82,6 +82,7 @@ const SURGERY_MAP = {
   "facelift": "brow_hairline",
   "เลื่อนไรผม": "brow_hairline",
   "subbrow lift": "brow_hairline", // เพิ่ม 2026-10-27 ตามที่ผู้ใช้ขอ — เดิมไม่อยู่ใน map เลยตกไปเป็น "other"
+  "ดึงขมับ": "brow_hairline", // เพิ่ม 2026-10-27 ตามที่ผู้ใช้ยืนยัน — temple lift นับเป็น Browlift เหมือน "ดึงหน้า"
 };
 
 function findCol(header, test) {
