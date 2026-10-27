@@ -51,6 +51,8 @@ const SURGERY_MAP = {
   "Forehead": "other",
   "Ultera": "other",
   "ดูดไขมัน": "breast_lipo",
+  "ตัดหนังหน้าท้อง": "breast_lipo", // เพิ่ม 2026-10-27 — เดิมไม่มีใน map เลยทำให้แถวนี้ถูกข้ามไปทั้งแถว (ต่างจาก
+  // build-or-sales.mjs ที่มี mapping นี้อยู่แล้ว ทำให้สองไฟล์นับไม่ตรงกัน แถวหายไปจาก rawTx.json เฉยๆ)
   "Skin": "other",
   "Filler": "other",
   "ยกมุมปาก": "brow_hairline",

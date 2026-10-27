@@ -74,6 +74,8 @@ const SURGERY_MAP = {
   "ดูดไขมัน": "breast_lipo",
   "ตัดหนังหน้าท้อง": "breast_lipo",
   "ฉีดไขมัน": "breast_lipo",
+  "full tummy": "breast_lipo", // เพิ่ม 2026-10-27 — เดิมมีแค่ใน build-raw-tx.mjs ทำให้สองไฟล์นับไม่ตรงกัน
+  "เติมไขมัน": "breast_lipo", // เพิ่ม 2026-10-27 — เดิมมีแค่ใน build-raw-tx.mjs ทำให้สองไฟล์นับไม่ตรงกัน
   "brow lift": "brow_hairline",
   "ยกมุมปาก": "brow_hairline",
   "ดึงหน้า": "brow_hairline",
