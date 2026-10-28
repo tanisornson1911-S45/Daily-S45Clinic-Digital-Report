@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-28T04:20:10.963Z",
+  "generatedAt": "2026-10-28T22:44:55.172Z",
   "months": {
     "2026-01": {
       "open": {
@@ -1241,6 +1241,22 @@
       }
     },
     "2026-10": {
+      "breast": {
+        "broadcastReach": 0,
+        "budgetUsed": 0,
+        "budgetLeft": 10000,
+        "quotaLeft": 166666,
+        "dailyReach": []
+      },
+      "brow": {
+        "broadcastReach": 0,
+        "budgetUsed": 0,
+        "budgetLeft": 10000,
+        "quotaLeft": 166666,
+        "dailyReach": []
+      }
+    },
+    "2026-11": {
       "breast": {
         "broadcastReach": 0,
         "budgetUsed": 0,
