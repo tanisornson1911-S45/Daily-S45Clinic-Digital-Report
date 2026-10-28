@@ -468,6 +468,13 @@ function computeInterRowsForRange(range, doctorFilter) {
   }
   return rows;
 }
+// ยอดขายรวมของ Inter ตามช่วงวันที่ที่เลือก (ผลรวม .total ของทุกหัตถการ) — ใช้กับการ์ด/กราฟ "ยอดขาย เทียบ
+// ค่าโฆษณา ต่อหัตถการ" ที่เพิ่ม Inter เข้ามาด้วยตามที่ผู้ใช้ขอ 2026-10-28 (ใช้ข้อมูลจาก "Inter S45 2026 - Sale
+// part" ผ่าน INTER_SALE_DATA ตัวเดียวกับที่ตารางสรุปหมอ Inter ใช้อยู่แล้ว — d ในแต่ละเคสคือวันที่ของเคสนั้นตรงกับ
+// คอลัมน์ Date/Date OR ในชีตต้นฉบับ ใช้กรองตาม dateRange ได้เหมือน OR date ของหัตถการอื่น)
+function computeInterSalesForRange(range) {
+  return computeInterRowsForRange(range, "all").reduce((s, r) => s + r.total, 0);
+}
 
 // ============================================================
 // SOURCE 4 — Ads → Inbox → Sales funnel รายวัน มิ.ย. 2026 แยกตามหัตถการ
@@ -2366,14 +2373,21 @@ export default function AdsDashboard() {
     compareRange.start === compareRange.end ? fmtDateTh(compareRange.start) : `${fmtDateTh(compareRange.start)} – ${fmtDateTh(compareRange.end)}`;
 
   // ทั้ง 2 ตัวนี้อิงช่วงวันที่ที่เลือกจริง (dateRange) — เดือนมิ.ย.เต็มเดือนใช้ตัวเลขทางการจาก CATEGORIES เหมือนเดิม
-  // ช่วงอื่นคำนวณยอดขายจาก RAW_TX จริงรายวัน + ประมาณค่าโฆษณา/เป้าหมายตามสัดส่วนวันที่ทับซ้อนกับแต่ละเดือน
-  // "Inter" ไม่มีแท็กแยกในไฟล์ธุรกรรมรายวัน จึงโชว์ได้เฉพาะตอนเลือกเต็มเดือนมิ.ย. เท่านั้น
+  // ช่วงอื่นคำนวณยอดขายจากยอด OR จริง (รวม Forecast แบบเดียวกับ Box 1 "ยอดขายรวมทุกช่องทาง" บน Overview —
+  // เปลี่ยนตามที่ผู้ใช้ขอ 2026-10-28 ให้ใช้นิยามเดียวกัน) เทียบกับค่าโฆษณาแยกบัญชีต่อหัตถการ (categorySpendForRange)
+  // เพิ่ม "Inter" เข้ามาด้วย (เดิมไม่รวมเพราะ RAW_TX รายวันไม่มีแท็ก Inter แยก) โดยอ่านยอดขายจาก INTER_SALE_DATA
+  // ("Inter S45 2026 - Sale part") ตรงๆ แทน — ค่าโฆษณาของ Inter มีอยู่แล้วใน categorySpendForRange (บัญชีแยก)
   const chartData = isJunFull
     ? Object.entries(CATEGORIES).map(([key, c]) => ({ key, label: c.label, spend: c.spend, sales: c.sales }))
-    : DAILY_CATEGORY_KEYS.map((key) => {
-        const m = computeExecMetricsForRange(dateRange, key);
-        return { key, label: CATEGORIES[key].label, spend: m.fbSpend, sales: m.sales };
-      });
+    : (() => {
+        const spendByCat = categorySpendForRange(dateRange);
+        return [...DAILY_CATEGORY_KEYS, "inter"].map((key) => ({
+          key,
+          label: CATEGORIES[key].label,
+          spend: spendByCat[key] ?? 0,
+          sales: key === "inter" ? computeInterSalesForRange(dateRange) : computeOrSalesClosedAll(dateRange, key),
+        }));
+      })();
 
   const targetRanking = useMemo(() => {
     if (isJunFull) {
@@ -3504,7 +3518,6 @@ export default function AdsDashboard() {
             value={`${(execRatio * 100).toFixed(1)}%`}
             sub={execOverThreshold ? "สูงกว่าเกณฑ์ 10%" : "อยู่ในเกณฑ์ปกติ"}
             tone={execOverThreshold ? "green" : "slate"}
-            valueTone={execOverThreshold ? "green" : undefined}
             delta={ratioDelta}
             goodDirection="up"
           />
@@ -3517,7 +3530,7 @@ export default function AdsDashboard() {
 {activePage === "overview" && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mb-6">
           <h2 className="text-sm font-semibold text-slate-700 mb-4">
-            ยอดขาย เทียบ ค่าโฆษณา ต่อหัตถการ — {rangeLabel} (ทุกช่องทาง{isJunFull ? "" : " · ไม่รวม Inter"})
+            ยอดขาย เทียบ ค่าโฆษณา ต่อหัตถการ — {rangeLabel} (ทุกช่องทาง)
           </h2>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
