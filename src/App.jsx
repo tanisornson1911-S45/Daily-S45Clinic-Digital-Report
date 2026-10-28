@@ -2327,7 +2327,11 @@ export default function AdsDashboard() {
 
   // เมตริกสรุปบน Metric Cards ด้านบน — ปรับตามช่วงวันที่ (dateRange) + procFilter ที่เลือกจริง
   // ต่างจาก totals/fbSales/fbSpend/ratio/roas ด้านบนซึ่งใช้ในข้อความสรุป insight ที่ล็อกไว้ที่เดือนมิถุนายนเสมอ
-  const execSales = isJunFull ? totals.sales : rangeTotals.sales ?? 0;
+  // Box 1 "ยอดขายรวม (ทุกช่องทาง)" ใช้ computeOrSalesClosedAll (รวม Forecast ถึงสิ้นเดือนปฏิทิน) ไม่ใช่
+  // computeOrSalesForRange ธรรมดาแบบที่การ์ด "ยอดขายรวม (Total Price)" ในแท็บยอดขายยังใช้อยู่ (คงไว้แบบเดิมตามที่
+  // ผู้ใช้ขอ) — เปลี่ยนตามที่ผู้ใช้แจ้ง 2026-10-28 ว่ายอดในไฟล์ทีมงาน (15.6M เต็มเดือน) ไม่ตรงกับ Dashboard
+  // (12.3M ตัดที่วันนี้) ต้องการให้ Box 1 ตรงกับไฟล์ทีมงาน ซึ่งนับรวมเคสที่จองไว้แล้วแต่ยังไม่ถึงวัน OR ด้วย
+  const execSales = isJunFull ? totals.sales : computeOrSalesClosedAll(dateRange, procFilter);
   // "Ads Revenue (Online)" การ์ดที่ 2 — เปลี่ยนนิยามตามที่ผู้ใช้ขอ 2026-10-28: ให้ใช้ OR date (เหมือนการ์ดที่ 1
   // "ยอดขายรวมทุกช่องทาง") แทน transaction/consult date เดิม และนับเฉพาะช่องทาง Online (Facebook/Line/
   // Instagram/WhatsApp) แทนที่จะเป็น Facebook อย่างเดียว — นิยามเดียวกับ Ads Revenue ของรายงาน LINE OA รายวัน
@@ -2345,11 +2349,19 @@ export default function AdsDashboard() {
   // คำนวณ metric ชุดเดียวกันสำหรับ compareRange แล้วหาค่า % เปลี่ยนแปลงเทียบกับช่วงหลัก
   // แสดงเป็น badge บน Metric Cards เมื่อผู้ใช้เปิด Compare จาก DateRangePicker ----
   const compareMetrics = compareEnabled ? computeExecMetricsForRange(compareRange, procFilter) : null;
-  const salesDelta = compareMetrics ? pctDelta(execSales, compareMetrics.sales) : null;
+  // execSales (Box 1) ใช้ computeOrSalesClosedAll (รวม Forecast) แยกจาก compareMetrics.sales ธรรมดา (settled
+  // อย่างเดียว) ที่ chartData/targetRanking ด้านล่างยังใช้อยู่ — เทียบ % เปลี่ยนแปลงของ Box 1 ต้องคำนวณฝั่ง
+  // compareRange แบบ "รวม Forecast" เดียวกัน ไม่งั้นเทียบกันคนละนิยาม
+  const compareSalesClosedAll = compareEnabled ? computeOrSalesClosedAll(compareRange, procFilter) : null;
+  const salesDelta = compareSalesClosedAll != null ? pctDelta(execSales, compareSalesClosedAll) : null;
   const fbSalesDelta = compareMetrics ? pctDelta(execFbSales, compareMetrics.fbSales) : null;
   const fbSpendDelta = compareMetrics ? pctDelta(execFbSpend, compareMetrics.fbSpend) : null;
   const ratioDelta = compareMetrics ? pctDelta(execRatio, compareMetrics.ratio) : null;
-  const roasDeltaCompare = compareMetrics ? pctDelta(execRoas, compareMetrics.roas) : null;
+  // execRoas ใช้ execSales (รวม Forecast) เป็นตัวตั้งแล้ว เทียบฝั่ง compareRange ต้องใช้นิยามเดียวกัน ไม่ใช่
+  // compareMetrics.roas ซึ่งยังอิง sales แบบ settled อย่างเดียว (ดูคอมเมนต์ compareSalesClosedAll ด้านบน)
+  const compareRoasClosedAll =
+    compareEnabled && execFbSpend != null && compareMetrics ? (compareMetrics.fbSpend > 0 ? compareSalesClosedAll / compareMetrics.fbSpend : 0) : null;
+  const roasDeltaCompare = compareRoasClosedAll != null ? pctDelta(execRoas, compareRoasClosedAll) : null;
   const compareRangeLabel =
     compareRange.start === compareRange.end ? fmtDateTh(compareRange.start) : `${fmtDateTh(compareRange.start)} – ${fmtDateTh(compareRange.end)}`;
 
