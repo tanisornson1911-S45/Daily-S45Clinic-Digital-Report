@@ -137,20 +137,35 @@ function main() {
   for (const [sheetName, monthIso] of sheetEntries) {
     const sheet = wb[sheetName];
     if (!sheet || sheet.length < 2) continue; // ชีตนี้ไม่มีในไฟล์ตอนนี้ (เช่น June) — ข้ามเงียบๆ
-    const header = sheet[0];
-    const dateCol = findCol(header, (h) => h.includes("date"));
-    const doctorCol = findCol(header, (h) => h === "doctor");
-    const surgeryCol = findCol(header, (h) => h === "surgery");
-    const onlineCol = findCol(header, (h) => h === "online price");
-    const medicalCol = findCol(header, (h) => h.includes("medical"));
-    const totalCol = findCol(header, (h) => h === "total");
-    if (doctorCol < 0 || surgeryCol < 0 || totalCol < 0) {
-      console.warn(`  ! Sheet "${sheetName}": couldn't find Doctor/Surgery/Total columns — skipping sheet.`);
+
+    // หาแถว header จริง — ปกติอยู่แถวแรก (index 0) แต่บางชีต (พบครั้งแรกใน "Oct 10") มีแถวขยะ/เลข serial
+    // วันที่ค้างอยู่ก่อนแถว header จริง (เช่น [46296,"","",...]) ทำให้ sheet[0] ไม่ใช่ header เลยหาคอลัมน์ไม่เจอ
+    // และทั้งชีตถูกข้ามไปเงียบๆ ทั้งที่มีข้อมูลเคสจริงอยู่ข้างใน — ไล่หาใน 3 แถวแรกแทนที่จะเชื่อว่า index 0 เสมอ
+    let headerRowIdx = -1;
+    let dateCol = -1, doctorCol = -1, surgeryCol = -1, onlineCol = -1, medicalCol = -1, totalCol = -1;
+    for (let i = 0; i < Math.min(3, sheet.length); i++) {
+      const candidate = sheet[i];
+      const dCol = findCol(candidate, (h) => h === "doctor");
+      const sCol = findCol(candidate, (h) => h === "surgery");
+      const tCol = findCol(candidate, (h) => h === "total");
+      if (dCol >= 0 && sCol >= 0 && tCol >= 0) {
+        headerRowIdx = i;
+        doctorCol = dCol;
+        surgeryCol = sCol;
+        totalCol = tCol;
+        dateCol = findCol(candidate, (h) => h.includes("date"));
+        onlineCol = findCol(candidate, (h) => h === "online price");
+        medicalCol = findCol(candidate, (h) => h.includes("medical"));
+        break;
+      }
+    }
+    if (headerRowIdx < 0) {
+      console.warn(`  ! Sheet "${sheetName}": couldn't find Doctor/Surgery/Total columns in the first 3 rows — skipping sheet.`);
       continue;
     }
 
     let lastDate = `${monthIso}-01`; // fallback ถ้าแถวแรกๆ ของชีตไม่มีวันที่ระบุเลย
-    for (const r of sheet.slice(1)) {
+    for (const r of sheet.slice(headerRowIdx + 1)) {
       if (!r.some((c) => c !== "" && c != null)) continue; // แถวว่างล้วน
       const rawDate = dateCol >= 0 ? r[dateCol] : null;
       const parsedDate = parseInterDate(rawDate);
