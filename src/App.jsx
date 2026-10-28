@@ -1133,27 +1133,38 @@ function calendarMonthEnd(dateStr) {
 function computeOrSalesClosedAll(range, proc) {
   return computeOrSalesForRange({ start: range.start, end: calendarMonthEnd(range.end) }, proc);
 }
-// "ยอดขายรวม (Facebook)" = Total Price ของเคสที่ปิดมัดจำแล้ว (RAW_TX/มัดจำ 2026) + Online Price ของเคสที่ยัง
-// อยู่แค่ขั้นปรึกษา ยังไม่ปิดมัดจำ (จากชีต "ปรึกษา 2026" — src/data/consultPipeline.json สร้างโดย
-// scripts/build-consult-pipeline.mjs) ไม่รวมซ้ำกับเคสที่ปิดมัดจำแล้ว เพราะกรองสถานะ "ปรึกษา"/"ปรึกษาออนไลน์"
-// ล้วนๆ ไว้ตั้งแต่ตอนสร้างไฟล์แล้ว (ตามที่ผู้ใช้ยืนยัน 2569-09-01: รวมเฉพาะเคสที่ยังไม่ปิดมัดจำ)
-function computeConsultPipelineForRange(range, platform, proc) {
-  const rows = CONSULT_PIPELINE_DATA.entries.filter(
-    (e) =>
-      e.d >= range.start &&
-      e.d <= range.end &&
-      (platform === "all" || e.platform === platform) &&
-      (proc === "all" || e.proc === proc)
-  );
-  return rows.reduce((s, e) => s + e.amount, 0);
-}
 
+// ช่องทาง "Online" ที่นับเป็น Ads Revenue — ชุดเดียวกับ ADS_REVENUE_CHANNELS ใน scripts/send-line-report.mjs
+const ONLINE_CHANNELS = new Set(["Facebook", "Line", "Instagram", "WhatsApp"]);
+// index RAW_TX ด้วย (OR date, หมอ, หัตถการ) -> ช่องทาง เพื่อเอาไว้ join กับ OR_SALES_DATA หาว่าเคสไหนมาจาก Online
+// (OR_SALES_DATA เองไม่มีคอลัมน์ช่องทาง) — ตรงกับ buildRawTxIndex ใน scripts/send-line-report.mjs ทุกประการ
+// สร้างครั้งเดียวตอนโหลดโมดูล ไม่ใช่ทุก render เพราะ RAW_TX เป็นข้อมูลนิ่งของ session นี้
+const RAW_TX_CHANNEL_INDEX = (() => {
+  const idx = new Map();
+  for (const t of RAW_TX) {
+    if (!t.or) continue;
+    const key = `${t.or}|${t.doc}|${t.p}`;
+    if (!idx.has(key)) idx.set(key, t.ch);
+  }
+  return idx;
+})();
+// "Ads Revenue (Online)" บน Metric Card ภาพรวม — เหมือน Box "ยอดขายรวม (ทุกช่องทาง)" ทุกอย่าง (OR date, กรองตาม
+// dateRange/procFilter ที่เลือก) แต่นับเฉพาะเคสที่ช่องทาง = Facebook/Line/Instagram/WhatsApp เท่านั้น นิยามเดียวกับ
+// "Ads Revenue" ในรายงาน LINE OA รายวัน (scripts/send-line-report.mjs) ตามที่ผู้ใช้ขอให้ใช้นิยามเดียวกัน 2026-10-28
+function computeOnlineAdsRevenueForRange(range, proc) {
+  const rows = OR_SALES_DATA.entries.filter((e) => e.d >= range.start && e.d <= range.end && (proc === "all" || e.proc === proc));
+  let total = 0;
+  for (const e of rows) {
+    const ch = RAW_TX_CHANNEL_INDEX.get(`${e.d}|${e.doctor}|${e.proc}`);
+    if (ch && ONLINE_CHANNELS.has(ch)) total += e.amount;
+  }
+  return total;
+}
 function computeExecMetricsForRange(range, proc) {
   // ชื่อตัวแปรแก้จาก isFullJun เป็น isFullJul แล้ว — เดิมเช็คช่วงเต็มเดือน มิ.ย. ทั้งที่ GRAND_TOTAL/CATEGORIES
   // เป็นข้อมูล ก.ค. ที่ยืนยันแล้ว (ไม่ตรงกับ isJunFull ระดับ component ที่เช็ค ก.ค. อยู่แล้ว) ทำให้ถ้าเลือกช่วง
   // มิ.ย. เป๊ะๆ (หรือ compareRange ตกที่ มิ.ย. เป๊ะๆ) จะโชว์ตัวเลข ก.ค. ผิดเดือนไปแบบเงียบๆ — แก้ให้ตรงกันแล้ว
   const isFullJul = range.start === "2026-07-01" && range.end === "2026-07-31";
-  const txInRange = RAW_TX.filter((t) => t.d >= range.start && t.d <= range.end);
 
   const sales = isFullJul
     ? proc === "all"
@@ -1161,12 +1172,14 @@ function computeExecMetricsForRange(range, proc) {
       : CATEGORIES[proc].sales
     : computeOrSalesForRange(range, proc);
 
+  // "Ads Revenue (Online)" — OR date + ช่องทาง Online เท่านั้น (ดูคอมเมนต์ computeOnlineAdsRevenueForRange)
+  // นิยามเปลี่ยนจาก Facebook-only/transaction-date เป็นแบบนี้ตามที่ผู้ใช้ขอ 2026-10-28 ให้ตรงกับ Ads Revenue
+  // ของรายงาน LINE OA — ของเดิม (isFullJul) ไม่แตะ เพราะเป็น snapshot ที่ validate ไว้แล้วของเดือน ก.ค.
   const fbSales = isFullJul
     ? proc === "all"
       ? FB_TOTAL.total
       : FB_BY_KEY[proc]?.total ?? 0
-    : txInRange.filter((t) => t.ch === "Facebook" && (proc === "all" || t.p === proc)).reduce((s, t) => s + t.tot, 0) +
-      computeConsultPipelineForRange(range, "Facebook", proc);
+    : computeOnlineAdsRevenueForRange(range, proc);
 
   const fbSpend = (() => {
     if (isFullJul) return proc === "all" ? GRAND_TOTAL.spend : CATEGORIES[proc].spend;
@@ -2299,13 +2312,12 @@ export default function AdsDashboard() {
   // เมตริกสรุปบน Metric Cards ด้านบน — ปรับตามช่วงวันที่ (dateRange) + procFilter ที่เลือกจริง
   // ต่างจาก totals/fbSales/fbSpend/ratio/roas ด้านบนซึ่งใช้ในข้อความสรุป insight ที่ล็อกไว้ที่เดือนมิถุนายนเสมอ
   const execSales = isJunFull ? totals.sales : rangeTotals.sales ?? 0;
-  // ยอดขายรวม (Facebook) = Total Price ของเคสที่ปิดมัดจำแล้ว (activeFbTotal/activeFbByKey จาก RAW_TX) + Online
-  // Price ของเคสที่ยังอยู่แค่ขั้นปรึกษา ยังไม่ปิดมัดจำ (computeConsultPipelineForRange) — ดูคอมเมนต์ที่
-  // computeConsultPipelineForRange ด้านบนสำหรับเหตุผลที่ไม่รวมซ้ำกับเคสที่ปิดมัดจำแล้ว
-  const execFbSales = isJunFull
-    ? fbSales
-    : (procFilter === "all" ? activeFbTotal.total : activeFbByKey[procFilter]?.total ?? 0) +
-      computeConsultPipelineForRange(dateRange, "Facebook", procFilter);
+  // "Ads Revenue (Online)" การ์ดที่ 2 — เปลี่ยนนิยามตามที่ผู้ใช้ขอ 2026-10-28: ให้ใช้ OR date (เหมือนการ์ดที่ 1
+  // "ยอดขายรวมทุกช่องทาง") แทน transaction/consult date เดิม และนับเฉพาะช่องทาง Online (Facebook/Line/
+  // Instagram/WhatsApp) แทนที่จะเป็น Facebook อย่างเดียว — นิยามเดียวกับ Ads Revenue ของรายงาน LINE OA รายวัน
+  // (ดูคอมเมนต์ computeOnlineAdsRevenueForRange ด้านบน) — ของเดิม (isJunFull) ไม่แตะ เพราะเป็น snapshot ที่
+  // validate ไว้แล้วของเดือน ก.ค.
+  const execFbSales = isJunFull ? fbSales : computeOnlineAdsRevenueForRange(dateRange, procFilter);
   const execFbSpend = isJunFull ? fbSpend : rangeSpend;
   const execRatio = execFbSales > 0 ? execFbSpend / execFbSales : 0;
   const execRoas = execFbSpend > 0 ? execFbSales / execFbSpend : 0;
@@ -3438,21 +3450,13 @@ export default function AdsDashboard() {
             icon={TrendingUp}
             label="ยอดขายรวม (ทุกช่องทาง)"
             value={`฿${fmtTHB(execSales)}`}
-            sub={
-              isJunFull
-                ? procFilter === "all"
-                  ? 'อ้างอิงแถว "รวม" ในชีตต้นฉบับ'
-                  : "Total Price ของหัตถการนี้"
-                : rangeLabel
-            }
             tone="indigo"
             delta={salesDelta}
           />
           <MetricCard
             icon={Megaphone}
-            label="ยอดขายรวม (Facebook)"
+            label="Ads Revenue (Online)"
             value={`฿${fmtTHB(execFbSales)}`}
-            sub="Total Price (ปิดมัดจำแล้ว) + Online Price (ปรึกษายังไม่มัดจำ)"
             tone="green"
             delta={fbSalesDelta}
           />
@@ -3460,7 +3464,6 @@ export default function AdsDashboard() {
             icon={Wallet}
             label="ค่าโฆษณาที่ใช้ไป (Facebook)"
             value={`฿${fmtTHB(execFbSpend)}`}
-            sub={isJunFull ? "จากคอลัมน์ Spend ในชีต Budget Allocate" : "ประมาณการตามสัดส่วนวันที่เลือก"}
             tone="blue"
             delta={fbSpendDelta}
             goodDirection="down"
