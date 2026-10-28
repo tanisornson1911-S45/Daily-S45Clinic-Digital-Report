@@ -981,7 +981,7 @@ function Select({ icon: Icon, value, onChange, options }) {
   );
 }
 
-function MetricCard({ icon: Icon, label, value, sub, tone = "slate", delta, goodDirection = "up" }) {
+function MetricCard({ icon: Icon, label, value, sub, tone = "slate", delta, goodDirection = "up", valueTone }) {
   const tones = {
     slate: "bg-slate-50 text-slate-600",
     green: "bg-emerald-50 text-emerald-600",
@@ -1013,8 +1013,22 @@ function MetricCard({ icon: Icon, label, value, sub, tone = "slate", delta, good
           </span>
         )}
       </div>
-      <div className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight break-words">{value}</div>
-      {sub && <div className={`text-xs mt-1 font-medium break-words ${tone === "red" ? "text-rose-500" : "text-slate-400"}`}>{sub}</div>}
+      <div
+        className={`text-xl sm:text-2xl font-bold tracking-tight break-words ${
+          valueTone === "red" ? "text-rose-600" : valueTone === "green" ? "text-emerald-600" : "text-slate-800"
+        }`}
+      >
+        {value}
+      </div>
+      {sub && (
+        <div
+          className={`text-xs mt-1 font-medium break-words ${
+            tone === "red" ? "text-rose-500" : tone === "green" ? "text-emerald-600" : "text-slate-400"
+          }`}
+        >
+          {sub}
+        </div>
+      )}
     </div>
   );
 }
@@ -3473,9 +3487,10 @@ export default function AdsDashboard() {
             label="Ads / ยอดขาย (Facebook)"
             value={`${(execRatio * 100).toFixed(1)}%`}
             sub={execOverThreshold ? "สูงกว่าเกณฑ์ 10%" : "อยู่ในเกณฑ์ปกติ"}
-            tone={execOverThreshold ? "red" : "slate"}
+            tone={execOverThreshold ? "green" : "slate"}
+            valueTone={execOverThreshold ? "green" : undefined}
             delta={ratioDelta}
-            goodDirection="down"
+            goodDirection="up"
           />
           <MetricCard icon={Target} label="ROAS (Facebook)" value={`${execRoas.toFixed(1)}x`} tone="slate" delta={roasDeltaCompare} />
           </div>
