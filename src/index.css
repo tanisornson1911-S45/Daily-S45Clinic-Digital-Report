@@ -324,9 +324,53 @@ aside .bg-indigo-50.text-indigo-700 svg { color: #0d9488 !important; }
 .recharts-legend-item-text { color: #64748b !important; }
 .dark .recharts-legend-item-text { color: #94a3b8 !important; }
 
+/* Hovering a bar/line (to trigger the tooltip) also draws Recharts' own "cursor" highlight
+   behind it — by default a flat, fully-opaque #ccc rectangle with square corners (set as an
+   inline SVG `fill` attribute by the library, same in light and dark mode: a plain gray/white
+   slab stamped over the chart, reported 2026-10-28 as "แผ่นสี่เหลี่ยมขาวๆ"). A CSS `fill`/`stroke`
+   rule on the class beats the inline presentation attribute (SVG attributes sit below any CSS
+   rule in the cascade, !important or not), so this re-colors it as a soft brand-teal wash
+   without touching the 4 separate <Tooltip> call sites in App.jsx. */
+.recharts-tooltip-cursor { fill: rgba(13, 148, 136, 0.08) !important; stroke: rgba(13, 148, 136, 0.18); }
+.dark .recharts-tooltip-cursor { fill: rgba(45, 212, 191, 0.12) !important; stroke: rgba(45, 212, 191, 0.22); }
+
 /* ---- inputs/buttons: smoother focus + hover feedback everywhere ---- */
 button, select, input { transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease; }
 button:focus-visible, select:focus-visible, input:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.35);
 }
+
+/* ============================================================
+   hover: utility states — re-themed off the flat gray slab, with an
+   explicit .dark counterpart for every one
+   -----------------------------------------------------------
+   Tailwind compiles `hover:bg-slate-50` to its own selector
+   (.hover\:bg-slate-50:hover), entirely separate from the plain
+   `.bg-slate-50` rule the dark-mode override layer above re-themes.
+   Nothing targeted the hover: variants, so every hover state in dark
+   mode fell through to Tailwind's literal light-mode fill (e.g.
+   #f8fafc) — a bright near-white rectangle on a near-black sidebar/
+   menu (reported 2026-10-28, same "แผ่นสี่เหลี่ยมขาวๆ" complaint as the
+   chart cursor above). Replaced the flat neutral fill with a soft
+   brand-teal (or context accent) tinted wash in both themes instead
+   of just patching dark mode, so hover reads as "highlighted," not
+   "a gray box," everywhere it's used.
+   ============================================================ */
+.hover\:bg-slate-50:hover { background-color: rgba(13, 148, 136, 0.06) !important; }
+.hover\:bg-slate-100:hover { background-color: rgba(13, 148, 136, 0.1) !important; }
+.hover\:bg-amber-50:hover { background-color: rgba(245, 158, 11, 0.1) !important; }
+.hover\:border-slate-300:hover { border-color: rgba(13, 148, 136, 0.35) !important; }
+.hover\:border-amber-200:hover { border-color: rgba(217, 119, 6, 0.55) !important; }
+.hover\:border-pink-200:hover { border-color: rgba(219, 39, 119, 0.5) !important; }
+.hover\:text-slate-600:hover { color: #334155 !important; }
+.hover\:text-slate-700:hover { color: #1e293b !important; }
+
+.dark .hover\:bg-slate-50:hover { background-color: rgba(45, 212, 191, 0.1) !important; }
+.dark .hover\:bg-slate-100:hover { background-color: rgba(45, 212, 191, 0.15) !important; }
+.dark .hover\:bg-amber-50:hover { background-color: rgba(245, 158, 11, 0.16) !important; }
+.dark .hover\:border-slate-300:hover { border-color: rgba(45, 212, 191, 0.4) !important; }
+.dark .hover\:border-amber-200:hover { border-color: rgba(251, 191, 36, 0.5) !important; }
+.dark .hover\:border-pink-200:hover { border-color: rgba(244, 114, 182, 0.5) !important; }
+.dark .hover\:text-slate-600:hover { color: #cbd5e1 !important; }
+.dark .hover\:text-slate-700:hover { color: #f1f5f9 !important; }
