@@ -1202,7 +1202,9 @@ function computeExecMetricsForRange(range, proc) {
   })();
 
   const ratio = fbSales > 0 ? fbSpend / fbSales : 0;
-  const roas = fbSpend > 0 ? fbSales / fbSpend : 0;
+  // ROAS ใช้ "sales" (ยอด OR รวมทุกช่องทาง) หาร fbSpend ตามที่ผู้ใช้ขอ 2026-10-28 — คนละตัวกับ ratio/Ads Cost
+  // ด้านบนซึ่งยังอิง fbSales (Ads Revenue เฉพาะ Online) เหมือนเดิม ไม่ได้แก้
+  const roas = fbSpend > 0 ? sales / fbSpend : 0;
   return { sales, fbSales, fbSpend, ratio, roas };
 }
 
@@ -2334,7 +2336,9 @@ export default function AdsDashboard() {
   const execFbSales = isJunFull ? fbSales : computeOnlineAdsRevenueForRange(dateRange, procFilter);
   const execFbSpend = isJunFull ? fbSpend : rangeSpend;
   const execRatio = execFbSales > 0 ? execFbSpend / execFbSales : 0;
-  const execRoas = execFbSpend > 0 ? execFbSales / execFbSpend : 0;
+  // ROAS (Box 5) ใช้ยอด OR รวมทุกช่องทาง (execSales, เหมือน Box 1) หาร Ads Spend แทน Ads Revenue เฉพาะ Online —
+  // ตามที่ผู้ใช้ขอ 2026-10-28 (คนละตัวกับ execRatio/Ads Cost ด้านบนซึ่งยังอิง execFbSales เหมือนเดิม)
+  const execRoas = execFbSpend > 0 ? execSales / execFbSpend : 0;
   const execOverThreshold = execRatio > AD_COST_THRESHOLD;
 
   // ---- Compare (เปรียบเทียบช่วงเวลา) — ใช้ computeExecMetricsForRange (pure function)
