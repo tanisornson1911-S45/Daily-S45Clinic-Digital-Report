@@ -2217,10 +2217,24 @@ export default function AdsDashboard() {
   // ยอดขายรวม (deposit/online/sales) ในช่วงวันที่เลือก + ค่าโฆษณา (ประมาณจากยอดรายเดือนจริง เฉลี่ยตามสัดส่วนวันที่ทับซ้อน)
   // แก้บั๊ก: เดิมไม่กรองตาม procFilter ทำให้สลับหัตถการแล้วยอดไม่เปลี่ยนเมื่อช่วงวันที่ไม่ใช่เดือนมิ.ย.เต็มเดือน
   const txInRangeByProc = procFilter === "all" ? txInRange : txInRange.filter((t) => t.p === procFilter);
+  // "เลือกหัตถการ = Inter" บนการ์ด "ยอดขายรวมทุกช่องทาง" เคยขึ้น ฿0 ทุกกล่องเมื่อเลือกช่วงวันที่ที่ไม่ใช่
+  // มิ.ย.เต็มเดือน (รายงาน 2026-10-29) — สาเหตุคือ txInRangeByProc/computeOrSalesForRange/computeOrSalesClosedAll
+  // ทั้งหมดกรองจากคอลัมน์ "หัตถการ" ของ RAW_TX/orSales.json ซึ่งไม่เคยมีค่า proc เป็น "inter" เลย (เคส Inter
+  // อยู่ในไฟล์ "Inter S45 2026 - Sale part" คนละไฟล์ ผ่าน INTER_SALE_DATA/computeInterRowsForRange เท่านั้น) —
+  // ไฟล์อัปเดตจริง แค่การ์ดนี้ไม่เคยต่อสายไปอ่านมันเลย ไม่ใช่บั๊กที่ build-inter.mjs
+  const interRangeRows = procFilter === "inter" ? computeInterRowsForRange(dateRange, "all") : null;
   const rangeTotals = isJunFull
     ? procFilter === "all"
       ? { deposit: GRAND_TOTAL.deposit, online: GRAND_TOTAL.online, sales: GRAND_TOTAL.sales }
       : { deposit: CATEGORIES[procFilter].deposit, online: CATEGORIES[procFilter].online, sales: CATEGORIES[procFilter].sales }
+    : procFilter === "inter"
+    ? {
+        deposit: interRangeRows.reduce((s, r) => s + r.deposit, 0),
+        // ไฟล์ Inter ไม่มีคอลัมน์ Online Price แยกจาก Medical check up เหมือนที่ snapshot มิ.ย.เคยมี —
+        // build-inter.mjs รวมสองคอลัมน์นั้นเป็น deposit ก้อนเดียว (ดูคอมเมนต์ในสคริปต์) จึงไม่มีตัวเลขแยกให้แสดง
+        online: null,
+        sales: interRangeRows.reduce((s, r) => s + r.total, 0),
+      }
     : {
         deposit: txInRangeByProc.reduce((s, t) => s + t.dep, 0),
         online: txInRangeByProc.reduce((s, t) => s + t.onl, 0),
@@ -2230,7 +2244,10 @@ export default function AdsDashboard() {
       };
   // "ยอดขายปิด OR แล้ว (รวม Forecast)" การ์ดใหม่ — คำนวณสดเสมอจาก orSales.json ไม่มีค่า isJunFull แบบ hardcode
   // คู่กัน (เป็น metric ใหม่ ไม่มีของเดิมให้ validate อ้างอิง) ดูคอมเมนต์ที่ computeOrSalesClosedAll ด้านบน
-  const orClosedAllTotal = computeOrSalesClosedAll(dateRange, procFilter);
+  // procFilter === "inter" แยกไปอ่าน INTER_SALE_DATA เหมือน rangeTotals ด้านบน ด้วยเหตุผลเดียวกัน — เคสของ Inter
+  // ไม่เคยอยู่ใน orSales.json เลย (ไฟล์ "ยอดORจริง+Forecast" ไม่มีแถว Inter) ก่อนแก้ไขจุดนี้ กล่องนี้ขึ้น ฿0 สำหรับ
+  // Inter ในทุกช่วงวันที่ รวมถึง มิ.ย.เต็มเดือนด้วย (ไม่ได้ผูกกับ isJunFull เลย)
+  const orClosedAllTotal = procFilter === "inter" ? computeInterSalesForRange(dateRange) : computeOrSalesClosedAll(dateRange, procFilter);
   const rangeSpend = (() => {
     if (isJunFull) return procFilter === "all" ? GRAND_TOTAL.spend : CATEGORIES[procFilter].spend;
     const spendByCat = categorySpendForRange(dateRange);
