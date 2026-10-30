@@ -3331,7 +3331,7 @@ export default function AdsDashboard() {
 
         {/* ---- Inter แยกตามหมอ + หัตถการ (เคสจริง) ---- */}
 {activePage === "sales" && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
+        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mb-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
