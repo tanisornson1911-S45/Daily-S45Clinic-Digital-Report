@@ -2009,6 +2009,7 @@ export default function AdsDashboard() {
     setProcedureIncreaseAmount(0);
   }, [budgetPlanProcedure]);
   const [heroCaseFilter, setHeroCaseFilter] = useState("doctor_tee");
+  const [heroProcFilter, setHeroProcFilter] = useState("all");
   const [antArmyProcFilter, setAntArmyProcFilter] = useState("all");
   const [antArmyVisibleCount, setAntArmyVisibleCount] = useState(ANT_ARMY_PAGE_SIZE);
   // รูปโพสต์มาจาก Facebook CDN (fullPicture) ซึ่งเป็นลิงก์หมดอายุ/ถูกบล็อกจาก Referer ได้โดยที่ข้อมูลใน
@@ -2515,6 +2516,14 @@ export default function AdsDashboard() {
   const interDepositMoM = compareEnabled ? pctDelta(interDoctorTotal.deposit, interCompareTotal.deposit) : null;
   const interTotalMoM = compareEnabled ? pctDelta(interDoctorTotal.total, interCompareTotal.total) : null;
   const selectedHeroDoctor = DOCTOR_HERO_POSTS[heroCaseFilter];
+  // กรองโพสต์ของหมอที่เลือกด้วยหัตถการเพิ่ม (ผู้ใช้ขอ 2026-10-30) — ใช้ label เดียวกับตัวกรองหัตถการของ
+  // "กองทัพมด" ด้านล่าง (antArmyProcOptions ใช้ ANT_ARMY_POSTS ซึ่งมาจาก regex ชุดเดียวกับที่แท็ก "procs"
+  // ของแต่ละเคสใน doctorHeroPosts.json จึง key ตรงกันพอดี) ข้อมูลเรียงตามคะแนน engagement มาจากสคริปต์แล้ว
+  // จึง slice เอา 3 อันดับแรกหลังกรองได้เลยโดยไม่ต้อง sort ซ้ำ
+  const heroProcOptions = [["all", "ทุกหัตถการ"], ...Object.entries(ANT_ARMY_POSTS).map(([k, v]) => [k, v.label])];
+  const heroCasesFiltered =
+    heroProcFilter === "all" ? selectedHeroDoctor.cases : selectedHeroDoctor.cases.filter((c) => (c.procs || []).includes(heroProcFilter));
+  const heroTopCases = heroCasesFiltered.slice(0, 3);
   const antArmyProcOptions = [["all", "ทุกหัตถการ"], ...Object.entries(ANT_ARMY_POSTS).map(([k, v]) => [k, v.label])];
   // "ทุกหัตถการ" รวมโพสต์จากทุกหมวดแล้ว dedupe ด้วย postId (โพสต์เดียวอาจเข้าได้หลายหัตถการ) กรองด้วย
   // dateRange หลักที่เลือกอยู่จริง (เทียบวันที่แบบ Asia/Bangkok เพราะ createdTime จาก Graph API เป็น UTC)
@@ -5243,28 +5252,36 @@ export default function AdsDashboard() {
               </div>
               <h2 className="text-sm font-semibold text-slate-700">เคสเด่นคุณหมอ — กระตุ้น Inbox Nose Open</h2>
             </div>
-            <Select icon={Stethoscope} value={heroCaseFilter} onChange={setHeroCaseFilter} options={heroCaseOptions} />
+            <div className="flex items-center gap-2">
+              <Select icon={UserCircle2} value={heroCaseFilter} onChange={setHeroCaseFilter} options={heroCaseOptions} />
+              <Select icon={Stethoscope} value={heroProcFilter} onChange={setHeroProcFilter} options={heroProcOptions} />
+            </div>
           </div>
           <p className="text-xs text-slate-400 mb-5 ml-10">
-            {selectedHeroDoctor.label} · {selectedHeroDoctor.cases.length} เคส — ดึงจากโพสต์จริงบนเพจที่มี Engagement สูงสุด
-            เลือกคุณหมอจาก Dropdown เพื่อดูเคสเด่นของแต่ละคน
+            {selectedHeroDoctor.label} · แสดง Top {heroTopCases.length} จาก {heroCasesFiltered.length} โพสต์ที่ตรงตัวกรอง — เรียงตามคะแนน Engagement
+            สูงสุดก่อน
           </p>
 
           {selectedHeroDoctor.cases.length === 0 ? (
             <p className="text-sm text-slate-400 py-8 text-center">
               ยังไม่พบโพสต์ที่มีแฮชแท็ก "{selectedHeroDoctor.label}" (เช่น #{selectedHeroDoctor.label}s45clinic) ในช่วง 180 วันที่ผ่านมา — ลองแท็กแฮชแท็กคุณหมอในโพสต์ถัดไปเพื่อให้ระบบดึงมาแสดงได้
             </p>
+          ) : heroCasesFiltered.length === 0 ? (
+            <p className="text-sm text-slate-400 py-8 text-center">
+              {selectedHeroDoctor.label} ไม่มีโพสต์ที่พูดถึงหัตถการนี้ในแคปชั่นเลย — ลองเลือก "ทุกหัตถการ" หรือเปลี่ยนหัตถการดู
+            </p>
           ) : (
-          <div className="grid sm:grid-cols-2 gap-3">
-            {selectedHeroDoctor.cases.map((c, i) => (
+          <div className="flex flex-col gap-3">
+            {heroTopCases.map((c, i) => (
               <a
                 key={c.postId || i}
                 href={c.permalinkUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex flex-col rounded-xl border border-slate-100 overflow-hidden hover:border-pink-200 transition-colors"
+                className="group flex items-stretch gap-3 rounded-xl border border-slate-100 overflow-hidden hover:border-pink-200 transition-colors"
               >
-                <div className="aspect-[4/3] bg-slate-100 overflow-hidden">
+                <span className="shrink-0 w-7 flex items-start justify-center pt-3 text-base font-bold text-pink-300">#{i + 1}</span>
+                <div className="w-28 sm:w-36 shrink-0 aspect-[4/3] bg-slate-100 overflow-hidden">
                   {c.fullPicture && !heroImgErrors.has(c.postId || i) ? (
                     <img
                       src={c.fullPicture}
@@ -5274,19 +5291,24 @@ export default function AdsDashboard() {
                       onError={() => setHeroImgErrors((s) => new Set(s).add(c.postId || i))}
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-pink-50 to-slate-50 flex flex-col items-center justify-center gap-2">
-                      <ImageIcon size={28} className="text-pink-300" />
-                      <span className="text-[11px] text-slate-400">ไม่มีรูปภาพ</span>
+                    <div className="w-full h-full bg-gradient-to-br from-pink-50 to-slate-50 flex flex-col items-center justify-center gap-1">
+                      <ImageIcon size={22} className="text-pink-300" />
+                      <span className="text-[10px] text-slate-400">ไม่มีรูปภาพ</span>
                     </div>
                   )}
                 </div>
-                <div className="p-3">
+                <div className="flex-1 min-w-0 py-3 pr-3">
                   <p className="text-sm text-slate-700 line-clamp-2">{c.message || `${selectedHeroDoctor.label} · โพสต์`}</p>
-                  <p className="text-xs text-slate-400 mt-1.5 flex items-center gap-2">
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    {fmtDateTh(new Date(c.createdTime).toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" }))}
+                    {c.procs && c.procs.length > 0 && <> · {c.procs.map((p) => ANT_ARMY_POSTS[p]?.label ?? p).join(", ")}</>}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1.5 flex items-center flex-wrap gap-x-3 gap-y-1">
                     <span>❤️ {fmtTHB(c.reactions)}</span>
                     <span>💬 {fmtTHB(c.comments)}</span>
                     <span>🔁 {fmtTHB(c.shares)}</span>
-                    <span>👆 {fmtTHB(c.clicks ?? 0)}</span>
+                    <span>👆 Click {fmtTHB(c.clicks ?? 0)}</span>
+                    <span className="font-semibold text-pink-600">⭐ Engagement {fmtTHB(c.engagementScore)}</span>
                   </p>
                   <p className="text-xs text-blue-600 group-hover:underline flex items-center gap-1 mt-1.5">
                     <ExternalLink size={11} /> เปิดดูโพสต์ต้นฉบับ
@@ -5301,8 +5323,9 @@ export default function AdsDashboard() {
             <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
             <p>
               ดึงจากโพสต์จริงบนเพจ "S45 Clinic เสริมจมูกสไตล์เกาหลี By หมอตี้" ย้อนหลัง 180 วัน อัตโนมัติทุกคืน — จับคู่โพสต์กับคุณหมอจากชื่อ/แฮชแท็กที่พบใน
-              แคปชั่น แล้วเลือก 3 อันดับแรกต่อคนตามคะแนน Engagement (Reaction + Comment×3 + Share×5 + Click×4) ยิ่งคะแนนสูงยิ่งเป็นเคสที่คนสนใจมาก เหมาะเอาไป Re-run
-              เป็น Ads กระตุ้น Inbox ต่อ
+              แคปชั่น และแท็กหัตถการจากคำที่พบในแคปชั่น (กรองเพิ่มได้จาก Dropdown ด้านบน) แสดง Top 3 ของหมอ/หัตถการที่เลือกตามคะแนน Engagement
+              (Reaction + Comment×3 + Share×5 + Click×4) มากไปน้อย ยิ่งคะแนนสูงยิ่งเป็นเคสที่คนสนใจมาก เหมาะเอาไป Re-run เป็น Ads กระตุ้น Inbox ต่อ ·
+              ไม่มีข้อมูล Reach/Impressions เพราะ Facebook Graph API เลิกให้เมตริกนี้กับ Page ไปแล้ว จึงแสดงเฉพาะ Engagement ที่ดึงได้จริง
             </p>
           </div>
         </div>
