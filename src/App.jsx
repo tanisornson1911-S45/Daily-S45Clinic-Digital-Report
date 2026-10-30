@@ -2058,7 +2058,10 @@ export default function AdsDashboard() {
   // ---- ข้อมูลตามช่วงวันที่ที่เลือกจริง (คำนวณสดจากไฟล์ธุรกรรม RAW_TX ทุกแถว วันต่อวัน) ----
   const PROC_LABELS_SHORT = { nose_open: "Nose Open", nose_semi: "Semi Open", brow_hairline: "Brow Lift", breast_lipo: "Breast" };
   const LEAD_TIME_LABELS = { nose_open: "Nose Open", nose_semi: "Semi Open", brow_hairline: "ยกคิ้ว", breast_lipo: "เสริมหน้าอก/ดูดไขมัน", all: "รวมทุกหัตถการ" };
-  const OTHER_PROC_LABELS = { nose_open: "Nose Open", brow_hairline: "Brow Lift", breast_lipo: "Breast", nose_semi: "Semi Open", other: "อื่นๆ (Eye ฯลฯ)" };
+  // "other" ไม่รวมกลุ่มหัตถการตา (Eye/ตัดถุงใต้ตา/เก็บหางตา/ถุงใต้ตาแผลใน/จัดเรียงไขมันใต้ตา) อีกต่อไปตั้งแต่
+  // 2026-10-30 — ย้ายเข้า nose_semi แล้วตามที่ผู้ใช้ยืนยัน (ดูคอมเมนต์ SURGERY_MAP ใน build-or-sales.mjs/
+  // build-raw-tx.mjs) ป้ายนี้เคยเขียนว่า "อื่นๆ (Eye ฯลฯ)" ซึ่งไม่ตรงกับนิยามใหม่แล้ว
+  const OTHER_PROC_LABELS = { nose_open: "Nose Open", brow_hairline: "Brow Lift", breast_lipo: "Breast", nose_semi: "Semi Open", other: "อื่นๆ" };
   // ชื่อตัวแปรคงไว้ (isJunFull) แต่ตอนนี้เช็คช่วงเต็มเดือน ก.ค. แล้ว — CATEGORIES/FB_SURGERY/DOCTOR_PROC/
   // OTHER_CHANNEL_DATA/OR_LEAD_TIME_DAYS ทั้งหมดอัปเดตเป็นข้อมูล ก.ค. 2026 แล้ว (เดือนที่ "ล็อก" ไว้ใช้ตอนเลือกเต็มเดือนพอดี)
   const isJunFull = dateRange.start === "2026-07-01" && dateRange.end === "2026-07-31";
