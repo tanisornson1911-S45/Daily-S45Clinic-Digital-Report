@@ -174,10 +174,16 @@ function main() {
       const doctorRaw = r[doctorCol];
       const surgeryRaw = r[surgeryCol];
       const total = r[totalCol];
-      if (!doctorRaw || !surgeryRaw || typeof total !== "number") continue; // แถวสรุป/ว่าง ไม่ใช่เคสจริง
+      // เดิมต้องมี doctorRaw ด้วยถึงจะนับเป็นเคส ทำให้เคสจริงที่มี HN/ชื่อ/วันที่ OR/หัตถการ/ยอดครบ แต่ช่องหมอว่าง
+      // (ยังไม่ระบุหมอ) ถูกข้ามไปเงียบๆ — พบครั้งแรกในชีต "Oct 10" 3 แถว รวม ฿779,880 (ยอดรวมในชีตเองคือ
+      // ฿2,092,109 แต่ก่อนแก้ไขสคริปต์นี้ดึงมาได้แค่ ฿1,312,229 ตรงกับผลต่าง) — เหมือนทุกเคส unmapped-field ก่อนหน้า
+      // ในสคริปต์พี่น้อง (build-raw-tx.mjs) บทเรียนเดียวกัน: field ที่ไม่ครบไม่ควรทำให้ทั้งแถวหายไป ใช้ "รอระบุ"
+      // แทนเหมือนที่ build-raw-tx.mjs ทำกับ "Doctor" ว่าง — ยังต้องมี surgeryRaw/total ครบเพราะแถวสรุปท้ายชีต
+      // (เช่นแถวรวมยอดทั้งชีต) ก็มีช่อง Doctor ว่างเหมือนกัน แต่ surgeryRaw ว่างด้วยเสมอ จึงยังกรองออกได้ถูกต้อง
+      if (!surgeryRaw || typeof total !== "number") continue; // แถวสรุป/ว่าง ไม่ใช่เคสจริง
 
-      const doctorCode = String(doctorRaw).trim().toLowerCase();
-      if (!doctorLabels[doctorCode]) doctorLabels[doctorCode] = String(doctorRaw).trim().toUpperCase();
+      const doctorCode = doctorRaw ? String(doctorRaw).trim().toLowerCase() : "รอระบุ";
+      if (!doctorLabels[doctorCode]) doctorLabels[doctorCode] = doctorRaw ? String(doctorRaw).trim().toUpperCase() : "รอระบุ";
 
       const surgeryKey = SURGERY_MAP[String(surgeryRaw).trim().toLowerCase()];
       if (!surgeryKey) unmappedSurgeries.add(String(surgeryRaw).trim());
