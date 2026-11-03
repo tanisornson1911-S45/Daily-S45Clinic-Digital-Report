@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-02T09:11:55.808Z",
+  "generatedAt": "2026-11-03T01:08:37.801Z",
   "minMonth": "2026-08",
   "months": {
     "2026-08": {
@@ -3463,12 +3463,12 @@
       "sourceKind": "facebook_api"
     },
     "2026-11": {
-      "daysWithData": 1,
+      "daysWithData": 3,
       "data": {
         "nose_open": {
           "label": "เสริมจมูกโอเพ่น (Nose Open)",
-          "ads": 29774,
-          "inbox": 123,
+          "ads": 57377,
+          "inbox": 223,
           "or": 0,
           "sales": 0,
           "basket": 0,
@@ -3476,10 +3476,14 @@
           "adsCost": 0,
           "adsCostOr": 0,
           "dailyAds": [
-            29774
+            29870,
+            24630,
+            2877
           ],
           "dailyInbox": [
-            123
+            123,
+            83,
+            17
           ],
           "dailyOr": [
             0,
@@ -3612,8 +3616,8 @@
         },
         "nose_semi": {
           "label": "เสริมจมูก Semi Open",
-          "ads": 1758,
-          "inbox": 20,
+          "ads": 4696,
+          "inbox": 46,
           "or": 0,
           "sales": 0,
           "basket": 0,
@@ -3621,10 +3625,14 @@
           "adsCost": 0,
           "adsCostOr": 0,
           "dailyAds": [
-            1758
+            1761,
+            2687,
+            248
           ],
           "dailyInbox": [
-            20
+            20,
+            24,
+            2
           ],
           "dailyOr": [
             0,
@@ -3757,8 +3765,8 @@
         },
         "breast_lipo": {
           "label": "เสริมหน้าอก/ดูดไขมัน",
-          "ads": 1024,
-          "inbox": 11,
+          "ads": 2884,
+          "inbox": 27,
           "or": 0,
           "sales": 0,
           "basket": 0,
@@ -3766,10 +3774,14 @@
           "adsCost": 0,
           "adsCostOr": 0,
           "dailyAds": [
-            1024
+            1025,
+            1631,
+            228
           ],
           "dailyInbox": [
-            11
+            11,
+            13,
+            3
           ],
           "dailyOr": [
             0,
@@ -3902,8 +3914,8 @@
         },
         "brow_hairline": {
           "label": "ยกคิ้ว/เลื่อนไรผม/ยกมุมปาก",
-          "ads": 7271,
-          "inbox": 49,
+          "ads": 23672,
+          "inbox": 143,
           "or": 0,
           "sales": 0,
           "basket": 0,
@@ -3911,10 +3923,14 @@
           "adsCost": 0,
           "adsCostOr": 0,
           "dailyAds": [
-            7271
+            14784,
+            8888,
+            0
           ],
           "dailyInbox": [
-            49
+            94,
+            49,
+            0
           ],
           "dailyOr": [
             0,
@@ -4047,8 +4063,8 @@
         },
         "inter": {
           "label": "Inter",
-          "ads": 2437,
-          "inbox": 15,
+          "ads": 4816,
+          "inbox": 30,
           "or": null,
           "sales": null,
           "basket": null,
@@ -4056,10 +4072,14 @@
           "adsCost": null,
           "adsCostOr": null,
           "dailyAds": [
-            2437
+            2442,
+            2122,
+            252
           ],
           "dailyInbox": [
-            15
+            15,
+            15,
+            0
           ],
           "dailyOr": null,
           "dailyConsult": null,
@@ -4068,8 +4088,8 @@
         },
         "all": {
           "label": "รวมทุกหัตถการ",
-          "ads": 42264,
-          "inbox": 218,
+          "ads": 93445,
+          "inbox": 469,
           "or": 0,
           "sales": 0,
           "basket": 0,
@@ -4077,10 +4097,14 @@
           "adsCost": 0,
           "adsCostOr": 0,
           "dailyAds": [
-            42264
+            49882,
+            39958,
+            3605
           ],
           "dailyInbox": [
-            218
+            263,
+            184,
+            22
           ],
           "dailyOr": [
             0,
