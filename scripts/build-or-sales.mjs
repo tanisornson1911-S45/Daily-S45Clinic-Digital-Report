@@ -36,10 +36,12 @@
  * Doctor names get the same "หมอจิจ๊ะ" -> "หมอจิ๊จ๊ะ" normalization as
  * build-raw-tx.mjs (same typo appears in this sheet too). Surgery names map
  * onto the app's 4 known procedure categories (nose_open/nose_semi/
- * breast_lipo/brow_hairline) where there's a clear match; anything else
- * (Eye/Genioplasty/Forehead/etc.) buckets into "other" so it's still counted
- * in the all-procedures total, matching the "don't silently drop rows"
- * lesson from build-raw-tx.mjs's ตัดถุงใต้ตา incident. A handful of rows have
+ * breast_lipo/brow_hairline) using the same SURGERY_MAP definition as
+ * build-raw-tx.mjs (redefined 2026-11-04, see its comments for why each
+ * name lands where it does); anything else (Ultera/Filler/เสริมขมับ/etc.)
+ * buckets into "other" so it's still counted in the all-procedures total,
+ * matching the "don't silently drop rows" lesson from build-raw-tx.mjs's
+ * ตัดถุงใต้ตา incident. A handful of rows have
  * a stray Excel date serial in the "แพทย์" column instead of a name (visible
  * spreadsheet data-entry artifacts) — those fall back to "รอระบุ" like
  * build-raw-tx.mjs does for a blank doctor cell.
@@ -66,32 +68,51 @@ function normalizeDoctorName(name) {
   return DOCTOR_NAME_ALIASES[name] || name;
 }
 
+// นิยามหัตถการเหมือนกับ build-raw-tx.mjs ทุกประการ — เขียนใหม่ตามที่ผู้ใช้ยืนยัน 2026-11-04 (ดูคอมเมนต์ยาวที่
+// SURGERY_MAP ของ build-raw-tx.mjs สำหรับเหตุผลแต่ละรายการ) หัตถการที่ไม่เข้าเกณฑ์ 4 กลุ่มนี้ไม่ต้องใส่ใน map เลย —
+// ตกไปเป็น "other" โดยอัตโนมัติ (mapSurgery คืนค่า "other" เมื่อไม่เจอ key) ซึ่งยังนับรวมอยู่ใน "other" bucket ที่
+// สคริปต์นี้ใช้อยู่แล้ว (ไม่ใช่ถูกดร็อปทิ้ง)
 const SURGERY_MAP = {
   "nose open": "nose_open",
   "nose open (batten graft)": "nose_open",
+  "เสริมจมูกโอเพ่น": "nose_open",
+  "เสริมจมูกซี่โครง": "nose_open",
+
   "semi open": "nose_semi",
-  "breast": "breast_lipo",
-  "ดูดไขมัน": "breast_lipo",
-  "ตัดหนังหน้าท้อง": "breast_lipo",
-  "ฉีดไขมัน": "breast_lipo",
-  "full tummy": "breast_lipo", // เพิ่ม 2026-10-27 — เดิมมีแค่ใน build-raw-tx.mjs ทำให้สองไฟล์นับไม่ตรงกัน
-  "เติมไขมัน": "breast_lipo", // เพิ่ม 2026-10-27 — เดิมมีแค่ใน build-raw-tx.mjs ทำให้สองไฟล์นับไม่ตรงกัน
+  "เสริมคาง": "nose_semi",
+  "ตัดตกแต่งคาง": "nose_semi",
+  "genioplasty": "nose_semi",
+  "หัตถการปาก": "nose_semi",
+  "ตกแต่งริมฝีปากบน": "nose_semi",
+  "ตกแต่งปากริมฝีปากบน": "nose_semi", // สะกดอีกแบบของ "ตกแต่งริมฝีปากบน" พบในชีต "ยอดORจริง+Forecast (พี่เปา)"
+  "ยกมุมปาก": "nose_semi", // เดิมอยู่ยกคิ้ว — ย้ายมากลุ่มปาก (Nose Semi Open) ตามนิยามใหม่ 2026-11-04
+  "ปาก": "nose_semi",
+
   "brow lift": "brow_hairline",
-  "ยกมุมปาก": "brow_hairline",
+  "ยกคิ้ว": "brow_hairline",
   "ดึงหน้า": "brow_hairline",
   "facelift": "brow_hairline",
+  "เสริมหน้าผาก": "brow_hairline",
+  "forehead": "brow_hairline",
+  "ดูดไขมันใบหน้า": "brow_hairline",
+  // กลุ่มหัตถการตาทั้งหมด (Eye/ตัดถุงใต้ตา/เก็บหางตา/ถุงใต้ตาแผลใน/จัดเรียงไขมันใต้ตา) ย้ายมากลุ่มยกคิ้วตามนิยามใหม่
+  // 2026-11-04 (ก่อนหน้านี้ 2026-10-30 เคยอยู่กลุ่ม Nose Semi Open มาก่อนหนึ่งรอบ)
+  "eye": "brow_hairline",
+  "ตัดถุงใต้ตา": "brow_hairline",
+  "เก็บหางตา": "brow_hairline",
+  "ถุงใต้ตาแผลใน": "brow_hairline",
+  "จัดเรียงไขมันใต้ตา": "brow_hairline",
   "เลื่อนไรผม": "brow_hairline",
-  "subbrow lift": "brow_hairline", // เพิ่ม 2026-10-27 ตามที่ผู้ใช้ขอ — เดิมไม่อยู่ใน map เลยตกไปเป็น "other"
-  "ดึงขมับ": "brow_hairline", // เพิ่ม 2026-10-27 ตามที่ผู้ใช้ยืนยัน — temple lift นับเป็น Browlift เหมือน "ดึงหน้า"
-  "ตัดตกแต่งคาง": "nose_semi", // เพิ่ม 2026-10-30 ตามที่ผู้ใช้ยืนยัน — นับเป็น Semi Open (เดิมไม่มีใน map เลยตกเป็น
-  // "other" อยู่ ไม่ได้ทำให้เคสหายไป แต่จัดหมวดผิด)
-  // กลุ่มหัตถการตาทั้งหมด (Eye/ตัดถุงใต้ตา/เก็บหางตา/ถุงใต้ตาแผลใน/จัดเรียงไขมันใต้ตา) นับเป็น Semi Open ตามที่
-  // ผู้ใช้ยืนยัน 2026-10-30 — เดิมไม่มีใน map นี้เลย ตกเป็น "other" โดยอัตโนมัติ (ไม่หาย แค่จัดหมวดผิด)
-  "eye": "nose_semi",
-  "ตัดถุงใต้ตา": "nose_semi",
-  "เก็บหางตา": "nose_semi",
-  "ถุงใต้ตาแผลใน": "nose_semi",
-  "จัดเรียงไขมันใต้ตา": "nose_semi",
+  "subbrow lift": "brow_hairline",
+  "ดึงขมับ": "brow_hairline",
+
+  "breast": "breast_lipo",
+  "ตัดหนังหน้าท้อง": "breast_lipo",
+  "ดูดไขมัน": "breast_lipo",
+  "ดูดไขมันหน้าท้อง": "breast_lipo",
+  "full tummy": "breast_lipo",
+  // หมายเหตุ: "ฉีดไขมัน"/"เติมไขมัน" ไม่อยู่ในกลุ่ม Breast อีกต่อไปตามนิยามใหม่ 2026-11-04 (Breast มีแค่
+  // Breast/ตัดหนังหน้าท้อง/ดูดไขมัน ตามที่ผู้ใช้ย้ำ) ตกเป็น "other" แทน
 };
 
 function findCol(header, test) {

@@ -268,7 +268,7 @@ function liveSurgeryByChannel(monthIso, channelPredicate, otherLabel) {
 // คำนวณสดทุกครั้งที่โหลดหน้า (liveSurgeryByChannel) — spend: ใช้ค่าสดจาก adSpend.json เช่นเดียวกับ CATEGORIES
 // ============================================================
 const FB_SURGERY_SPEND_FALLBACK = { nose_open: 892768, brow_hairline: 503632, breast_lipo: 46232, nose_semi: 101825 };
-const FB_SURGERY = liveSurgeryByChannel(CURRENT_SPEND_MONTH, (t) => t.ch === "Facebook", "อื่นๆ (Eye/เสริมขมับ)").map((r) => ({
+const FB_SURGERY = liveSurgeryByChannel(CURRENT_SPEND_MONTH, (t) => t.ch === "Facebook", "อื่นๆ (Ultera/Filler/เสริมขมับ)").map((r) => ({
   ...r,
   spend: r.key === "other" ? null : liveSpend(CURRENT_SPEND_MONTH, r.key, FB_SURGERY_SPEND_FALLBACK[r.key]),
 }));
@@ -293,9 +293,9 @@ const OTHER_CHANNEL_META = {
   sale_ba: { label: "ช่องทางอื่น (Sale หรือ BA)", color: "amber" },
 };
 const OTHER_CHANNEL_DATA = {
-  line: liveSurgeryByChannel(CURRENT_SPEND_MONTH, (t) => t.ch === "Line", "อื่นๆ (Eye ฯลฯ)"),
-  whatsapp: liveSurgeryByChannel(CURRENT_SPEND_MONTH, (t) => t.ch === "WhatsApp", "อื่นๆ (Eye/ETC. ฯลฯ)"),
-  sale_ba: liveSurgeryByChannel(CURRENT_SPEND_MONTH, (t) => t.ch === "Sale หาเอง" || t.ch === "ช่องทางส่วนตัว BA", "อื่นๆ (Eye ฯลฯ)"),
+  line: liveSurgeryByChannel(CURRENT_SPEND_MONTH, (t) => t.ch === "Line", "อื่นๆ (Ultera/Filler ฯลฯ)"),
+  whatsapp: liveSurgeryByChannel(CURRENT_SPEND_MONTH, (t) => t.ch === "WhatsApp", "อื่นๆ (Ultera/ETC. ฯลฯ)"),
+  sale_ba: liveSurgeryByChannel(CURRENT_SPEND_MONTH, (t) => t.ch === "Sale หาเอง" || t.ch === "ช่องทางส่วนตัว BA", "อื่นๆ (Ultera/Filler ฯลฯ)"),
 };
 const otherChannelTotalOf = (rows) =>
   rows.reduce(
@@ -359,7 +359,7 @@ const DOCTOR_PROC_LABELS = {
   breast_lipo: "เสริมหน้าอก/ดูดไขมัน/ตัดหนังหน้าท้อง",
   brow_hairline: "ยกคิ้ว/เลื่อนไรผม/ยกมุมปาก",
   nose_semi: "เสริมจมูก Semi Open",
-  other: "อื่นๆ (Eye/เสริมคาง/เสริมหน้าผาก)",
+  other: "อื่นๆ (Ultera/Filler/เสริมขมับ/ฯลฯ)",
 };
 const DOCTOR_PROC_OPTIONS = [["all", "รวมทุกหัตถการ"], ...Object.entries(DOCTOR_PROC_LABELS)];
 // รายชื่อหมอทั้งหมด ใช้เป็นตัวเลือก Dropdown "แยกหมอ" ในสรุปเคสมัดจำแยกตามหมอ — รวมทั้งชื่อจาก DOCTOR_PROC (มิ.ย.)
@@ -2067,8 +2067,9 @@ export default function AdsDashboard() {
   const PROC_LABELS_SHORT = { nose_open: "Nose Open", nose_semi: "Semi Open", brow_hairline: "Brow Lift", breast_lipo: "Breast" };
   const LEAD_TIME_LABELS = { nose_open: "Nose Open", nose_semi: "Semi Open", brow_hairline: "ยกคิ้ว", breast_lipo: "เสริมหน้าอก/ดูดไขมัน", all: "รวมทุกหัตถการ" };
   // "other" ไม่รวมกลุ่มหัตถการตา (Eye/ตัดถุงใต้ตา/เก็บหางตา/ถุงใต้ตาแผลใน/จัดเรียงไขมันใต้ตา) อีกต่อไปตั้งแต่
-  // 2026-10-30 — ย้ายเข้า nose_semi แล้วตามที่ผู้ใช้ยืนยัน (ดูคอมเมนต์ SURGERY_MAP ใน build-or-sales.mjs/
-  // build-raw-tx.mjs) ป้ายนี้เคยเขียนว่า "อื่นๆ (Eye ฯลฯ)" ซึ่งไม่ตรงกับนิยามใหม่แล้ว
+  // 2026-11-04 — ย้ายเข้า brow_hairline (ยกคิ้ว) ตามนิยามหัตถการใหม่ที่ผู้ใช้ยืนยัน (ก่อนหน้านั้น 2026-10-30
+  // เคยย้ายเข้า nose_semi มาก่อนหนึ่งรอบ — ดูคอมเมนต์ SURGERY_MAP ใน build-or-sales.mjs/build-raw-tx.mjs) ป้าย
+  // นี้เคยเขียนว่า "อื่นๆ (Eye ฯลฯ)" ซึ่งไม่ตรงกับนิยามปัจจุบันแล้ว
   const OTHER_PROC_LABELS = { nose_open: "Nose Open", brow_hairline: "Brow Lift", breast_lipo: "Breast", nose_semi: "Semi Open", other: "อื่นๆ" };
   // ชื่อตัวแปรคงไว้ (isJunFull) แต่ตอนนี้เช็คช่วงเต็มเดือน ก.ค. แล้ว — CATEGORIES/FB_SURGERY/DOCTOR_PROC/
   // OTHER_CHANNEL_DATA/OR_LEAD_TIME_DAYS ทั้งหมดอัปเดตเป็นข้อมูล ก.ค. 2026 แล้ว (เดือนที่ "ล็อก" ไว้ใช้ตอนเลือกเต็มเดือนพอดี)
@@ -2983,7 +2984,7 @@ export default function AdsDashboard() {
   // สรุปยอดปิดมัดจำ แยกตาม Sale (ผู้ใช้ขอเพิ่ม 2569-09-09) — จากคอลัมน์ "Sale ปิดมัดจำ" ในไฟล์ Data S45 Clinic
   // (ชีต "มัดจำ 2026") ที่ RAW_TX.sale เก็บไว้แล้ว (เดิมอ่านแต่ไม่ได้ใช้) นับเฉพาะแถวที่ dep>0 (ปิดมัดจำจริง) ตาม
   // ช่วงวันที่ที่เลือก (txInRange) — Dropdown 3 ตัว (Sale/หัตถการ/คุณหมอ) กรองซ้อนกันได้
-  const procLabelForSale = (p) => CATEGORIES[p]?.label ?? "อื่นๆ (Eye/เสริมขมับ/ฯลฯ)";
+  const procLabelForSale = (p) => CATEGORIES[p]?.label ?? "อื่นๆ (Ultera/Filler/เสริมขมับ/ฯลฯ)";
   // ตัวเลขในวงเล็บของ Dropdown = จำนวนเคสปิดมัดจำ "ตามช่วงวันที่ที่เลือกอยู่ตอนนี้" (ไม่ใช่ยอดรวมทุกช่วงเวลาเหมือนตอน
   // แรก — ผู้ใช้แจ้ง 2569-09-10 ว่าอยากให้ตัวเลขผูกกับวันที่ด้วย) รายการจึงยุบ/ขยายตามจริงเมื่อเปลี่ยนวันที่ — ไม่ผูก
   // กับอีก 2 Dropdown ที่เหลือ (กรองแค่ตามวันที่อย่างเดียว) ไม่งั้นเลือกหลาย Dropdown พร้อมกันแล้วรายการจะยุบจนงง

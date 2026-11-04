@@ -36,15 +36,46 @@ import path from "node:path";
 
 const PIPELINE_STATUSES = new Set(["ปรึกษา", "ปรึกษาออนไลน์"]);
 
-// เดียวกับแนวทางใน build-or-sales.mjs — หัตถการที่ไม่ตรงหมวดหลัก 4 หมวด บักเก็ตเป็น "other" แทนการดร็อปทิ้ง
+// เดียวกับ build-raw-tx.mjs/build-or-sales.mjs/build-consult-tx.mjs — นิยามหัตถการเขียนใหม่ตามที่ผู้ใช้ยืนยัน
+// 2026-11-04 (ดูคอมเมนต์ยาวที่ SURGERY_MAP ของ build-raw-tx.mjs สำหรับเหตุผลแต่ละรายการ) หัตถการที่ไม่เข้าเกณฑ์
+// 4 กลุ่มนี้ตกเป็น "other" แทนการดร็อปทิ้ง
 const SURGERY_MAP = {
   "nose open": "nose_open",
+  "nose open (batten graft)": "nose_open",
+  "เสริมจมูกโอเพ่น": "nose_open",
+  "เสริมจมูกซี่โครง": "nose_open",
+
   "semi open": "nose_semi",
-  "breast": "breast_lipo",
-  "ดูดไขมัน": "breast_lipo",
+  "เสริมคาง": "nose_semi",
+  "ตัดตกแต่งคาง": "nose_semi",
+  "genioplasty": "nose_semi",
+  "หัตถการปาก": "nose_semi",
+  "ตกแต่งริมฝีปากบน": "nose_semi",
+  "ตกแต่งปากริมฝีปากบน": "nose_semi",
+  "ยกมุมปาก": "nose_semi",
+  "ปาก": "nose_semi",
+
   "brow lift": "brow_hairline",
-  "เลื่อนไรผม": "brow_hairline",
+  "ยกคิ้ว": "brow_hairline",
   "ดึงหน้า": "brow_hairline",
+  "facelift": "brow_hairline",
+  "เสริมหน้าผาก": "brow_hairline",
+  "forehead": "brow_hairline",
+  "ดูดไขมันใบหน้า": "brow_hairline",
+  "eye": "brow_hairline",
+  "ตัดถุงใต้ตา": "brow_hairline",
+  "เก็บหางตา": "brow_hairline",
+  "ถุงใต้ตาแผลใน": "brow_hairline",
+  "จัดเรียงไขมันใต้ตา": "brow_hairline",
+  "เลื่อนไรผม": "brow_hairline",
+  "subbrow lift": "brow_hairline",
+  "ดึงขมับ": "brow_hairline",
+
+  "breast": "breast_lipo",
+  "ตัดหนังหน้าท้อง": "breast_lipo",
+  "ดูดไขมัน": "breast_lipo",
+  "ดูดไขมันหน้าท้อง": "breast_lipo",
+  "full tummy": "breast_lipo",
 };
 function mapSurgery(raw) {
   return SURGERY_MAP[String(raw || "").trim().toLowerCase()] || "other";
