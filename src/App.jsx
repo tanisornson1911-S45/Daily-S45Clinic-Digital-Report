@@ -59,6 +59,7 @@ import {
 } from "recharts";
 import adSpendData from "./data/adSpend.json";
 import RAW_TX_DATA from "./data/rawTx.json";
+import CONSULT_TX_DATA from "./data/consultTx.json";
 import LOA_DATA from "./data/loaData.json";
 import LOA_NORMAL_DATA from "./data/loaNormalData.json";
 import FUNNEL_BY_MONTH_DATA from "./data/funnelByMonth.json";
@@ -155,6 +156,12 @@ const SPEND_MONTHS = Object.keys(adSpendData?.months || {})
 // or = OR Date จริง (null ถ้ายังไม่ระบุ/ยกเลิก) · tot = Total price จริงเท่านั้น (0 ถ้ายังไม่ปิด ไม่ประมาณจาก Online price)
 // ============================================================
 const RAW_TX = RAW_TX_DATA;
+// CONSULT_TX — ข้อมูล "ปิดปรึกษา" จริงทุกแถว (ชีต "ปรึกษา 2026" ใน Data S45 Clinic (5).xlsx) มาจาก
+// src/data/consultTx.json สร้างโดย scripts/build-consult-tx.mjs — แยกจาก RAW_TX (ชีต "มัดจำ 2026")
+// โดยตั้งใจ ตามที่ผู้ใช้ยืนยัน 2026-11-04: "ปิดมัดจำ" อ่านจาก "มัดจำ 2026" (RAW_TX) ต่อไป ส่วน "ปิดปรึกษา"
+// ให้อ่านจาก "ปรึกษา 2026" (CONSULT_TX) แทน เพราะเป็นชีตที่ทีมลงบันทึกการปรึกษาทุกครั้งจริงๆ ไม่ใช่
+// ผลพลอยได้จากคอลัมน์ "Sale Consult" ของชีตมัดจำ
+const CONSULT_TX = CONSULT_TX_DATA;
 // วันที่ล่าสุดที่มีแถวธุรกรรมจริงใน RAW_TX — ใช้แสดงข้อความ "ไฟล์ธุรกรรมครอบคลุมถึงวันที่ ... " แบบสด แทนวันที่
 // พิมพ์มือตรึงไว้ (เช่น "25 ส.ค. 2026") ที่จะเก่าทันทีที่ pipeline ดึงข้อมูลใหม่มาเพิ่มในวันถัดไป
 const RAW_TX_LATEST_DATE = RAW_TX.reduce((max, t) => (t.d > max ? t.d : max), "");
@@ -2637,8 +2644,9 @@ export default function AdsDashboard() {
 
   // "ปิดปรึกษา/ปิดมัดจำ แยกตามหัตถการ (เทียบ Inbox)" — คำนวณสดตามช่วงวันที่ที่เลือกจริงแล้ว (เดิมเป็นยอดรวมทั้งเดือน
   // เพราะไม่มีข้อมูล Inbox รายวันจริง ตอนนี้มีแล้วจาก adDaily.json) · เคสปิดแล้ว = dep>0 ตามมาตรฐานเดียวกับที่ใช้
-  // ทั้งแอป (activeDoctors/activeFbSurgery/Sales Funnel Performance) · "ปิดปรึกษา" กว้างกว่า "ปิดมัดจำ" เล็กน้อย
-  // เพราะรวมเคสที่มีชื่อ Sale Consult กำกับด้วย (RAW_TX แทบทุกแถวมีอยู่แล้ว จึงใกล้เคียงกับปิดมัดจำมาก)
+  // ทั้งแอป (activeDoctors/activeFbSurgery/Sales Funnel Performance) · "ปิดปรึกษา" อ่านจาก CONSULT_TX (ชีต
+  // "ปรึกษา 2026") แยกต่างหากจาก "ปิดมัดจำ" ที่ยังอ่านจาก RAW_TX (ชีต "มัดจำ 2026") ตามที่ผู้ใช้ยืนยัน 2026-11-04 —
+  // ดูคอมเมนต์ที่ประกาศ CONSULT_TX ด้านบน
   const closeTableDates = datesInRangeAcrossFunnelMonths(dateRange);
   const closeTableInboxByProc = {};
   DAILY_CATEGORY_KEYS.forEach((k) => {
@@ -2647,21 +2655,25 @@ export default function AdsDashboard() {
       return sum + (src && day <= src.dailyInbox.length ? src.dailyInbox[day - 1] : 0);
     }, 0);
   });
+  const consultInRange = CONSULT_TX.filter((t) => t.d >= dateRange.start && t.d <= dateRange.end);
   const closeCountsLive = (() => {
-    const calc = (rows) => {
-      const depositRows = rows.filter((t) => t.dep > 0);
-      return {
-        consult: rows.length,
-        deposit: depositRows.length,
-        consultValue: rows.reduce((s, t) => s + t.tot, 0),
-        depositValue: depositRows.reduce((s, t) => s + t.tot, 0),
-      };
-    };
+    const calc = (consultRows, depositRows) => ({
+      consult: consultRows.length,
+      deposit: depositRows.length,
+      consultValue: consultRows.reduce((s, t) => s + (t.onl || 0), 0),
+      depositValue: depositRows.reduce((s, t) => s + t.tot, 0),
+    });
     const result = {};
     DAILY_CATEGORY_KEYS.forEach((k) => {
-      result[k] = calc(txInRange.filter((t) => t.p === k));
+      result[k] = calc(
+        consultInRange.filter((t) => t.p === k),
+        txInRange.filter((t) => t.p === k && t.dep > 0)
+      );
     });
-    result.all = calc(txInRange.filter((t) => DAILY_CATEGORY_KEYS.includes(t.p)));
+    result.all = calc(
+      consultInRange.filter((t) => DAILY_CATEGORY_KEYS.includes(t.p)),
+      txInRange.filter((t) => DAILY_CATEGORY_KEYS.includes(t.p) && t.dep > 0)
+    );
     return result;
   })();
   const closeTableAllInbox = DAILY_CATEGORY_KEYS.reduce((s, k) => s + closeTableInboxByProc[k], 0);
@@ -4458,7 +4470,7 @@ export default function AdsDashboard() {
             เป้าหมาย Inbox/วัน: Nose Open 120 แชท · Semi Open 35 แชท · ยกคิ้ว 130 แชท · เสริมหน้าอก 25 แชท · Inter 10 แชท (ตัวเลขจริงที่ทีมกำหนด) —
             "รวมทุกหัตถการ" ใช้ผลรวมของทั้ง 5 หัตถการ ({fmtTHB(INBOX_DAILY_TARGET_ALL)} แชท/วัน)
             {inboxHasSalesData
-              ? ` · ยอดปิดปรึกษา/ปิดมัดจำ มาจากไฟล์ Sales Funnel เดียวกับ Inbox (ไม่ได้แยกช่องทาง จึงเป็นยอดรวมทุกช่องทาง ไม่ใช่ Facebook อย่างเดียว) ส่วนการ์ด "จำนวนเคสที่ปิด OR" ด้านบนนับจากคอลัมน์วันที่ 1-31 ในไฟล์ "ยอดORจริง+Forecast (พี่เปา)" กรองตามช่วงวันที่ที่เลือกจริง (เส้นกราฟรายวันด้านล่างยังนับจากวันที่ OR Date ในไฟล์ธุรกรรม (Data_S45_Clinic) แทน — ใช้ดูแนวโน้มเท่านั้น ไม่ใช่ยอดรวมทางการ)`
+              ? ` · ยอดปิดปรึกษา มาจากชีต "ปรึกษา 2026" และยอดปิดมัดจำ มาจากชีต "มัดจำ 2026" (ไฟล์ Data S45 Clinic — ไม่ได้แยกช่องทาง จึงเป็นยอดรวมทุกช่องทาง ไม่ใช่ Facebook อย่างเดียว) ส่วนการ์ด "จำนวนเคสที่ปิด OR" ด้านบนนับจากคอลัมน์วันที่ 1-31 ในไฟล์ "ยอดORจริง+Forecast (พี่เปา)" กรองตามช่วงวันที่ที่เลือกจริง (เส้นกราฟรายวันด้านล่างยังนับจากวันที่ OR Date ในไฟล์ธุรกรรม (Data_S45_Clinic) แทน — ใช้ดูแนวโน้มเท่านั้น ไม่ใช่ยอดรวมทางการ)`
               : " · Inbox รายวันมาจากไฟล์ \"ยอดขาย Online S45 Clinic\" ชีตกรกฎาคม 2569 (ไม่ได้แยกช่องทาง จึงเป็นยอดรวมทุกช่องทาง ไม่ใช่ Facebook อย่างเดียว)"}
           </p>
 
@@ -4617,8 +4629,9 @@ export default function AdsDashboard() {
               </table>
             </div>
             <p className="text-[11px] text-slate-400 mt-2">
-              กรองตามช่วงวันที่ที่เลือกจริงแล้วทั้งตาราง (Inbox จาก Facebook API จริง · ปิดปรึกษา/ปิดมัดจำคำนวณสดจากไฟล์ธุรกรรม Data_S45_Clinic
-              เฉพาะเคสที่ "Date" อยู่ในช่วงที่เลือก) · Inter ยังไม่มีข้อมูลปิดปรึกษา/ปิดมัดจำ (ไฟล์ธุรกรรมไม่ได้แท็ก Inter แยกเป็นหัตถการของตัวเอง) —
+              กรองตามช่วงวันที่ที่เลือกจริงแล้วทั้งตาราง (Inbox จาก Facebook API จริง · ปิดปรึกษาคำนวณสดจากชีต "ปรึกษา 2026" (กรองด้วย "Date ปิด")
+              ปิดมัดจำคำนวณสดจากชีต "มัดจำ 2026" (กรองด้วย "Date") ไฟล์ Data S45 Clinic — ทั้งคู่เฉพาะเคสที่วันที่อยู่ในช่วงที่เลือก) ·
+              Inter ยังไม่มีข้อมูลปิดปรึกษา/ปิดมัดจำ (ไฟล์ธุรกรรมไม่ได้แท็ก Inter แยกเป็นหัตถการของตัวเอง) —
               "รวมทุกหัตถการ" ด้านบนจึงรวมเฉพาะ 4 หัตถการที่มีข้อมูลจริงเท่านั้น
             </p>
           </div>

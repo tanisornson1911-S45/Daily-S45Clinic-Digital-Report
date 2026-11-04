@@ -40,12 +40,17 @@
  * not swapped for a freshly-rebuilt version). August was the first month
  * this script ever built live, so that's kept as the boundary.
  *
- * dailyConsult/dailyDeposit/dailyOr/dailyOrCases <- always derived from
- * src/data/rawTx.json (the same "มัดจำ 2026" ledger RAW_TX uses) regardless
- * of which source fed dailyAds/dailyInbox, because neither the Excel sheet
- * nor the Facebook API has these — the sheet's own consult/deposit/OR rows
- * aren't filled in in real time, and Facebook obviously doesn't know about
- * clinic consults/deposits.
+ * dailyDeposit/dailyOr/dailyOrCases <- always derived from src/data/rawTx.json
+ * (the "มัดจำ 2026" ledger RAW_TX uses) regardless of which source fed
+ * dailyAds/dailyInbox, because neither the Excel sheet nor the Facebook API
+ * has these — the sheet's own deposit/OR rows aren't filled in in real time,
+ * and Facebook obviously doesn't know about clinic deposits.
+ *
+ * dailyConsult <- derived from src/data/consultTx.json (scripts/build-consult-tx.mjs,
+ * the dedicated "ปรึกษา 2026" sheet) instead, per user direction 2026-11-04 —
+ * "ปรึกษา 2026" is what the team actually logs every consult into (1,424 rows
+ * vs. "มัดจำ 2026"'s 968), so it's the authoritative source for "ปิดปรึกษา",
+ * not a byproduct of the deposit sheet's optional "Sale Consult" column.
  *
  * sales/basket/closeRate/adsCost/adsCostOr <- same formulas as before:
  * sales = sum of Total price (fallback Online price) for cases with
@@ -59,7 +64,7 @@
  * a category block — skipped with a warning either way, expected,
  * shouldn't take the nightly pipeline down).
  *
- * Run manually (after fetch-m365-data.mjs + build-raw-tx.mjs):
+ * Run manually (after fetch-m365-data.mjs + build-raw-tx.mjs + build-consult-tx.mjs):
  *   node scripts/build-funnel.mjs
  * ---------------------------------------------------------------
  */
@@ -151,7 +156,7 @@ function blocksFromAdDaily(monthData) {
 
 // Builds one month's funnel breakdown from pre-parsed blocks (source-agnostic — Excel sheet or
 // adDaily.json, caller already picked which).
-function buildMonthFunnel(monthIso, blocks, rawTx) {
+function buildMonthFunnel(monthIso, blocks, rawTx, consultTx) {
   const DAYS_IN_MONTH = new Date(Number(monthIso.slice(0, 4)), Number(monthIso.slice(5, 7)), 0).getDate();
 
   // Real coverage = the run of non-null daily values from day 1 (both sources leave future days
@@ -169,6 +174,7 @@ function buildMonthFunnel(monthIso, blocks, rawTx) {
   console.log(`Per-category daily coverage for ${monthIso}:`, coverageByKey, `-> using ${daysWithData} day(s) for "all"`);
 
   const monthTx = rawTx.filter((t) => t.d.startsWith(monthIso));
+  const monthConsultTx = consultTx.filter((t) => t.d.startsWith(monthIso));
 
   const out = {};
   const closeCounts = {};
@@ -208,15 +214,17 @@ function buildMonthFunnel(monthIso, blocks, rawTx) {
     }
 
     const catTx = monthTx.filter((t) => t.p === key);
+    const catConsultTx = monthConsultTx.filter((t) => t.p === key);
     // ความยาวของ 4 array นี้ไม่ผูกกับ daysWithData (ความคืบหน้าของแหล่ง Ads/Inbox ล่าช้ากว่าจริงเสมอ) —
-    // deposit/consult/OR มาจาก rawTx.json (ไฟล์ "มัดจำ 2026" ที่อัปเดตสดจริง ไม่มีความล่าช้าแบบนั้น) ใช้
-    // DAYS_IN_MONTH (ครบทุกวันของเดือน) แทน ไม่งั้นวันท้ายๆ ที่มีเคสปิดมัดจำ/OR จริงแล้วจะถูกตัดทิ้งเงียบๆ
+    // deposit/consult/OR มาจาก rawTx.json/consultTx.json (ไฟล์ "มัดจำ 2026"/"ปรึกษา 2026" ที่อัปเดตสดจริง ไม่มี
+    // ความล่าช้าแบบนั้น) ใช้ DAYS_IN_MONTH (ครบทุกวันของเดือน) แทน ไม่งั้นวันท้ายๆ ที่มีเคสปิดปรึกษา/มัดจำ/OR จริง
+    // แล้วจะถูกตัดทิ้งเงียบๆ
     const dailyConsult = new Array(DAYS_IN_MONTH).fill(0);
     const dailyDeposit = new Array(DAYS_IN_MONTH).fill(0);
     const dailyOr = new Array(DAYS_IN_MONTH).fill(0);
     const dailyOrCases = new Array(DAYS_IN_MONTH).fill(0);
 
-    // ใช้กับ t.d (วันทัก) เท่านั้น — รับประกันอยู่ในเดือนนี้แล้วจาก monthTx filter ด้านบน
+    // ใช้กับ t.d (วันทัก/วันปิดปรึกษา) เท่านั้น — รับประกันอยู่ในเดือนนี้แล้วจาก monthTx/monthConsultTx filter ด้านบน
     const dayIndex = (iso) => {
       const day = Number(iso.slice(8, 10));
       return day >= 1 && day <= DAYS_IN_MONTH ? day - 1 : -1;
@@ -232,18 +240,19 @@ function buildMonthFunnel(monthIso, blocks, rawTx) {
     let consultValue = 0;
     let depositCount = 0;
     let depositValue = 0;
+    for (const t of catConsultTx) {
+      const di = dayIndex(t.d);
+      if (di >= 0) dailyConsult[di]++;
+      consultCount++;
+      consultValue += t.onl;
+    }
     for (const t of catTx) {
       const di = dayIndex(t.d);
       const amt = t.tot > 0 ? t.tot : t.onl;
       if (di >= 0 && t.dep > 0) dailyDeposit[di]++;
-      if (di >= 0 && t.cons) dailyConsult[di]++;
       if (t.dep > 0) {
         depositCount++;
         depositValue += amt;
-      }
-      if (t.cons) {
-        consultCount++;
-        consultValue += amt;
       }
       if (t.or) {
         // นับเฉพาะเคสที่ "วันผ่าตัดจริง" (t.or) อยู่ในเดือนนี้จริงๆ — เคสที่ทักเข้ามาเดือนนี้แต่นัดผ่าตัดเดือนอื่น
@@ -338,6 +347,9 @@ function main() {
   const rawTxPath = path.resolve("src/data/rawTx.json");
   const rawTx = JSON.parse(readFileSync(rawTxPath, "utf8"));
 
+  const consultTxPath = path.resolve("src/data/consultTx.json");
+  const consultTx = JSON.parse(readFileSync(consultTxPath, "utf8"));
+
   let adDaily = {};
   try {
     adDaily = JSON.parse(readFileSync(path.resolve("src/data/adDaily.json"), "utf8")).months || {};
@@ -388,7 +400,7 @@ function main() {
       continue;
     }
     try {
-      months[iso] = { ...buildMonthFunnel(iso, blocks, rawTx), sourceKind };
+      months[iso] = { ...buildMonthFunnel(iso, blocks, rawTx, consultTx), sourceKind };
       console.log(`Built ${iso} from ${source}: ads=${months[iso].data.all.ads} inbox=${months[iso].data.all.inbox}`);
     } catch (err) {
       console.warn(`  ! Skipping ${iso} (source: ${source}): ${err.message}`);

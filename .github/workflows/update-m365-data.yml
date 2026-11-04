@@ -11,8 +11,10 @@ name: Update M365 data (RAW_TX pipeline)
 # (Bad Lead/Lead cards),
 # src/data/interSale.json (Inter แยกตามหมอ
 # + หัตถการ), src/data/orSales.json (ยอดขายรวมทุกช่องทางบนหน้าภาพรวม — จากชีต "ยอดORจริง+
-# Forecast (พี่เปา)"), src/data/consultPipeline.json (ส่วนต่อยอดขายรวม Facebook จากเคสที่ยัง
-# ปรึกษาไม่ปิดมัดจำ — จากชีต "ปรึกษา 2026") และ src/data/channelMix.json (สัดส่วนงบโฆษณาแยกตาม
+# Forecast (พี่เปา)"), src/data/consultTx.json (ยอดปิดปรึกษาบนหน้า Inbox & Lead — จากชีต
+# "ปรึกษา 2026" ทุกแถว, ป้อนเข้า funnelByMonth.json ด้วย), src/data/consultPipeline.json
+# (ส่วนต่อยอดขายรวม Facebook จากเคสที่ยังปรึกษาไม่ปิดมัดจำ — จากชีต "ปรึกษา 2026" เช่นกัน แต่
+# เฉพาะแถวที่ยังไม่ปิดมัดจำ) และ src/data/channelMix.json (สัดส่วนงบโฆษณาแยกตาม
 # ช่องทางบนหน้าภาพรวม — จาก Google Sheet "S45 - Budget Allocate") ที่ App.jsx import ใช้จริง —
 # Dashboard จึงอัปเดตข้อมูลธุรกรรม+LOA+Inbox+Bad Lead+Inter+ยอดขายรวม+งบโฆษณา อัตโนมัติทุกวัน
 # ไม่ต้อง paste มือแล้ว
@@ -76,7 +78,10 @@ jobs:
           GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
         run: node scripts/fetch-budget-allocate.mjs
 
-      - name: Build August Inbox funnel data from M365 data + RAW_TX
+      - name: Build Consult TX (ปิดปรึกษา) data from M365 data
+        run: node scripts/build-consult-tx.mjs
+
+      - name: Build August Inbox funnel data from M365 data + RAW_TX + Consult TX
         run: node scripts/build-funnel.mjs
 
       - name: Build Bad Lead data from M365 data
@@ -95,8 +100,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json src/data/loaNormalData.json src/data/funnelByMonth.json src/data/badLead.json src/data/interSale.json src/data/orSales.json src/data/consultPipeline.json src/data/channelMix.json src/data/procedureBudget.json src/data/weeklyBudget.json
-          if git diff --cached --quiet -- src/data/m365Raw.json src/data/rawTx.json src/data/loaData.json src/data/loaNormalData.json src/data/funnelByMonth.json src/data/badLead.json src/data/interSale.json src/data/orSales.json src/data/consultPipeline.json src/data/channelMix.json src/data/procedureBudget.json src/data/weeklyBudget.json; then
+          git add src/data/m365Raw.json src/data/rawTx.json src/data/consultTx.json src/data/loaData.json src/data/loaNormalData.json src/data/funnelByMonth.json src/data/badLead.json src/data/interSale.json src/data/orSales.json src/data/consultPipeline.json src/data/channelMix.json src/data/procedureBudget.json src/data/weeklyBudget.json
+          if git diff --cached --quiet -- src/data/m365Raw.json src/data/rawTx.json src/data/consultTx.json src/data/loaData.json src/data/loaNormalData.json src/data/funnelByMonth.json src/data/badLead.json src/data/interSale.json src/data/orSales.json src/data/consultPipeline.json src/data/channelMix.json src/data/procedureBudget.json src/data/weeklyBudget.json; then
             echo "No change — nothing to commit."
             exit 0
           fi
