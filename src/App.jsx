@@ -2001,6 +2001,7 @@ export default function AdsDashboard() {
   const [loaChannel, setLoaChannel] = useState("normal");
   const [otherChannelFilter, setOtherChannelFilter] = useState("line");
   const [inboxDailyFilter, setInboxDailyFilter] = useState("all");
+  const [inboxNameListType, setInboxNameListType] = useState("consult"); // "consult" | "deposit" | "or" — Dropdown แยกรายชื่อ
   const [budgetBoostPct, setBudgetBoostPct] = useState(20);
   const [staffBoostPct, setStaffBoostPct] = useState(20);
   const [growthTab, setGrowthTab] = useState("budget"); // "budget" | "staff"
@@ -4406,51 +4407,46 @@ export default function AdsDashboard() {
           )}
 
           {/* รายชื่อลูกค้า "ปิดปรึกษา/ปิดมัดจำ/ปิด OR" — ผู้ใช้ขอเพิ่ม 2026-11-04 กรองตาม Dropdown หัตถการ (inboxDailyFilter)
-              และช่วงวันที่เดียวกับการ์ด 3 ใบด้านบน */}
-          <div className="rounded-xl border border-slate-100 bg-white p-4 mb-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Users size={14} className="text-slate-500" />
-              <h3 className="text-sm font-semibold text-slate-700">
-                รายชื่อลูกค้า ปิดปรึกษา / ปิดมัดจำ / ปิด OR — {rangeLabel}
-              </h3>
-            </div>
-
-            {[
-              {
-                key: "consult",
+              และช่วงวันที่เดียวกับการ์ด 3 ใบด้านบน · แยกเป็น Dropdown เลือกทีละประเภท (inboxNameListType) แทนการแสดง
+              3 ตารางซ้อนกันทั้งหมด ตามที่ผู้ใช้ขอ 2026-11-04 (รอบสอง) */}
+          {(() => {
+            const NAME_LIST_DEFS = {
+              consult: {
                 label: "ปิดปรึกษา",
                 rows: consultListRows,
                 dateField: "d",
-                color: "amber",
                 sourceNote: 'ชีต "ปรึกษา 2026" (กรองด้วย "Date ปิด")',
                 getDoctor: (t) => t.doctor || "รอระบุ",
               },
-              {
-                key: "deposit",
+              deposit: {
                 label: "ปิดมัดจำ",
                 rows: depositListRows,
                 dateField: "d",
-                color: "violet",
                 sourceNote: 'ชีต "มัดจำ 2026" (กรองด้วย "Date")',
                 getDoctor: (t) => t.doc || "รอระบุ",
               },
-              {
-                key: "or",
+              or: {
                 label: "ปิด OR",
                 rows: orListRows,
                 dateField: "or",
-                color: "emerald",
                 sourceNote: 'ชีต "มัดจำ 2026" (กรองด้วย "OR Date" — ไฟล์ "ยอดORจริง+Forecast (พี่เปา)" ไม่มีคอลัมน์ชื่อลูกค้า จึงใช้ชีตนี้แทนสำหรับรายชื่อ ไม่ใช่ตัวเลขทางการ)',
                 getDoctor: (t) => t.doc || "รอระบุ",
               },
-            ].map(({ key, label, rows, dateField, color, sourceNote, getDoctor }) => (
-              <div key={key} className="mb-5 last:mb-0">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className={`text-xs font-semibold text-${color}-700`}>
-                    {label} — {rows.length} รายชื่อ
-                  </h4>
+            };
+            const NAME_LIST_OPTIONS = Object.entries(NAME_LIST_DEFS).map(([k, v]) => [k, `${v.label} (${v.rows.length})`]);
+            const active = NAME_LIST_DEFS[inboxNameListType] ?? NAME_LIST_DEFS.consult;
+            return (
+              <div className="rounded-xl border border-slate-100 bg-white p-4 mb-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-2">
+                    <Users size={14} className="text-slate-500" />
+                    <h3 className="text-sm font-semibold text-slate-700">
+                      รายชื่อลูกค้า — {rangeLabel}
+                    </h3>
+                  </div>
+                  <Select icon={ClipboardCheck} value={inboxNameListType} onChange={setInboxNameListType} options={NAME_LIST_OPTIONS} />
                 </div>
-                <div className="max-h-72 overflow-y-auto rounded-lg border border-slate-100">
+                <div className="max-h-96 overflow-y-auto rounded-lg border border-slate-100">
                   <table className="w-full text-xs">
                     <thead className="sticky top-0 bg-slate-50 text-slate-500">
                       <tr>
@@ -4462,19 +4458,19 @@ export default function AdsDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {rows.length === 0 ? (
+                      {active.rows.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="py-5 text-center text-slate-400">
+                          <td colSpan={5} className="py-6 text-center text-slate-400">
                             ไม่มีรายชื่อตามตัวกรองที่เลือกในช่วงวันที่นี้
                           </td>
                         </tr>
                       ) : (
-                        rows.map((t, i) => (
+                        active.rows.map((t, i) => (
                           <tr key={i} className="border-t border-slate-100">
                             <td className="py-1.5 px-2 text-slate-700">{t.name || "—"}</td>
-                            <td className="py-1.5 px-2 text-slate-500">{fmtDateTh(t[dateField])}</td>
+                            <td className="py-1.5 px-2 text-slate-500">{fmtDateTh(t[active.dateField])}</td>
                             <td className="py-1.5 px-2 text-slate-600">{procLabelForSale(t.p)}</td>
-                            <td className="py-1.5 px-2 text-slate-600">{getDoctor(t)}</td>
+                            <td className="py-1.5 px-2 text-slate-600">{active.getDoctor(t)}</td>
                             <td className="py-1.5 px-2 text-slate-600">
                               {[t.saleOnline ? `Online: ${t.saleOnline}` : null, t.saleConsult ? `Consult: ${t.saleConsult}` : null]
                                 .filter(Boolean)
@@ -4486,14 +4482,14 @@ export default function AdsDashboard() {
                     </tbody>
                   </table>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1">{sourceNote}</p>
+                <p className="text-[10px] text-slate-400 mt-2">{active.sourceNote}</p>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  กรองตามหัตถการที่เลือกใน Dropdown ด้านบนสุดของหัวข้อนี้ ({inboxDailyOptions.find(([k]) => k === inboxDailyFilter)?.[1] ?? "รวมทุกหัตถการ"}) และช่วงวันที่ที่เลือกอยู่ตอนนี้ ·
+                  คอลัมน์ "Sale Online / Sale Consult" แสดงค่าดิบตามที่กรอกในไฟล์ (บางแถวทีมกรอกชื่อพนักงานตรงๆ บางแถวกรอกเป็นคำว่า "Sale Online"/"Sale Consult" เฉยๆ)
+                </p>
               </div>
-            ))}
-            <p className="text-[11px] text-slate-400 mt-1">
-              กรองตามหัตถการที่เลือกใน Dropdown ด้านบน ({inboxDailyOptions.find(([k]) => k === inboxDailyFilter)?.[1] ?? "รวมทุกหัตถการ"}) และช่วงวันที่ที่เลือกอยู่ตอนนี้ ·
-              คอลัมน์ "Sale Online / Sale Consult" แสดงค่าดิบตามที่กรอกในไฟล์ (บางแถวทีมกรอกชื่อพนักงานตรงๆ บางแถวกรอกเป็นคำว่า "Sale Online"/"Sale Consult" เฉยๆ)
-            </p>
-          </div>
+            );
+          })()}
 
           {/* ระยะเวลาที่ใช้ปิด OR (Date → OR Date) แยกตามหัตถการ — ใช้มัธยฐานเพราะข้อมูลมี outlier สูงมาก */}
           <div className="rounded-xl border border-cyan-100 bg-cyan-50/50 p-4 mb-5">
