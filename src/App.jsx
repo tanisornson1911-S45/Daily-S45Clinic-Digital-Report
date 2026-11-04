@@ -2643,6 +2643,25 @@ export default function AdsDashboard() {
   const prevOrCasesTotal = compareEnabled && inboxDailyFilter !== "inter" ? computeOrCasesForRange(compareRange, inboxDailyFilter) : null;
   const inboxOrCasesMoM = prevOrCasesTotal != null ? pctDelta(inboxOrCasesTotal, prevOrCasesTotal) : null;
 
+  // รายชื่อลูกค้า "ปิดปรึกษา/ปิดมัดจำ/ปิด OR" ใต้การ์ด 3 ใบด้านบน — ผู้ใช้ขอเพิ่ม 2026-11-04 กรองตาม inboxDailyFilter
+  // (Dropdown หัตถการเดียวกับการ์ด 3 ใบ) และช่วงวันที่ที่เลือก (dateRange) เหมือนกัน
+  // - ปิดปรึกษา: จาก CONSULT_TX (ชีต "ปรึกษา 2026") กรองด้วย "Date ปิด" (t.d)
+  // - ปิดมัดจำ: จาก RAW_TX (ชีต "มัดจำ 2026") กรองด้วย "Date" (t.d) + dep>0
+  // - ปิด OR: ตามที่ผู้ใช้ยืนยัน 2026-11-04 ว่าไฟล์ "ยอดORจริง+Forecast (พี่เปา)" ไม่มีคอลัมน์ชื่อลูกค้า/Sale เลย
+  //   (เป็นตารางสรุปยอดราย เดือน×หมอ×หัตถการ×วันที่ เท่านั้น) จึงทำรายชื่อไม่ได้จากไฟล์นั้นโดยตรง — ใช้ RAW_TX
+  //   กรองด้วย "OR Date" (t.or) แทน (คนละไฟล์กับการ์ด "จำนวนเคสที่ปิด OR" ด้านบนซึ่งยังนับจากไฟล์ทางการอยู่ — รายชื่อ
+  //   ชุดนี้จึงเป็นข้อมูลอ้างอิงเพื่อดูรายเคส ไม่ใช่ตัวเลขที่ reconcile กับการ์ดด้านบนเป๊ะๆ)
+  const inboxListMatchesProc = (p) => inboxDailyFilter === "all" || p === inboxDailyFilter;
+  const consultListRows = CONSULT_TX.filter(
+    (t) => t.d >= dateRange.start && t.d <= dateRange.end && inboxListMatchesProc(t.p)
+  ).sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : 0));
+  const depositListRows = RAW_TX.filter(
+    (t) => t.d >= dateRange.start && t.d <= dateRange.end && t.dep > 0 && inboxListMatchesProc(t.p)
+  ).sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : 0));
+  const orListRows = RAW_TX.filter(
+    (t) => t.or && t.or >= dateRange.start && t.or <= dateRange.end && inboxListMatchesProc(t.p)
+  ).sort((a, b) => (a.or < b.or ? 1 : a.or > b.or ? -1 : 0));
+
   // "ปิดปรึกษา/ปิดมัดจำ แยกตามหัตถการ (เทียบ Inbox)" — คำนวณสดตามช่วงวันที่ที่เลือกจริงแล้ว (เดิมเป็นยอดรวมทั้งเดือน
   // เพราะไม่มีข้อมูล Inbox รายวันจริง ตอนนี้มีแล้วจาก adDaily.json) · เคสปิดแล้ว = dep>0 ตามมาตรฐานเดียวกับที่ใช้
   // ทั้งแอป (activeDoctors/activeFbSurgery/Sales Funnel Performance) · "ปิดปรึกษา" อ่านจาก CONSULT_TX (ชีต
@@ -4385,6 +4404,96 @@ export default function AdsDashboard() {
             ไฟล์ข้อมูลเดือนนี้มีเฉพาะยอด Ads/Inbox รายวัน — ยังไม่มีข้อมูลยอดปิดปรึกษา/มัดจำ/OR แยกรายวัน
           </div>
           )}
+
+          {/* รายชื่อลูกค้า "ปิดปรึกษา/ปิดมัดจำ/ปิด OR" — ผู้ใช้ขอเพิ่ม 2026-11-04 กรองตาม Dropdown หัตถการ (inboxDailyFilter)
+              และช่วงวันที่เดียวกับการ์ด 3 ใบด้านบน */}
+          <div className="rounded-xl border border-slate-100 bg-white p-4 mb-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Users size={14} className="text-slate-500" />
+              <h3 className="text-sm font-semibold text-slate-700">
+                รายชื่อลูกค้า ปิดปรึกษา / ปิดมัดจำ / ปิด OR — {rangeLabel}
+              </h3>
+            </div>
+
+            {[
+              {
+                key: "consult",
+                label: "ปิดปรึกษา",
+                rows: consultListRows,
+                dateField: "d",
+                color: "amber",
+                sourceNote: 'ชีต "ปรึกษา 2026" (กรองด้วย "Date ปิด")',
+                getDoctor: (t) => t.doctor || "รอระบุ",
+              },
+              {
+                key: "deposit",
+                label: "ปิดมัดจำ",
+                rows: depositListRows,
+                dateField: "d",
+                color: "violet",
+                sourceNote: 'ชีต "มัดจำ 2026" (กรองด้วย "Date")',
+                getDoctor: (t) => t.doc || "รอระบุ",
+              },
+              {
+                key: "or",
+                label: "ปิด OR",
+                rows: orListRows,
+                dateField: "or",
+                color: "emerald",
+                sourceNote: 'ชีต "มัดจำ 2026" (กรองด้วย "OR Date" — ไฟล์ "ยอดORจริง+Forecast (พี่เปา)" ไม่มีคอลัมน์ชื่อลูกค้า จึงใช้ชีตนี้แทนสำหรับรายชื่อ ไม่ใช่ตัวเลขทางการ)',
+                getDoctor: (t) => t.doc || "รอระบุ",
+              },
+            ].map(({ key, label, rows, dateField, color, sourceNote, getDoctor }) => (
+              <div key={key} className="mb-5 last:mb-0">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className={`text-xs font-semibold text-${color}-700`}>
+                    {label} — {rows.length} รายชื่อ
+                  </h4>
+                </div>
+                <div className="max-h-72 overflow-y-auto rounded-lg border border-slate-100">
+                  <table className="w-full text-xs">
+                    <thead className="sticky top-0 bg-slate-50 text-slate-500">
+                      <tr>
+                        <th className="text-left font-medium py-1.5 px-2">ชื่อ</th>
+                        <th className="text-left font-medium py-1.5 px-2">วันที่ปิดเข้ามา</th>
+                        <th className="text-left font-medium py-1.5 px-2">หัตถการ</th>
+                        <th className="text-left font-medium py-1.5 px-2">หมอ</th>
+                        <th className="text-left font-medium py-1.5 px-2">Sale Online / Sale Consult</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-5 text-center text-slate-400">
+                            ไม่มีรายชื่อตามตัวกรองที่เลือกในช่วงวันที่นี้
+                          </td>
+                        </tr>
+                      ) : (
+                        rows.map((t, i) => (
+                          <tr key={i} className="border-t border-slate-100">
+                            <td className="py-1.5 px-2 text-slate-700">{t.name || "—"}</td>
+                            <td className="py-1.5 px-2 text-slate-500">{fmtDateTh(t[dateField])}</td>
+                            <td className="py-1.5 px-2 text-slate-600">{procLabelForSale(t.p)}</td>
+                            <td className="py-1.5 px-2 text-slate-600">{getDoctor(t)}</td>
+                            <td className="py-1.5 px-2 text-slate-600">
+                              {[t.saleOnline ? `Online: ${t.saleOnline}` : null, t.saleConsult ? `Consult: ${t.saleConsult}` : null]
+                                .filter(Boolean)
+                                .join(" · ") || "—"}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">{sourceNote}</p>
+              </div>
+            ))}
+            <p className="text-[11px] text-slate-400 mt-1">
+              กรองตามหัตถการที่เลือกใน Dropdown ด้านบน ({inboxDailyOptions.find(([k]) => k === inboxDailyFilter)?.[1] ?? "รวมทุกหัตถการ"}) และช่วงวันที่ที่เลือกอยู่ตอนนี้ ·
+              คอลัมน์ "Sale Online / Sale Consult" แสดงค่าดิบตามที่กรอกในไฟล์ (บางแถวทีมกรอกชื่อพนักงานตรงๆ บางแถวกรอกเป็นคำว่า "Sale Online"/"Sale Consult" เฉยๆ)
+            </p>
+          </div>
 
           {/* ระยะเวลาที่ใช้ปิด OR (Date → OR Date) แยกตามหัตถการ — ใช้มัธยฐานเพราะข้อมูลมี outlier สูงมาก */}
           <div className="rounded-xl border border-cyan-100 bg-cyan-50/50 p-4 mb-5">

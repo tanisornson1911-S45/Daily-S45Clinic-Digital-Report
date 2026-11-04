@@ -171,7 +171,13 @@ function main() {
     // for years but silently discarded — App.jsx's "สรุปยอดปิดมัดจำ แยกตาม Sale" card (added 2569-09-09
     // per user request) needs the actual name, not just a presence flag.
     const sale = typeof r[16] === "string" && r[16].trim() !== "" ? r[16].trim() : "รอระบุ";
-    out.push({ d: dt, or, ch, p, doc, dep, onl, tot, cons, sale });
+    // name/saleOnline/saleConsult — เพิ่ม 2026-11-04 สำหรับรายชื่อลูกค้า "ปิดมัดจำ"/"ปิด OR" บนหน้า Inbox & Lead
+    // (ปิด OR ใช้แถวเดียวกันนี้กรองด้วย "or" แทน "d" — ดูคอมเมนต์ที่ใช้งานใน App.jsx) name = คอลัมน์ 4 "Customer
+    // name", saleOnline = คอลัมน์ 2 "Sale Online", saleConsult = คอลัมน์ 3 (คนละตัวกับ "cons" ที่เป็นแค่ boolean)
+    const name = typeof r[4] === "string" && r[4].trim() !== "" ? r[4].trim() : null;
+    const saleOnline = typeof r[2] === "string" && r[2].trim() !== "" ? r[2].trim() : null;
+    const saleConsult = typeof r[3] === "string" && r[3].trim() !== "" ? r[3].trim() : null;
+    out.push({ d: dt, or, ch, p, doc, dep, onl, tot, cons, sale, name, saleOnline, saleConsult });
   }
   out.sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0));
 

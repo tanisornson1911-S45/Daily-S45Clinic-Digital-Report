@@ -123,6 +123,10 @@ function main() {
   const closeDateCol = findCol(header, (h) => h === "Date ปิด");
   const onlinePriceCol = findCol(header, (h) => h === "Online price");
   const surgeryCol = findCol(header, (h) => h.toLowerCase().startsWith("surgery"));
+  const nameCol = findCol(header, (h) => h === "Name");
+  const doctorCol = findCol(header, (h) => h === "Doctor");
+  const saleOnlineCol = findCol(header, (h) => h === "Sale Online");
+  const saleConsultCol = findCol(header, (h) => h === "Sale Consult");
 
   const out = [];
   const skipped = [];
@@ -138,7 +142,13 @@ function main() {
     const p = mapSurgery(surgeryRaw);
     if (p === "other" && surgeryRaw) unmapped.add(String(surgeryRaw).trim());
     const onl = typeof r[onlinePriceCol] === "number" ? r[onlinePriceCol] : 0;
-    out.push({ d, p, onl });
+    // name/doctor/saleOnline/saleConsult — เพิ่ม 2026-11-04 สำหรับรายชื่อลูกค้า "ปิดปรึกษา" บนหน้า Inbox & Lead
+    // (ก่อนหน้านี้เก็บแค่ d/p/onl พอสำหรับนับยอดรวม แต่ไม่พอสำหรับแสดงรายเคส)
+    const name = typeof r[nameCol] === "string" && r[nameCol].trim() !== "" ? r[nameCol].trim() : null;
+    const doctor = typeof r[doctorCol] === "string" && r[doctorCol].trim() !== "" ? r[doctorCol].trim() : null;
+    const saleOnline = typeof r[saleOnlineCol] === "string" && r[saleOnlineCol].trim() !== "" ? r[saleOnlineCol].trim() : null;
+    const saleConsult = typeof r[saleConsultCol] === "string" && r[saleConsultCol].trim() !== "" ? r[saleConsultCol].trim() : null;
+    out.push({ d, p, onl, name, doctor, saleOnline, saleConsult });
   }
   out.sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0));
 
