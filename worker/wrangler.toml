@@ -1,0 +1,33 @@
+# Cloudflare Worker config for the S45 Dashboard data API.
+#
+# One-time setup (the person deploying this needs a Cloudflare account —
+# Claude cannot do this part, it has no Cloudflare credentials):
+#   1. npx wrangler login
+#   2. npx wrangler kv namespace create S45_DATA
+#      -> copy the returned "id" into the [[kv_namespaces]] block below
+#   3. npx wrangler secret put DASH_USER       (same value as Vercel's DASH_USER)
+#      npx wrangler secret put DASH_PASS       (same value as Vercel's DASH_PASS)
+#   4. Set ALLOWED_ORIGIN below to the exact Dashboard URL (e.g. the Vercel
+#      production domain, with no trailing slash) — the Worker only answers
+#      browser fetches from this origin.
+#   5. npx wrangler deploy
+#   6. Copy the deployed Worker URL into the frontend's VITE_WORKER_URL
+#      (Vercel Project Settings -> Environment Variables) and redeploy the
+#      frontend.
+#   7. Add CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_KV_NAMESPACE_ID
+#      as GitHub Actions repo secrets so the nightly pipeline can push fresh
+#      data into this same KV namespace (see scripts/push-to-kv.mjs).
+
+name = "s45-dashboard-api"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+[vars]
+ALLOWED_ORIGIN = "https://CHANGE-ME.vercel.app"
+
+[[kv_namespaces]]
+binding = "DATA_KV"
+id = "CHANGE-ME-AFTER-RUNNING-wrangler-kv-namespace-create"
+
+# DASH_USER / DASH_PASS are set as Worker secrets (wrangler secret put), not
+# here — do not put real credentials in this file, it gets committed to git.

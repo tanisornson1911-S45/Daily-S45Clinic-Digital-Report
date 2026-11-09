@@ -57,22 +57,32 @@ import {
   Cell,
   ResponsiveContainer,
 } from "recharts";
-import adSpendData from "./data/adSpend.json";
-import RAW_TX_DATA from "./data/rawTx.json";
-import CONSULT_TX_DATA from "./data/consultTx.json";
-import LOA_DATA from "./data/loaData.json";
-import LOA_NORMAL_DATA from "./data/loaNormalData.json";
-import FUNNEL_BY_MONTH_DATA from "./data/funnelByMonth.json";
-import AD_DAILY from "./data/adDaily.json";
-import DOCTOR_HERO_POSTS_DATA from "./data/doctorHeroPosts.json";
-import ANT_ARMY_POSTS_DATA from "./data/antArmyPosts.json";
-import BAD_LEAD_DATA from "./data/badLead.json";
-import OR_SALES_DATA from "./data/orSales.json";
-import CONSULT_PIPELINE_DATA from "./data/consultPipeline.json";
-import CHANNEL_MIX_DATA from "./data/channelMix.json";
-import INTER_SALE_DATA from "./data/interSale.json";
-import PROCEDURE_BUDGET_DATA from "./data/procedureBudget.json";
-import NOSE_OPEN_DOCTOR_ADS_DATA from "./data/noseOpenDoctorAds.json";
+import { getLiveData } from "./data/liveData.js";
+
+// ตั้งแต่ 2026-11-09: ไม่ import ไฟล์ src/data/*.json ตรงๆ อีกต่อไป (เคยทำให้ข้อมูลลูกค้า/ยอดขายทั้งหมดฝังอยู่ใน
+// บันเดิล JS สาธารณะ) — อ่านจาก getLiveData() แทน ซึ่ง src/main.jsx เป็นคนเติมให้ก่อน dynamic import โมดูลนี้เสมอ
+// (production: fetch จาก Cloudflare Worker ที่เช็ค Basic Auth+CORS ก่อน, dev: import ไฟล์ local ตรงๆ เหมือนเดิม)
+// ดูคอมเมนต์ที่ src/data/liveData.js และ src/main.jsx สำหรับเหตุผลที่ต้องทำแบบนี้แทนการ fetch ใน useEffect —
+// ด้านล่างทั้งไฟล์ (CATEGORIES/RAW_TX/FUNNEL_DATA ฯลฯ) ยังคงเป็นค่าคงที่ระดับโมดูลที่คำนวณจากตัวแปรเหล่านี้ทันที
+// เหมือนเดิมทุกประการ ไม่ต้องแก้อะไรเพิ่ม เพราะ getLiveData() รับประกันว่ามีข้อมูลพร้อมอยู่แล้วตอนบรรทัดเหล่านี้รัน
+const {
+  adSpend: adSpendData,
+  rawTx: RAW_TX_DATA,
+  consultTx: CONSULT_TX_DATA,
+  loaData: LOA_DATA,
+  loaNormalData: LOA_NORMAL_DATA,
+  funnelByMonth: FUNNEL_BY_MONTH_DATA,
+  adDaily: AD_DAILY,
+  doctorHeroPosts: DOCTOR_HERO_POSTS_DATA,
+  antArmyPosts: ANT_ARMY_POSTS_DATA,
+  badLead: BAD_LEAD_DATA,
+  orSales: OR_SALES_DATA,
+  consultPipeline: CONSULT_PIPELINE_DATA,
+  channelMix: CHANNEL_MIX_DATA,
+  interSale: INTER_SALE_DATA,
+  procedureBudget: PROCEDURE_BUDGET_DATA,
+  noseOpenDoctorAds: NOSE_OPEN_DOCTOR_ADS_DATA,
+} = getLiveData();
 const loaDataByMonth = LOA_DATA.months;
 const loaNormalDataByMonth = LOA_NORMAL_DATA.months;
 
