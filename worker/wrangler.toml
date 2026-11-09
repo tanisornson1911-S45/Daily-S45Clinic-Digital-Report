@@ -28,6 +28,10 @@ ALLOWED_ORIGIN = "https://daily-s45-clinic-digital-report.vercel.app"
 [[kv_namespaces]]
 binding = "DATA_KV"
 id = "10fef57cf49f4c729c64139f9d6ea70e"
+# account_id ที่ถูกต้องคือ 681ffefaed6aa884c5199d35d74f4dc5 (เคยอ่านผิดเป็น ...d7af4dc5 จากภาพหน้าจอ — ต่างกันแค่
+# "74f" vs "7af" ทำให้ทุก API call ผ่าน Cloudflare REST API ล้มเหลวด้วย "Authentication error" มาตลอดจนกว่าจะเจอ
+# ผ่านการเรียก GET /accounts เทียบดู — ตัวแปรนี้ไม่ได้ใช้โดย wrangler.toml เอง (wrangler อ่าน account จาก login
+# session) แต่ GitHub secret CLOUDFLARE_ACCOUNT_ID ต้องตั้งเป็นค่านี้ให้ตรง
 
 # DASH_USER / DASH_PASS are set as Worker secrets (wrangler secret put), not
 # here — do not put real credentials in this file, it gets committed to git.
