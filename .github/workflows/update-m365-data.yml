@@ -108,6 +108,9 @@ jobs:
           echo "Token first/last 4 chars: ${CLOUDFLARE_API_TOKEN:0:4}...${CLOUDFLARE_API_TOKEN: -4}"
           curl -s -o /tmp/verify.json -w "HTTP %{http_code}\n" -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
           cat /tmp/verify.json
+          echo "--- list KV namespaces for this account ---"
+          curl -s -o /tmp/listkv.json -w "HTTP %{http_code}\n" -X GET "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          cat /tmp/listkv.json
 
       - name: Push data to Cloudflare KV (Worker API reads from here)
         env:
