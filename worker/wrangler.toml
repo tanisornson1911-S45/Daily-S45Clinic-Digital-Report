@@ -23,7 +23,7 @@ main = "src/index.js"
 compatibility_date = "2024-11-01"
 
 [vars]
-ALLOWED_ORIGIN = "https://CHANGE-ME.vercel.app"
+ALLOWED_ORIGIN = "https://daily-s45-clinic-digital-report.vercel.app"
 
 [[kv_namespaces]]
 binding = "DATA_KV"
