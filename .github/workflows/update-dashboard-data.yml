@@ -52,6 +52,13 @@ jobs:
           FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
         run: node scripts/fetch-fb-doctor-campaigns.mjs
 
+      - name: Push data to Cloudflare KV (Worker API reads from here)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_KV_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_KV_NAMESPACE_ID }}
+        run: node scripts/push-to-kv.mjs
+
       - name: Commit & push if data changed
         run: |
           git config user.name "github-actions[bot]"
