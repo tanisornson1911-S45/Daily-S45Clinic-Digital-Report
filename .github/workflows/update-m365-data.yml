@@ -113,6 +113,12 @@ jobs:
           echo "--- list KV namespaces for this account ---"
           curl -s -o /tmp/listkv.json -w "HTTP %{http_code}\n" -X GET "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/storage/kv/namespaces" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
           cat /tmp/listkv.json
+          echo "--- list Workers scripts for this account (tests the OTHER permission on this token) ---"
+          curl -s -o /tmp/listworkers.json -w "HTTP %{http_code}\n" -X GET "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          cat /tmp/listworkers.json
+          echo "--- verify token's own permission scopes (no account needed) ---"
+          curl -s -o /tmp/tokenself.json -w "HTTP %{http_code}\n" -X GET "https://api.cloudflare.com/client/v4/user" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          cat /tmp/tokenself.json
 
       - name: Push data to Cloudflare KV (Worker API reads from here)
         env:
