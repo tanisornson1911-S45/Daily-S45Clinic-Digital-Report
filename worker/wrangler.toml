@@ -27,7 +27,7 @@ ALLOWED_ORIGIN = "https://CHANGE-ME.vercel.app"
 
 [[kv_namespaces]]
 binding = "DATA_KV"
-id = "CHANGE-ME-AFTER-RUNNING-wrangler-kv-namespace-create"
+id = "10fef57cf49f4c729c64139f9d6ea70e"
 
 # DASH_USER / DASH_PASS are set as Worker secrets (wrangler secret put), not
 # here — do not put real credentials in this file, it gets committed to git.
