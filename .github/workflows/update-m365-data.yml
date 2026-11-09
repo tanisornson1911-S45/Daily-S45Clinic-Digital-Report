@@ -106,6 +106,8 @@ jobs:
           echo "Account ID length: ${#CLOUDFLARE_ACCOUNT_ID}"
           echo "Namespace ID length: ${#CLOUDFLARE_KV_NAMESPACE_ID}"
           echo "Token first/last 4 chars: ${CLOUDFLARE_API_TOKEN:0:4}...${CLOUDFLARE_API_TOKEN: -4}"
+          echo "Account ID (full): [$CLOUDFLARE_ACCOUNT_ID]"
+          echo "Namespace ID (full): [$CLOUDFLARE_KV_NAMESPACE_ID]"
           curl -s -o /tmp/verify.json -w "HTTP %{http_code}\n" -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
           cat /tmp/verify.json
           echo "--- list KV namespaces for this account ---"
