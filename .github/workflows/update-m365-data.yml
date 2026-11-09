@@ -119,6 +119,9 @@ jobs:
           echo "--- verify token's own permission scopes (no account needed) ---"
           curl -s -o /tmp/tokenself.json -w "HTTP %{http_code}\n" -X GET "https://api.cloudflare.com/client/v4/user" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
           cat /tmp/tokenself.json
+          echo "--- list all accounts this token can see ---"
+          curl -s -o /tmp/accounts.json -w "HTTP %{http_code}\n" -X GET "https://api.cloudflare.com/client/v4/accounts" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          cat /tmp/accounts.json
 
       - name: Push data to Cloudflare KV (Worker API reads from here)
         env:
