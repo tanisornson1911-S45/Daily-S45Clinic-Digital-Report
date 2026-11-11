@@ -69,7 +69,7 @@
  * ---------------------------------------------------------------
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
@@ -255,6 +255,7 @@ async function main() {
   const m = nowIct.getUTCMonth() + 1;
   const d = nowIct.getUTCDate();
   const monthKey = `${y}-${String(m).padStart(2, "0")}`;
+  const dateKeyIct = `${monthKey}-${String(d).padStart(2, "0")}`;
   const dateHeaderLabel = `${d}/${m}/${String(y).slice(-2)}`;
   const monthStart = `${monthKey}-01`;
   // ยอดขาย/OR "นิ่งแล้ว" เฉพาะถึงเมื่อวาน (เหมือน adSpend.json/adDaily.json) — ไม่ใช้ถึง "วันนี้" เพราะ
@@ -393,6 +394,13 @@ ${budgetStatusLines}`;
   console.log("---------------------------");
 
   await sendToLine(message);
+
+  // เขียน marker ว่าส่งรายงานวันนี้ (เวลาไทย) ไปแล้ว — เฉพาะ broadcast โหมดจริงเท่านั้น (ไม่เขียนตอน
+  // test push ให้ตัวเอง) ให้ scripts/check-report-sent-today.mjs ใช้กัน workflow สองตัวจับเวลา (GitHub
+  // schedule + Routine ของ Claude) ยิงใกล้กันแล้วส่งซ้ำ — ดูคอมเมนต์หัวไฟล์นั้น
+  if (LINE_SEND_MODE === "broadcast") {
+    writeFileSync(path.resolve("src/data/lastReportSent.json"), JSON.stringify({ date: dateKeyIct }, null, 2) + "\n");
+  }
 }
 
 async function sendToLine(text) {

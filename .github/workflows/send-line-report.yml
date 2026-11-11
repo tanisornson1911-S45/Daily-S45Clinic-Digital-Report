@@ -1,6 +1,6 @@
 name: Send daily Digital Report to LINE OA
 
-# ทุกวัน 18:30 เวลาไทย: ดึงรายชื่อแคมเปญ Facebook ที่ Active อยู่ตอนนี้ (เทียบกับเมื่อวานเพื่อหา Ads ที่
+# ทุกวัน 18:26 เวลาไทย: ดึงรายชื่อแคมเปญ Facebook ที่ Active อยู่ตอนนี้ (เทียบกับเมื่อวานเพื่อหา Ads ที่
 # เปิด/ปิดใหม่ — "Monitor Ads") + ยอดใช้งบ/Inbox รายวันแยกบัญชีสำหรับ CPR Nose Open/Inter โดยเฉพาะ แล้ว
 # ประกอบเป็นข้อความ "Digital Report" (ใช้ข้อมูลจาก pipeline ในนี้ล้วนๆ ไม่มี Google Sheet ภายนอกแล้ว —
 # ตัดส่วน Persona Check/Manual Input ออกตามคำขอผู้ใช้ 2026-10-09) ส่งเข้า LINE OA ผ่าน Messaging API
@@ -10,12 +10,25 @@ name: Send daily Digital Report to LINE OA
 #   - LINE_TEST_USER_ID          (LINE user id ของตัวเอง — ใช้ตอน LINE_SEND_MODE=test เท่านั้น)
 #
 # LINE_SEND_MODE = "broadcast" — ส่งจริงเข้าผู้ติดตาม LINE OA ทั้งหมดทุกวัน (ยืนยันโดยตรงจากผู้ใช้
-# 2026-10-09). GitHub Actions schedule ไม่รับประกันเวลารันเป๊ะ (เจอดีเลย์จริง 5-6 ชม. ในรอบแรกๆ) จึงเอา
-# schedule: ของ GitHub ออกไปแล้ว (2026-10-12 — ตอนแรกลืมถอดตอนเพิ่ม Routine เข้ามา ทำให้มีสองตัวจับเวลายิง
-# ซ้อนกัน ส่ง Report ซ้ำวันละ 2 รอบ) ตอนนี้ตัวเดียวที่ยิง workflow นี้คือ Routine ของ Claude Code (trigger_id:
-# trig_01QtrzJCs7bEHfH4rLtrLUUw) ที่ยิงตรง 18:26 น. ทุกวันแทน — workflow_dispatch ด้านล่างไว้สำหรับรันมือ/ทดสอบเท่านั้น
+# 2026-10-09).
+#
+# ตัวจับเวลา: ตั้งแต่ 2026-10-12 ถึง 2026-11-11 ใช้ Routine ของ Claude Code (trigger_id:
+# trig_01QtrzJCs7bEHfH4rLtrLUUw, ยิงตรง 18:26 น. ทุกวัน) เป็นตัวเดียวที่ยิง workflow นี้ (ตอนแรกเคยมี
+# schedule: ของ GitHub คู่กันด้วยแล้วถอดออก เพราะลืมถอดตอนเพิ่ม Routine เข้ามา ทำให้ยิงซ้อนกัน ส่ง Report
+# ซ้ำวันละ 2 รอบ) แต่พบว่า Routine เพียงอย่างเดียวไม่เสถียร — ปลุก session ตรงเวลาทุกวันจริง แต่ขั้นตอนที่
+# session ต้องเรียก GitHub ให้ยิง workflow (ผ่าน MCP) หลุดชั่วคราวได้ (เจอจริง 2026-11-10, 2026-11-11
+# ติดกัน 2 วัน — Report ไม่ออกเลยจนต้องสั่งมือ) จึงใส่ schedule: ของ GitHub กลับมาเป็นตัวสำรองอีกชั้น (คนละ
+# จุดอ่อนกับ Routine เพราะไม่ต้องพึ่ง MCP/Claude เลย) ตั้งเวลาเดียวกัน 18:26 น. (= 11:26 UTC) เพื่อให้ Report
+# ยังออกเวลาเดิมไม่ว่าตัวไหนจะเป็นตัวที่ยิงสำเร็จจริง — เพื่อกันส่งซ้ำถ้าทั้งสองตัวยิงมาใกล้กัน ใส่ dedup guard
+# ไว้ที่ step "Check if already sent today" ด้านล่าง (เช็ค src/data/lastReportSent.json ที่เขียน+คอมมิตไว้
+# หลังส่งสำเร็จแต่ละวัน — ถ้าของวันนี้ส่งไปแล้ว step ที่เหลือทั้งหมดจะถูก skip)
 
 on:
+  schedule:
+    # 18:26 เวลาไทย (ICT = UTC+7) = 11:26 UTC — จงใจเลี่ยงเวลาตรงชั่วโมง/ครึ่งชั่วโมง (ตามคำเตือนของ GitHub
+    # ว่า scheduled workflow อาจดีเลย์มากช่วงเวลาที่มีคนตั้ง schedule ชนกันเยอะ เช่น :00/:30 ตรง) ใช้นาทีเดียว
+    # กับ Routine ของ Claude ด้านบน
+    - cron: "26 11 * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -27,23 +40,36 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # fetch-depth: 0 ไว้ให้ step "Commit already sent marker" ท้ายไฟล์ rebase ได้ถ้า push ชนกัน
+          # (เหมือน update-m365-data.yml — shallow clone ค่า default ทำให้หา common ancestor ไม่เจอ)
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
+      # กัน schedule: ของ GitHub กับ Routine ของ Claude ยิงใกล้กันแล้วส่ง Report ซ้ำวันละ 2 รอบ — ดูคอมเมนต์
+      # หัวไฟล์นี้ และ scripts/check-report-sent-today.mjs
+      - name: Check if already sent today
+        id: dedup
+        run: node scripts/check-report-sent-today.mjs
+
       - name: Fetch Facebook active-campaign snapshot (for Monitor Ads diff)
+        if: steps.dedup.outputs.already_sent != 'true'
         env:
           FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
         run: node scripts/fetch-fb-campaign-snapshot.mjs
 
       - name: Fetch per-account daily spend/Inbox (for CPR Nose Open/Inter)
+        if: steps.dedup.outputs.already_sent != 'true'
         env:
           FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
         run: node scripts/fetch-fb-cpr-breakdown.mjs
 
       - name: Commit data snapshots if changed
+        if: steps.dedup.outputs.already_sent != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -56,8 +82,33 @@ jobs:
           fi
 
       - name: Build + send Digital Report to LINE OA
+        if: steps.dedup.outputs.already_sent != 'true'
         env:
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LINE_TEST_USER_ID: ${{ secrets.LINE_TEST_USER_ID }}
           LINE_SEND_MODE: broadcast
         run: node scripts/send-line-report.mjs
+
+      # เขียน marker (src/data/lastReportSent.json) ตอนส่งสำเร็จอยู่ในสคริปต์ข้างบนแล้ว เหลือแค่ pull ของล่าสุด
+      # (เผื่อมี commit อื่นแซงจาก step ก่อนหน้า) แล้ว commit+push แยกไฟล์นี้ให้ชัวร์ว่าไม่ถูกทับ
+      - name: Commit "already sent" marker
+        if: steps.dedup.outputs.already_sent != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/data/lastReportSent.json
+          if git diff --cached --quiet -- src/data/lastReportSent.json; then
+            echo "No change — nothing to commit."
+          else
+            git commit -m "chore: mark Digital Report sent for ${{ steps.dedup.outputs.today }} (automated)"
+            for attempt in 1 2 3; do
+              if git push origin HEAD:main; then
+                exit 0
+              fi
+              echo "Push rejected (attempt $attempt) — rebasing onto latest main and retrying..."
+              git fetch origin main
+              git rebase origin/main
+            done
+            echo "::error::Failed to push 'already sent' marker after 3 attempts."
+            exit 1
+          fi
