@@ -108,6 +108,7 @@ async function bootstrapDev() {
     interSale: () => import("./data/interSale.json"),
     procedureBudget: () => import("./data/procedureBudget.json"),
     noseOpenDoctorAds: () => import("./data/noseOpenDoctorAds.json"),
+    weeklyBudget: () => import("./data/weeklyBudget.json"),
   };
   const entries = await Promise.all(Object.entries(loaders).map(async ([key, load]) => [key, (await load()).default]));
   setLiveData(Object.fromEntries(entries));

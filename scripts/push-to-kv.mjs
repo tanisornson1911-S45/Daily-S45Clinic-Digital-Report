@@ -13,10 +13,13 @@
  * instead of (well, in addition to — see below) committing it to git.
  *
  * Only pushes files that exist AND are referenced in DATA_FILES below —
- * files other scripts in this repo write (m365Raw.json, weeklyBudget.json,
- * campaignSnapshot.json, cprAccountDaily.json) are pipeline-internal only
- * (never imported by src/App.jsx), so they're intentionally not pushed —
- * no point exposing them through the public API surface.
+ * files other scripts in this repo write (m365Raw.json, campaignSnapshot.json,
+ * cprAccountDaily.json) are pipeline-internal only (never imported by
+ * src/App.jsx), so they're intentionally not pushed — no point exposing them
+ * through the public API surface. weeklyBudget.json WAS pipeline-internal
+ * too, until 2026-11-12 when App.jsx's "แผนดำเนินการร่วม Digital & PO" section
+ * started reading it directly (replacing a hand-typed October-only table) —
+ * moved into DATA_FILES below at that point.
  *
  * Still committing the JSON files to git too (unchanged from before) —
  * this script doesn't replace that, it's additive. The git copies remain
@@ -38,8 +41,8 @@
  * Run automatically: appended as the last step of both
  * .github/workflows/update-m365-data.yml and update-dashboard-data.yml
  * (each only has a subset of these files fresh after its own run, but
- * pushing all 16 every time is harmless/idempotent — whichever files
- * weren't touched this run just get re-pushed with the same content).
+ * pushing all of DATA_FILES every time is harmless/idempotent — whichever
+ * files weren't touched this run just get re-pushed with the same content).
  * ---------------------------------------------------------------
  */
 
@@ -65,6 +68,7 @@ const DATA_FILES = [
   "interSale",
   "procedureBudget",
   "noseOpenDoctorAds",
+  "weeklyBudget",
 ];
 
 async function main() {

@@ -82,6 +82,7 @@ const {
   interSale: INTER_SALE_DATA,
   procedureBudget: PROCEDURE_BUDGET_DATA,
   noseOpenDoctorAds: NOSE_OPEN_DOCTOR_ADS_DATA,
+  weeklyBudget: WEEKLY_BUDGET_DATA,
 } = getLiveData();
 const loaDataByMonth = LOA_DATA.months;
 const loaNormalDataByMonth = LOA_NORMAL_DATA.months;
@@ -1864,143 +1865,51 @@ function defaultDateRanges() {
 }
 
 // ============================================================
-// แผนดำเนินการร่วม Digital & PO — เดือนตุลาคม 2569 (จากไฟล์ Excel แผนกลยุทธ์ Ads
-// ที่ทีม Digital/PO ส่งมา: สรุปภาพรวม / แบ่งงบราย Phase / เป้าหมาย & การแบ่งเพจ / หมายเหตุ)
-// แยกเป็นรายหัตถการ กด Dropdown ดูรายละเอียดแต่ละหัตถการได้ทีละอัน แทนที่จะโชว์ตารางยาวทั้งหมดค้างไว้
+// แผนดำเนินการร่วม Digital & PO — ตารางงบ/Phase รายหัตถการ ดึงสดจาก weeklyBudget.json (ชีต
+// "<เดือน><ปีย่อ> by Week" ของ Google Sheet "S45 - Budget Allocate" เดียวกับที่ fetch-budget-allocate.mjs
+// ดึงอยู่แล้ว — เดิมส่วนนี้พิมพ์มือตายตัวเฉพาะเดือนตุลาคม 2569 พร้อมข้อความกลยุทธ์/เป้า Inbox/ประเด็นยืนยันทีม
+// ที่สรุปจากไฟล์ Excel แผนกลยุทธ์คนละไฟล์ (ไม่มีอยู่ใน Google Sheet เลย) — ตรวจแล้ว 2026-11-12 ไม่มีข้อความ
+// ส่วนนั้นอยู่ในชีทไหนเลย (เช็ค cell comments ด้วย ก็ไม่มี) ผู้ใช้เลือกตัดข้อความส่วนนั้นออก เหลือแค่ตารางตัวเลข
+// (งบ/%/Phase) ที่ดึงอัตโนมัติได้เต็มที่ และจะโตขึ้นเองทุกเดือนที่ทีมเพิ่มชีต "<เดือน><ปีย่อ> by Week" ใหม่
+// โดยไม่ต้องแก้โค้ด — ดู scripts/fetch-budget-allocate.mjs's parseWeeklyBudgetSheet()
 // ============================================================
-const PO_PLAN_PROCEDURES = [
-  {
-    key: "semi_open",
-    label: "Semi-Open",
-    budget: "฿139,500",
-    pct: "7.6%",
-    phaseSplit: "35 / 20 / 20 / 25",
-    strategyMain:
-      "W1 ดัน Ads สร้าง Volume แชท หา Ads ที่ดี · W2 ลดงบ รักษา Performance ติดตามคุณภาพ Lead · W3 คุมงบ Optimize + เก็บฐานลูกค้าเก่า · " +
-      "W4 เพิ่มงบ กระตุ้นลูกค้าเก่า ดันยอดปลายเดือน",
-    strategyDetail: "คุม Ads Cost ≤ 10% ตรวจจากยอด Inbox ต่อ Phase — ถ้าเกิน/ไม่ถึงเป้า ลดงบรวมทันทีแต่คงสัดส่วน % ต่อ Phase เดิม",
-    phaseGroups: [
-      {
-        phases: [
-          { phase: "Phase 1", period: "อาทิตย์ที่ 1", pct: "35%", amount: "฿48,825", focus: "ดัน Ads สร้าง Volume แชท เก็บข้อมูล หา Ads Performance ดี" },
-          { phase: "Phase 2", period: "อาทิตย์ที่ 2", pct: "20%", amount: "฿27,900", focus: "ลดงบ รักษา Performance ติดตามคุณภาพ Lead" },
-          { phase: "Phase 3", period: "อาทิตย์ที่ 3", pct: "20%", amount: "฿27,900", focus: "คุมงบ Optimize จากข้อมูลก่อนหน้า เก็บฐานลูกค้าเก่า" },
-          { phase: "Phase 4", period: "อาทิตย์ที่ 4", pct: "25%", amount: "฿34,875", focus: "เพิ่มงบ กระตุ้นลูกค้าเก่า ดันยอดปลายเดือน" },
-        ],
-      },
-    ],
-  },
-  {
-    key: "inter",
-    label: "Inter",
-    budget: "฿90,000",
-    pct: "4.9%",
-    phaseSplit: "Nose 35/30/35 · Facelift Awareness 100%",
-    strategyMain:
-      "Nose ฿80,000: ดัน Ads ช่วง Performance ดี คุมงบรายเฟส ปรับแผนตามข้อมูลต่อเนื่อง · Facelift ฿10,000: Awareness 100% สร้างการรับรู้คุณหมอตี้",
-    strategyDetail: "Facelift Inter: Content เคสผลลัพธ์เด่น/เคสยาก สื่อความเชี่ยวชาญคุณหมอตี้ สร้างฐาน Audience ต่อยอดแคมเปญถัดไป",
-    phaseGroups: [
-      {
-        groupLabel: "Inter – Nose (฿80,000)",
-        phases: [
-          { phase: "Phase 1", period: "-", pct: "35%", amount: "฿28,000", focus: "ดัน Ads ช่วง Performance ดี" },
-          { phase: "Phase 2", period: "-", pct: "30%", amount: "฿24,000", focus: "คุมงบ ปรับแผนตามข้อมูล Performance" },
-          { phase: "Phase 3", period: "-", pct: "35%", amount: "฿28,000", focus: "ดัน Ads ช่วง Performance ดี" },
-        ],
-      },
-      {
-        groupLabel: "Inter – Facelift (฿10,000)",
-        phases: [{ phase: "ทั้งเดือน", period: "ทั้งเดือน", pct: "100%", amount: "฿10,000", focus: "Awareness 100% สร้างการรับรู้คุณหมอตี้" }],
-      },
-    ],
-  },
-  {
-    key: "nose_open",
-    label: "Nose Open",
-    budget: "฿970,000",
-    pct: "53.0%",
-    phaseSplit: "35 / 20 / 20 / 25",
-    strategyMain:
-      "ต้นเดือน Push Ads สร้าง Volume เก็บ Data · กลางเดือน Control Budget + Optimize · ปลายเดือน เพิ่มแรง Ads + Follow-up Lead เก่า + เร่ง Conversion",
-    strategyDetail: "ใช้คุณภาพ Lead และ Cost per Inbox ในการ Optimize",
-    phaseGroups: [
-      {
-        phases: [
-          { phase: "Phase 1", period: "ต้นเดือน", pct: "35%", amount: "฿339,500", focus: "Push Ads สร้าง Volume เก็บ Data" },
-          { phase: "Phase 2", period: "กลางเดือน", pct: "20%", amount: "฿194,000", focus: "Control Budget + Optimize" },
-          { phase: "Phase 3", period: "กลางเดือน", pct: "20%", amount: "฿194,000", focus: "รักษา Performance" },
-          { phase: "Phase 4", period: "ปลายเดือน", pct: "25%", amount: "฿242,500", focus: "เพิ่มแรงส่ง Ads + Follow-up Lead เก่า + เร่ง Conversion" },
-        ],
-      },
-    ],
-    pageSplit: [
-      { channel: "LINE OA", pct: "—", amount: "฿50,000", role: "บรอดแคสต์ 12 ครั้งในเดือน ต.ค. · งบเหลือ Allocate กลับไป Facebook Ads ตาม Performance" },
-    ],
-  },
-  {
-    key: "facelift",
-    label: "Facelift",
-    budget: "฿580,000",
-    pct: "31.7%",
-    phaseSplit: "25 / 25 / 25 / 25",
-    strategyMain: "วางแผนใช้งบเป็น 4 Phase กระจายเท่ากันทุกเฟส (25% ต่อเฟส) · เพจรอง 60% (Awareness/ENG/เพิ่มฐาน) · เพจหลัก 40% (รักษาฐาน/Conversion)",
-    strategyDetail: "จัดสรร Inter ของ Facelift ฿30,000 (Awareness 100%) · ตั้งเป้ารวม 4,500 Inbox/เดือน เฉลี่ย ~145 Inbox/วัน (เพจหลัก 60/วัน · เพจรอง 85/วัน)",
-    extraNote: "สัปดาห์แรกแชทเพจรองค่อนข้างน้อย เพราะช่วงนี้เน้นดัน Awareness ก่อน",
-    phaseGroups: [
-      {
-        phases: [
-          { phase: "Phase 1", period: "-", pct: "25%", amount: "฿145,000", focus: "กระจายงบเท่ากัน" },
-          { phase: "Phase 2", period: "-", pct: "25%", amount: "฿145,000", focus: "กระจายงบเท่ากัน" },
-          { phase: "Phase 3", period: "-", pct: "25%", amount: "฿145,000", focus: "กระจายงบเท่ากัน" },
-          { phase: "Phase 4", period: "-", pct: "25%", amount: "฿145,000", focus: "กระจายงบเท่ากัน" },
-        ],
-      },
-    ],
-    pageSplit: [
-      { channel: "เพจรอง", pct: "60%", amount: "฿348,000", role: "Awareness + เพิ่มฐานกลุ่มเป้าหมาย" },
-      { channel: "เพจหลัก", pct: "40%", amount: "฿232,000", role: "รักษาฐานลูกค้า + สนับสนุน Conversion" },
-      { channel: "Inter (Awareness)", pct: "—", amount: "฿30,000", role: "Awareness 100% เพิ่มฐานกลุ่มเป้าหมาย Facelift" },
-    ],
-    inboxTarget: {
-      rows: [
-        { channel: "เพจหลัก", perDay: "60", perMonth: "1,860" },
-        { channel: "เพจรอง", perDay: "85", perMonth: "2,635" },
-        { channel: "รวม", perDay: "145", perMonth: "4,495", bold: true },
-      ],
-      note: "แผนตั้งเป้า 4,500 Inbox/เดือน (เฉลี่ย ~145 Inbox/วัน)",
-    },
-  },
-  {
-    key: "breast",
-    label: "หน้าอก (Breast)",
-    budget: "฿50,000",
-    pct: "2.7%",
-    phaseSplit: "60 / 20 / 20",
-    strategyMain: "ดันแอดช่วงแรกสร้าง Awareness + เพิ่มฐาน Retarget แล้วใช้ข้อมูลคุณภาพ Lead มา Optimize เร่งผลลัพธ์",
-    strategyDetail: "Funnel: เพจหลัก 40% เน้น BOF · เพจรอง 60% เน้น MOF + BOF (สะสม Audience/Retarget)",
-    phaseGroups: [
-      {
-        phases: [
-          { phase: "Phase 1", period: "วันที่ 1–10", pct: "60%", amount: "฿30,000", focus: "ดันแอดสร้าง Awareness + เพิ่มฐาน Retarget" },
-          { phase: "Phase 2", period: "วันที่ 11–21", pct: "20%", amount: "฿10,000", focus: "ดูคุณภาพ Lead + Optimize" },
-          { phase: "Phase 3", period: "วันที่ 22–31", pct: "20%", amount: "฿10,000", focus: "เร่งผลลัพธ์ ติดตามลูกค้าที่มีแนวโน้มตัดสินใจ" },
-        ],
-      },
-    ],
-    pageSplit: [
-      { channel: "เพจหลัก", pct: "40%", amount: "฿20,000", role: "BOF — กระตุ้นกลุ่มที่มีแนวโน้มตัดสินใจ ให้เกิด Lead/Conversion" },
-      { channel: "เพจรอง", pct: "60%", amount: "฿30,000", role: "MOF + BOF — สร้างความสนใจ สะสม Audience และ Retarget" },
-    ],
-  },
+const PO_PLAN_KEY_ORDER = [
+  { sheetKey: "เสริมจมูก Semi Open", key: "nose_semi", label: "Semi-Open" },
+  { sheetKey: "Inter", key: "inter", label: "Inter" },
+  { sheetKey: "เสริมจมูกโอเพ่น", key: "nose_open", label: "Nose Open" },
+  { sheetKey: "ยกคิ้ว/เลื่อนไรผม/ยกมุมปาก", key: "brow_hairline", label: "Facelift" },
+  { sheetKey: "เสริมหน้าอก/ดูดไขมัน/ตัดหนัง", key: "breast_lipo", label: "หน้าอก (Breast)" },
 ];
-const PO_PLAN_CAVEATS = [
-  "Nose Open: งบ LINE OA ฿50,000 ไม่ชัดว่ารวมอยู่ใน ฿970,000 หรือเป็นงบแยก — ในไฟล์นี้ไม่ได้บวกเพิ่มในยอดรวม",
-  "Facelift: งบ Inter ฿30,000 ไม่ชัดว่าอยู่ใน ฿580,000 หรือแยก และซ้อนกับ Inter–Facelift ฿10,000 ในแผน Inter หรือไม่ — ไม่ได้บวกเพิ่มในยอดรวม",
-  "Facelift: การแบ่งเพจ 60/40 คำนวณจากงบรวม ฿580,000 (ยังไม่หักงบ Inter)",
-  "Inter–Nose และ Facelift: แผนไม่ได้ระบุช่วงวันของแต่ละ Phase",
-  "Semi-Open: กฎคุม Ads Cost ≤ 10% — ถ้าเกินให้ลดงบรวมแต่คงสัดส่วน % ต่อ Phase",
-  "ช่วงวันที่ 1 ปล่อยแอดเพจรองเป็น Awareness/ENG ก่อน แล้วค่อยเปลี่ยนมาเป็น Inbox — ถ้าไม่เปลี่ยน Inbox เพจรองจะไม่เป็นไปตามเป้าที่วางไว้",
-];
+function buildPoPlan(weeklyBudgetData) {
+  if (!weeklyBudgetData?.procedures || !weeklyBudgetData?.month) return { month: null, grandTotal: 0, procedures: [] };
+  const [y, m] = weeklyBudgetData.month.split("-").map(Number);
+  const daysInMonth = new Date(y, m, 0).getDate(); // เดือนถัดไป วันที่ 0 = วันสุดท้ายของเดือนนี้
+  const periods = ["1-7", "8-14", "15-21", `22-${daysInMonth}`];
+  const grandTotal = Object.values(weeklyBudgetData.procedures).reduce((s, p) => s + (p.facebookBudgetTotal || 0), 0);
+  const baht = (n) => `฿${Math.round(n).toLocaleString("th-TH")}`;
+  const procedures = PO_PLAN_KEY_ORDER.map(({ sheetKey, key, label }) => {
+    const p = weeklyBudgetData.procedures[sheetKey];
+    if (!p) return null;
+    const budget = p.facebookBudgetTotal || 0;
+    const weeks = p.weeks || [0, 0, 0, 0];
+    const phases = weeks.map((amount, i) => ({
+      phase: `Phase ${i + 1}`,
+      period: periods[i],
+      pct: budget > 0 ? `${Math.round((amount / budget) * 100)}%` : "—",
+      amount: baht(amount),
+    }));
+    return {
+      key,
+      label,
+      budget: baht(budget),
+      pct: grandTotal > 0 ? `${((budget / grandTotal) * 100).toFixed(1)}%` : "—",
+      phaseSplit: phases.map((ph) => ph.pct).join(" / "),
+      phases,
+    };
+  }).filter(Boolean);
+  return { month: weeklyBudgetData.month, grandTotal, procedures };
+}
+const PO_PLAN = buildPoPlan(WEEKLY_BUDGET_DATA);
 
 export default function AdsDashboard() {
   const [procFilter, setProcFilter] = useState("all");
@@ -2037,7 +1946,6 @@ export default function AdsDashboard() {
   const [heroImgErrors, setHeroImgErrors] = useState(() => new Set());
   // "แผนดำเนินการร่วม Digital & PO" ยุบ/ขยายรายละเอียดแยกหัตถการได้ ไม่ต้องโชว์ทุกตารางค้างไว้ตลอด (ยาวเกินไป)
   const [openPoPlanItems, setOpenPoPlanItems] = useState(() => new Set());
-  const [showPoPlanCaveats, setShowPoPlanCaveats] = useState(false);
   const [interDoctorFilter, setInterDoctorFilter] = useState("all");
   const [badLeadTagFilter, setBadLeadTagFilter] = useState("all");
   const [interProcFilter, setInterProcFilter] = useState("all");
@@ -5805,8 +5713,8 @@ export default function AdsDashboard() {
         </div>
 )}
 
-        {/* ---- NEW: แผนดำเนินการร่วม Digital & PO ---- */}
-{activePage === "ads" && (
+        {/* ---- แผนดำเนินการร่วม Digital & PO — ดึงสดจาก weeklyBudget.json ทุกเดือน (ดูคอมเมนต์ที่ PO_PLAN ด้านบน) ---- */}
+{activePage === "ads" && PO_PLAN.procedures.length > 0 && (
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mt-6">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
@@ -5815,7 +5723,7 @@ export default function AdsDashboard() {
             <h2 className="text-sm font-semibold text-slate-700">แผนดำเนินการร่วม Digital & PO</h2>
           </div>
           <p className="text-xs text-slate-400 mb-5 ml-10">
-            สรุปแผนงบโฆษณาแยกหัตถการ (PO) — เดือนตุลาคม 2569 · งบรวมทุกหัตถการ ฿1,829,500
+            สรุปแผนงบโฆษณาแยกหัตถการ (PO) — เดือน{thaiMonthLabel(PO_PLAN.month)} · งบรวมทุกหัตถการ ฿{PO_PLAN.grandTotal.toLocaleString("th-TH")}
           </p>
 
           {/* ภาพรวมงบ/Phase แยกหัตถการ */}
@@ -5826,36 +5734,23 @@ export default function AdsDashboard() {
                   <th className="pb-2 font-medium">หัตถการ</th>
                   <th className="pb-2 font-medium text-right">งบรวม</th>
                   <th className="pb-2 font-medium text-right">% งบ</th>
-                  <th className="pb-2 font-medium text-right">จำนวน Phase</th>
-                  <th className="pb-2 font-medium">สัดส่วนงบต่อ Phase</th>
+                  <th className="pb-2 font-medium">สัดส่วนงบต่อ Phase (W1/W2/W3/W4)</th>
                 </tr>
               </thead>
               <tbody className="text-slate-600">
-                <tr className="border-b border-slate-50">
-                  <td className="py-2">Semi-Open</td><td className="py-2 text-right">฿139,500</td><td className="py-2 text-right">7.6%</td>
-                  <td className="py-2 text-right">4</td><td className="py-2">35 / 20 / 20 / 25</td>
-                </tr>
-                <tr className="border-b border-slate-50">
-                  <td className="py-2">Inter</td><td className="py-2 text-right">฿90,000</td><td className="py-2 text-right">4.9%</td>
-                  <td className="py-2 text-right">3</td><td className="py-2">Nose 35/30/35 · Facelift Awareness 100%</td>
-                </tr>
-                <tr className="border-b border-slate-50">
-                  <td className="py-2">Nose Open</td><td className="py-2 text-right">฿970,000</td><td className="py-2 text-right">53.0%</td>
-                  <td className="py-2 text-right">4</td><td className="py-2">35 / 20 / 20 / 25</td>
-                </tr>
-                <tr className="border-b border-slate-50">
-                  <td className="py-2">Facelift</td><td className="py-2 text-right">฿580,000</td><td className="py-2 text-right">31.7%</td>
-                  <td className="py-2 text-right">4</td><td className="py-2">25 / 25 / 25 / 25</td>
-                </tr>
-                <tr className="border-b border-slate-100">
-                  <td className="py-2">หน้าอก (Breast)</td><td className="py-2 text-right">฿50,000</td><td className="py-2 text-right">2.7%</td>
-                  <td className="py-2 text-right">3</td><td className="py-2">60 / 20 / 20</td>
-                </tr>
+                {PO_PLAN.procedures.map((proc) => (
+                  <tr key={proc.key} className="border-b border-slate-50">
+                    <td className="py-2">{proc.label}</td>
+                    <td className="py-2 text-right">{proc.budget}</td>
+                    <td className="py-2 text-right">{proc.pct}</td>
+                    <td className="py-2">{proc.phaseSplit}</td>
+                  </tr>
+                ))}
                 <tr>
                   <td className="py-2 font-semibold text-slate-700">รวมทั้งหมด</td>
-                  <td className="py-2 text-right font-semibold text-slate-700">฿1,829,500</td>
+                  <td className="py-2 text-right font-semibold text-slate-700">฿{PO_PLAN.grandTotal.toLocaleString("th-TH")}</td>
                   <td className="py-2 text-right font-semibold text-slate-700">100%</td>
-                  <td className="py-2" colSpan={2}></td>
+                  <td className="py-2"></td>
                 </tr>
               </tbody>
             </table>
@@ -5863,8 +5758,8 @@ export default function AdsDashboard() {
 
           {/* รายละเอียดแยกหัตถการ — Dropdown/Accordion กดดูทีละหัตถการ แทนตารางยาวค้างไว้ทั้งหมด */}
           <h3 className="text-xs font-semibold text-slate-500 mb-2">รายละเอียดแยกหัตถการ — กดดูเพิ่มเติมทีละหัตถการ</h3>
-          <div className="space-y-2 mb-5">
-            {PO_PLAN_PROCEDURES.map((proc) => {
+          <div className="space-y-2 mb-2">
+            {PO_PLAN.procedures.map((proc) => {
               const isOpen = openPoPlanItems.has(proc.key);
               return (
                 <div key={proc.key} className="rounded-xl border border-slate-100 overflow-hidden">
@@ -5887,109 +5782,27 @@ export default function AdsDashboard() {
                     <ChevronDown size={16} className={`text-slate-400 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
                   </button>
                   {isOpen && (
-                    <div className="px-4 py-4 border-t border-slate-100 space-y-4">
-                      <div>
-                        <p className="text-[11px] text-slate-400 mb-1">สัดส่วนงบต่อ Phase: {proc.phaseSplit}</p>
-                        <p className="text-sm text-slate-600">{proc.strategyMain}</p>
-                        {proc.strategyDetail && <p className="text-xs text-slate-500 mt-1.5">{proc.strategyDetail}</p>}
-                        {proc.extraNote && (
-                          <div className="flex items-start gap-1.5 mt-2 pt-2 border-t border-slate-100 text-xs text-amber-600">
-                            <AlertTriangle size={12} className="mt-0.5 shrink-0" />
-                            <p>{proc.extraNote}</p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="overflow-x-auto">
-                        <p className="text-xs font-semibold text-slate-500 mb-1">แบ่งงบราย Phase</p>
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr className="text-left text-slate-400 border-b border-slate-100">
-                              <th className="pb-2 font-medium">Phase</th>
-                              <th className="pb-2 font-medium">ช่วงเวลา</th>
-                              <th className="pb-2 font-medium text-right">%</th>
-                              <th className="pb-2 font-medium text-right">งบต่อ Phase</th>
-                              <th className="pb-2 font-medium">โฟกัสของ Phase</th>
+                    <div className="px-4 py-4 border-t border-slate-100 overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="text-left text-slate-400 border-b border-slate-100">
+                            <th className="pb-2 font-medium">Phase</th>
+                            <th className="pb-2 font-medium">วันที่</th>
+                            <th className="pb-2 font-medium text-right">%</th>
+                            <th className="pb-2 font-medium text-right">งบต่อ Phase</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-slate-600">
+                          {proc.phases.map((p, pi) => (
+                            <tr key={pi} className={pi < proc.phases.length - 1 ? "border-b border-slate-50" : ""}>
+                              <td className="py-1.5">{p.phase}</td>
+                              <td className="py-1.5">{p.period}</td>
+                              <td className="py-1.5 text-right">{p.pct}</td>
+                              <td className="py-1.5 text-right">{p.amount}</td>
                             </tr>
-                          </thead>
-                          <tbody className="text-slate-600">
-                            {proc.phaseGroups.map((g, gi) => (
-                              <React.Fragment key={gi}>
-                                {g.groupLabel && (
-                                  <tr>
-                                    <td colSpan={5} className={`pb-1 text-[11px] font-semibold text-slate-700 ${gi > 0 ? "pt-3" : ""}`}>
-                                      {g.groupLabel}
-                                    </td>
-                                  </tr>
-                                )}
-                                {g.phases.map((p, pi) => (
-                                  <tr key={pi} className={pi < g.phases.length - 1 ? "border-b border-slate-50" : ""}>
-                                    <td className="py-1.5">{p.phase}</td>
-                                    <td className="py-1.5">{p.period}</td>
-                                    <td className="py-1.5 text-right">{p.pct}</td>
-                                    <td className="py-1.5 text-right">{p.amount}</td>
-                                    <td className="py-1.5">{p.focus}</td>
-                                  </tr>
-                                ))}
-                              </React.Fragment>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {proc.pageSplit && (
-                        <div className="overflow-x-auto">
-                          <p className="text-xs font-semibold text-slate-500 mb-1">การแบ่งงบระหว่างเพจ / ช่องทาง</p>
-                          <table className="w-full text-xs">
-                            <thead>
-                              <tr className="text-left text-slate-400 border-b border-slate-100">
-                                <th className="pb-2 font-medium">ช่องทาง / เพจ</th>
-                                <th className="pb-2 font-medium text-right">% งบ</th>
-                                <th className="pb-2 font-medium text-right">งบ</th>
-                                <th className="pb-2 font-medium">บทบาท / เป้าหมาย</th>
-                              </tr>
-                            </thead>
-                            <tbody className="text-slate-600">
-                              {proc.pageSplit.map((row, ri) => (
-                                <tr key={ri} className={ri < proc.pageSplit.length - 1 ? "border-b border-slate-50" : ""}>
-                                  <td className="py-1.5">{row.channel}</td>
-                                  <td className="py-1.5 text-right">{row.pct}</td>
-                                  <td className="py-1.5 text-right">{row.amount}</td>
-                                  <td className="py-1.5">{row.role}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-
-                      {proc.inboxTarget && (
-                        <div className="overflow-x-auto">
-                          <p className="text-xs font-semibold text-slate-500 mb-1">เป้า Inbox</p>
-                          <table className="w-full text-xs max-w-md">
-                            <thead>
-                              <tr className="text-left text-slate-400 border-b border-slate-100">
-                                <th className="pb-2 font-medium">ช่องทาง</th>
-                                <th className="pb-2 font-medium text-right">Inbox / วัน</th>
-                                <th className="pb-2 font-medium text-right">Inbox / เดือน (31 วัน)</th>
-                              </tr>
-                            </thead>
-                            <tbody className="text-slate-600">
-                              {proc.inboxTarget.rows.map((row, ri) => (
-                                <tr
-                                  key={ri}
-                                  className={ri < proc.inboxTarget.rows.length - 1 ? "border-b border-slate-50" : ""}
-                                >
-                                  <td className={`py-1.5 ${row.bold ? "font-semibold text-slate-700" : ""}`}>{row.channel}</td>
-                                  <td className={`py-1.5 text-right ${row.bold ? "font-semibold text-slate-700" : ""}`}>{row.perDay}</td>
-                                  <td className={`py-1.5 text-right ${row.bold ? "font-semibold text-slate-700" : ""}`}>{row.perMonth}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                          <p className="text-[11px] text-slate-400 mt-1">{proc.inboxTarget.note}</p>
-                        </div>
-                      )}
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </div>
@@ -5997,31 +5810,9 @@ export default function AdsDashboard() {
             })}
           </div>
 
-          {/* ประเด็นที่ควรยืนยันกับทีม — ยุบไว้เป็นค่าเริ่มต้นเช่นกัน */}
-          <div className="rounded-xl border border-amber-100 bg-amber-50/50 overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setShowPoPlanCaveats((v) => !v)}
-              className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-amber-50"
-            >
-              <div className="flex items-center gap-2">
-                <AlertTriangle size={14} className="text-amber-500" />
-                <h3 className="text-xs font-semibold text-amber-700">ประเด็นที่ควรยืนยันกับทีม ({PO_PLAN_CAVEATS.length})</h3>
-              </div>
-              <ChevronDown size={16} className={`text-amber-500 shrink-0 transition-transform ${showPoPlanCaveats ? "rotate-180" : ""}`} />
-            </button>
-            {showPoPlanCaveats && (
-              <ul className="space-y-1.5 text-xs text-slate-600 list-disc list-inside px-4 pb-4">
-                {PO_PLAN_CAVEATS.map((note, i) => (
-                  <li key={i}>{note}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-500">
             <ClipboardCheck size={14} className="text-slate-400 mt-0.5 shrink-0" />
-            <p>ตัวเลขทั้งหมดในหัวข้อนี้มาจากแผนกลยุทธ์ Ads ที่ทีม Digital/PO ส่งมาสำหรับเดือนตุลาคม 2569 — ใช้เป็นแนวทางติดตามเทียบกับผลลัพธ์จริงเมื่อถึงรอบรายงาน</p>
+            <p>ตัวเลขทั้งหมดในหัวข้อนี้ดึงสดจากชีต "{PO_PLAN.month} by Week" ของ Google Sheet "S45 - Budget Allocate" ทุกคืน — ใช้เป็นแนวทางติดตามเทียบกับผลลัพธ์จริงเมื่อถึงรอบรายงาน</p>
           </div>
         </div>
 )}

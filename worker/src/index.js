@@ -40,6 +40,7 @@ const DATA_KEYS = [
   "interSale",
   "procedureBudget",
   "noseOpenDoctorAds",
+  "weeklyBudget",
 ];
 
 function corsHeaders(env) {
