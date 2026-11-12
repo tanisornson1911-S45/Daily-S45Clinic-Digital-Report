@@ -102,6 +102,7 @@ jobs:
       # ปกติ (คือ source of truth หลักที่ dev ใช้อยู่แล้ว) — ส่วน KV เป็นแค่ช่องเสริมสำหรับ production Worker
       # API เท่านั้น ถ้า step นี้ fail จะยังเห็นเป็น warning ใน Actions UI ไม่ได้เงียบหายไปเฉยๆ
       - name: Push data to Cloudflare KV (Worker API reads from here)
+        id: push_kv
         continue-on-error: true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -129,3 +130,16 @@ jobs:
           done
           echo "::error::Failed to push after 5 attempts."
           exit 1
+
+      # แจ้งเตือน LINE (ส่วนตัวแอดมิน ไม่ broadcast) ทันทีที่ step ไหนล้มเหลว — ทั้ง hard failure (job แดง) และ
+      # soft failure ของ Cloudflare push ที่ตั้ง continue-on-error ไว้ด้านบน (ไม่งั้นจะเงียบไม่มีใครรู้เหมือน
+      # 2026-11-09 ถึง 2026-11-12) — ดูคอมเมนต์หัวไฟล์ scripts/notify-line-failure.mjs
+      - name: Notify LINE on failure
+        if: failure() || steps.push_kv.outcome == 'failure'
+        env:
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_TEST_USER_ID: ${{ secrets.LINE_TEST_USER_ID }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          FAILED_STEPS: ${{ steps.push_kv.outcome == 'failure' && 'Push data to Cloudflare KV' || '' }}
+        run: node scripts/notify-line-failure.mjs

@@ -112,3 +112,15 @@ jobs:
             echo "::error::Failed to push 'already sent' marker after 3 attempts."
             exit 1
           fi
+
+      # แจ้งเตือน LINE (ส่วนตัวแอดมิน ไม่ broadcast) ทันทีที่ step ไหนล้มเหลว — ถ้า LINE_CHANNEL_ACCESS_TOKEN
+      # เองพังจะแจ้งไม่ได้ (ข้อจำกัดในตัว ไม่มีช่องสำรองอื่น) แต่ครอบคลุม error อื่นๆ ที่ไม่เกี่ยวกับ Token ตัวนี้
+      # เช่น ข้อมูล/โค้ดพังเอง — ดูคอมเมนต์หัวไฟล์ scripts/notify-line-failure.mjs
+      - name: Notify LINE on failure
+        if: failure()
+        env:
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_TEST_USER_ID: ${{ secrets.LINE_TEST_USER_ID }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node scripts/notify-line-failure.mjs
