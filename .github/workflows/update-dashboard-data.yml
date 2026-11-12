@@ -24,6 +24,9 @@ on:
 
 permissions:
   contents: write
+  # actions: read ให้ step "Notify LINE on failure" ท้ายไฟล์เรียก GitHub API ดึง log ของ job ตัวเองมา
+  # วิเคราะห์ error ได้ — ดูคอมเมนต์หัวไฟล์ scripts/notify-line-failure.mjs
+  actions: read
 
 jobs:
   update-data:
@@ -91,15 +94,13 @@ jobs:
             git push origin HEAD:main
           fi
 
-      # แจ้งเตือน LINE (ส่วนตัวแอดมิน ไม่ broadcast) ทันทีที่ step ไหนล้มเหลว — ทั้ง hard failure (job แดง) และ
+      # แจ้งเตือน LINE OA แยกต่างหาก (คนละตัวกับที่ส่งรายงานลูกค้า) ทันทีที่ step ไหนล้มเหลว — ทั้ง hard failure (job แดง) และ
       # soft failure ของ Cloudflare push ที่ตั้ง continue-on-error ไว้ด้านบน (ไม่งั้นจะเงียบไม่มีใครรู้เหมือน
       # 2026-11-09 ถึง 2026-11-12) — ดูคอมเมนต์หัวไฟล์ scripts/notify-line-failure.mjs
       - name: Notify LINE on failure
         if: failure() || steps.push_kv.outcome == 'failure'
         env:
-          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
-          LINE_TEST_USER_ID: ${{ secrets.LINE_TEST_USER_ID }}
-          WORKFLOW_NAME: ${{ github.workflow }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          LINE_ALERT_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_ALERT_CHANNEL_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FAILED_STEPS: ${{ steps.push_kv.outcome == 'failure' && 'Push data to Cloudflare KV' || '' }}
         run: node scripts/notify-line-failure.mjs

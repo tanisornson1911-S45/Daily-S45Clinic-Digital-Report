@@ -33,6 +33,9 @@ on:
 
 permissions:
   contents: write
+  # actions: read ให้ step "Notify LINE on failure" ท้ายไฟล์เรียก GitHub API ดึง log ของ job ตัวเองมา
+  # วิเคราะห์ error ได้ — ดูคอมเมนต์หัวไฟล์ scripts/notify-line-failure.mjs
+  actions: read
 
 jobs:
   send-report:
@@ -113,14 +116,12 @@ jobs:
             exit 1
           fi
 
-      # แจ้งเตือน LINE (ส่วนตัวแอดมิน ไม่ broadcast) ทันทีที่ step ไหนล้มเหลว — ถ้า LINE_CHANNEL_ACCESS_TOKEN
-      # เองพังจะแจ้งไม่ได้ (ข้อจำกัดในตัว ไม่มีช่องสำรองอื่น) แต่ครอบคลุม error อื่นๆ ที่ไม่เกี่ยวกับ Token ตัวนี้
-      # เช่น ข้อมูล/โค้ดพังเอง — ดูคอมเมนต์หัวไฟล์ scripts/notify-line-failure.mjs
+      # แจ้งเตือน LINE OA แยกต่างหาก (ไม่ใช่ตัวที่ส่งรายงานลูกค้า — กันไม่ให้ error ปนกับ broadcast จริง) ทันทีที่
+      # step ไหนล้มเหลว — ถ้า LINE_CHANNEL_ACCESS_TOKEN (ตัวส่งรายงาน) เองพัง การแจ้งเตือนนี้ (คนละ Token/OA)
+      # ยังทำงานได้ปกติ — ดูคอมเมนต์หัวไฟล์ scripts/notify-line-failure.mjs
       - name: Notify LINE on failure
         if: failure()
         env:
-          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
-          LINE_TEST_USER_ID: ${{ secrets.LINE_TEST_USER_ID }}
-          WORKFLOW_NAME: ${{ github.workflow }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          LINE_ALERT_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_ALERT_CHANNEL_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/notify-line-failure.mjs
