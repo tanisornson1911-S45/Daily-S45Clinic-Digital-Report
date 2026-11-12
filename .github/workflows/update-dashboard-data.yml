@@ -15,7 +15,12 @@ on:
   schedule:
     # 01:00 เวลาไทย (ICT = UTC+7) = 18:00 UTC ของวันก่อนหน้า
     - cron: "0 18 * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      simulate_failure:
+        description: "ทดสอบระบบแจ้งเตือน LINE เท่านั้น — true = จงใจให้ job fail ตั้งแต่ก่อนดึงข้อมูลจริง (ชั่วคราว ลบทิ้งหลังทดสอบผ่าน)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -31,6 +36,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+
+      # ชั่วคราว — ทดสอบ step "Notify LINE on failure" ท้ายไฟล์ ไม่กระทบข้อมูลจริง (fail ก่อนดึง FB/push KV
+      # เลย) ลบ step นี้ + input ด้านบนออกหลังยืนยันว่าได้รับ LINE แจ้งเตือนแล้ว
+      - name: Simulate failure (LINE notification test only)
+        if: ${{ inputs.simulate_failure == true }}
+        run: |
+          echo "::error::จงใจ fail เพื่อทดสอบระบบแจ้งเตือน LINE — ไม่ใช่ error จริง"
+          exit 1
 
       - name: Fetch latest ad spend (monthly totals)
         env:
