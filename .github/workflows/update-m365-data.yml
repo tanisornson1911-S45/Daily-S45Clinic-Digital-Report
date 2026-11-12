@@ -96,7 +96,13 @@ jobs:
       - name: Build Consult Pipeline data from M365 data
         run: node scripts/build-consult-pipeline.mjs
 
+      # continue-on-error: ป้องกัน Cloudflare KV push ล้มเหลว (เช่น API Token หาย/หมดอายุ — เจอจริง
+      # 2026-11-09 ถึง 2026-11-12) แล้วลาก step "Commit & push" ด้านล่างไม่ให้ทำงานไปด้วย ข้อมูลที่ pipeline
+      # ดึงมาสำเร็จในรอบนี้ (เช่น ตอน FB token เพิ่งแก้แต่ Cloudflare ยังพังอยู่) จะยังถูก commit เข้า git ได้
+      # ปกติ (คือ source of truth หลักที่ dev ใช้อยู่แล้ว) — ส่วน KV เป็นแค่ช่องเสริมสำหรับ production Worker
+      # API เท่านั้น ถ้า step นี้ fail จะยังเห็นเป็น warning ใน Actions UI ไม่ได้เงียบหายไปเฉยๆ
       - name: Push data to Cloudflare KV (Worker API reads from here)
+        continue-on-error: true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
