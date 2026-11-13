@@ -83,13 +83,21 @@ const SURGERY_MAP = {
   "เลื่อนไรผม": "brow_hairline",
   "subbrow lift": "brow_hairline",
   "ดึงขมับ": "brow_hairline",
+  // ขยายกลุ่มยกคิ้วเพิ่มตามนิยามใหม่ 2026-11-13 (ดูคอมเมนต์เต็มที่ SURGERY_MAP ของ build-raw-tx.mjs — "เติมไขมัน"
+  // เฉยๆ ไม่ระบุตำแหน่งไม่ชัดว่าใช่ "เติมไขมันหน้า" หรือไม่ จึงไม่ย้าย ยังคงเป็น "other")
+  "เสริมขมับ": "brow_hairline",
+  "เสริมร่องแก้ม": "brow_hairline",
+  "เสริมร่องแก้มซิลิโคน": "brow_hairline",
+  "ถุงใต้ตาแผลด้านนอก": "brow_hairline",
+  "ฉีดไขมันทั่วหน้า": "brow_hairline",
 
   "breast": "breast_lipo",
   "ตัดหนังหน้าท้อง": "breast_lipo",
   "ดูดไขมัน": "breast_lipo",
   "ดูดไขมันหน้าท้อง": "breast_lipo",
   "full tummy": "breast_lipo",
-  // "ฉีดไขมัน"/"เติมไขมัน" ไม่อยู่กลุ่ม Breast อีกต่อไป (Breast มีแค่ Breast/ตัดหนังหน้าท้อง/ดูดไขมัน) ตกเป็น "other"
+  // "ฉีดไขมัน" ไม่อยู่กลุ่ม Breast อีกต่อไป (Breast มีแค่ Breast/ตัดหนังหน้าท้อง/ดูดไขมัน) ตกเป็น "other" —
+  // "เติมไขมัน" ย้ายไปกลุ่มยกคิ้วแล้วตามด้านบน (นิยามใหม่ 2026-11-13)
 };
 function mapSurgery(raw) {
   return SURGERY_MAP[String(raw || "").trim().toLowerCase()] || "other";

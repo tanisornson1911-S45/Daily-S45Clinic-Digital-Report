@@ -37,9 +37,10 @@
  * build-raw-tx.mjs (same typo appears in this sheet too). Surgery names map
  * onto the app's 4 known procedure categories (nose_open/nose_semi/
  * breast_lipo/brow_hairline) using the same SURGERY_MAP definition as
- * build-raw-tx.mjs (redefined 2026-11-04, see its comments for why each
- * name lands where it does); anything else (Ultera/Filler/เสริมขมับ/etc.)
- * buckets into "other" so it's still counted in the all-procedures total,
+ * build-raw-tx.mjs (redefined 2026-11-04, extended 2026-11-13 — see its
+ * comments for why each name lands where it does); anything else
+ * (Ultera/Filler/Skin/etc.) buckets into "other" so it's still counted in
+ * the all-procedures total,
  * matching the "don't silently drop rows" lesson from build-raw-tx.mjs's
  * ตัดถุงใต้ตา incident. A handful of rows have
  * a stray Excel date serial in the "แพทย์" column instead of a name (visible
@@ -105,6 +106,15 @@ const SURGERY_MAP = {
   "เลื่อนไรผม": "brow_hairline",
   "subbrow lift": "brow_hairline",
   "ดึงขมับ": "brow_hairline",
+  // ขยายกลุ่มยกคิ้วเพิ่มตามนิยามใหม่ 2026-11-13 (ดูคอมเมนต์เต็มที่ SURGERY_MAP ของ build-raw-tx.mjs)
+  "เสริมขมับ": "brow_hairline",
+  // ตรวจจากข้อมูลจริงในชีตนี้ 2026-11-13 — มี "เติมไขมันจมูก"/"เติมไขมันแก้ม" (ตำแหน่งเฉพาะ ไม่ใช่หน้า) และ
+  // "ฉีดไขมันทั่วหน้า" (ตรงกับ "เติมไขมันหน้า" ที่ผู้ใช้ขอ — ผู้ใช้ยืนยันเอาเฉพาะตัวนี้) กับ "เสริมร่องแก้ม" (ไม่มี
+  // "ซิลิโคน" ต่อท้ายแบบที่ผู้ใช้พิมพ์มา) — ใส่ทั้งสองสะกดของร่องแก้มไว้กันตกหล่น
+  "ฉีดไขมันทั่วหน้า": "brow_hairline",
+  "เสริมร่องแก้ม": "brow_hairline",
+  "เสริมร่องแก้มซิลิโคน": "brow_hairline",
+  "ถุงใต้ตาแผลด้านนอก": "brow_hairline",
 
   "breast": "breast_lipo",
   "ตัดหนังหน้าท้อง": "breast_lipo",

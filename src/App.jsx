@@ -214,7 +214,7 @@ function liveCategoryTotals(monthIso, categoryKey) {
 const CATEGORIES = {
   nose_open: { label: "เสริมจมูกโอเพ่น", spend: liveSpend(CURRENT_SPEND_MONTH, "nose_open", 892768), ...liveCategoryTotals(CURRENT_SPEND_MONTH, "nose_open"), target: 20000000 },
   breast_lipo: { label: "เสริมหน้าอก/ดูดไขมัน/ตัดหนังหน้าท้อง", spend: liveSpend(CURRENT_SPEND_MONTH, "breast_lipo", 46232), ...liveCategoryTotals(CURRENT_SPEND_MONTH, "breast_lipo"), target: 3000000 },
-  brow_hairline: { label: "ยกคิ้ว/เลื่อนไรผม/ยกมุมปาก", spend: liveSpend(CURRENT_SPEND_MONTH, "brow_hairline", 503632), ...liveCategoryTotals(CURRENT_SPEND_MONTH, "brow_hairline"), target: 6000000 },
+  brow_hairline: { label: "ยกคิ้ว/ดึงหน้า/เลื่อนไรผม/เสริมหน้าผาก/เสริมขมับ/เสริมร่องแก้มซิลิโคน/เติมไขมันหน้า", spend: liveSpend(CURRENT_SPEND_MONTH, "brow_hairline", 503632), ...liveCategoryTotals(CURRENT_SPEND_MONTH, "brow_hairline"), target: 6000000 },
   nose_semi: { label: "เสริมจมูก Semi Open", spend: liveSpend(CURRENT_SPEND_MONTH, "nose_semi", 101825), ...liveCategoryTotals(CURRENT_SPEND_MONTH, "nose_semi"), target: 3000000 },
   // inter: ยังคงพิมพ์มือจากไฟล์ Inter_S45_2026_Sale_partJuly_07 (deposit=0 ตามธรรมเนียมเดิม) — ไม่ดึงจาก
   // RAW_TX เพราะเคส Inter ส่วนใหญ่ถูกนับอยู่ใน nose_open ด้านบนแล้ว (ทีมยืนยันว่า RAW_TX/Data S45 เป็น Core
@@ -279,7 +279,7 @@ function liveSurgeryByChannel(monthIso, channelPredicate, otherLabel) {
 // คำนวณสดทุกครั้งที่โหลดหน้า (liveSurgeryByChannel) — spend: ใช้ค่าสดจาก adSpend.json เช่นเดียวกับ CATEGORIES
 // ============================================================
 const FB_SURGERY_SPEND_FALLBACK = { nose_open: 892768, brow_hairline: 503632, breast_lipo: 46232, nose_semi: 101825 };
-const FB_SURGERY = liveSurgeryByChannel(CURRENT_SPEND_MONTH, (t) => t.ch === "Facebook", "อื่นๆ (Ultera/Filler/เสริมขมับ)").map((r) => ({
+const FB_SURGERY = liveSurgeryByChannel(CURRENT_SPEND_MONTH, (t) => t.ch === "Facebook", "อื่นๆ (Ultera/Filler/Skin)").map((r) => ({
   ...r,
   spend: r.key === "other" ? null : liveSpend(CURRENT_SPEND_MONTH, r.key, FB_SURGERY_SPEND_FALLBACK[r.key]),
 }));
@@ -368,9 +368,9 @@ const DOCTOR_PROC = liveDoctorProc(CURRENT_SPEND_MONTH);
 const DOCTOR_PROC_LABELS = {
   nose_open: "เสริมจมูกโอเพ่น",
   breast_lipo: "เสริมหน้าอก/ดูดไขมัน/ตัดหนังหน้าท้อง",
-  brow_hairline: "ยกคิ้ว/เลื่อนไรผม/ยกมุมปาก",
+  brow_hairline: "ยกคิ้ว/ดึงหน้า/เลื่อนไรผม/เสริมหน้าผาก/เสริมขมับ/เสริมร่องแก้มซิลิโคน/เติมไขมันหน้า",
   nose_semi: "เสริมจมูก Semi Open",
-  other: "อื่นๆ (Ultera/Filler/เสริมขมับ/ฯลฯ)",
+  other: "อื่นๆ (Ultera/Filler/Skin/ฯลฯ)",
 };
 const DOCTOR_PROC_OPTIONS = [["all", "รวมทุกหัตถการ"], ...Object.entries(DOCTOR_PROC_LABELS)];
 // รายชื่อหมอทั้งหมด ใช้เป็นตัวเลือก Dropdown "แยกหมอ" ในสรุปเคสมัดจำแยกตามหมอ — รวมทั้งชื่อจาก DOCTOR_PROC (มิ.ย.)
@@ -940,6 +940,10 @@ const fmtTHB = (n) => new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 
 // เดียวกับส่วนอื่นของแอปที่มี dark-mode override อยู่แล้วใน index.css (bg-white/border-slate-200/text-slate-700/
 // shadow-lg/bg-slate-50/bg-teal-100/text-teal-600) จึงเข้าธีมเดียวกันทั้งตอนปิดและตอนกางออกมาโดยไม่ต้องเพิ่ม CSS
 // ใหม่ — หน้าตา/ตำแหน่งไอคอนคงเดิมทุกจุดที่เรียกใช้ (icon/value/onChange/options เหมือนเดิมทุกประการ)
+// เพิ่ม title={label} 2026-11-13 — ตัวเลือกบางตัว (เช่น label ยกคิ้วที่ยาวขึ้นหลังรวมหัตถการเพิ่ม) ยาวเกิน
+// max-w ของกล่อง/panel class "truncate" ด้านบนจะตัดด้วย "…" ให้อัตโนมัติอยู่แล้ว แต่ต้องมี title ด้วยถึงจะเห็น
+// ชื่อเต็มตอน hover (ใช้ tooltip ของเบราว์เซอร์เอง ไม่ต้องสร้าง tooltip custom เพิ่ม) — มีผลกับ dropdown ทุกจุด
+// ที่เรียก Select component นี้เพราะเป็น component กลางตัวเดียว
 function Select({ icon: Icon, value, onChange, options }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
@@ -973,7 +977,7 @@ function Select({ icon: Icon, value, onChange, options }) {
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
           <Icon size={16} />
         </span>
-        <span className="truncate">{current ? current[1] : ""}</span>
+        <span className="truncate" title={current ? current[1] : undefined}>{current ? current[1] : ""}</span>
         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
           <ChevronDown size={16} className={`transition-transform duration-150 ${open ? "rotate-180" : ""}`} />
         </span>
@@ -989,6 +993,7 @@ function Select({ icon: Icon, value, onChange, options }) {
               type="button"
               role="option"
               aria-selected={val === value}
+              title={label}
               onClick={() => {
                 onChange(val);
                 setOpen(false);
@@ -2922,7 +2927,7 @@ export default function AdsDashboard() {
   // สรุปยอดปิดมัดจำ แยกตาม Sale (ผู้ใช้ขอเพิ่ม 2569-09-09) — จากคอลัมน์ "Sale ปิดมัดจำ" ในไฟล์ Data S45 Clinic
   // (ชีต "มัดจำ 2026") ที่ RAW_TX.sale เก็บไว้แล้ว (เดิมอ่านแต่ไม่ได้ใช้) นับเฉพาะแถวที่ dep>0 (ปิดมัดจำจริง) ตาม
   // ช่วงวันที่ที่เลือก (txInRange) — Dropdown 3 ตัว (Sale/หัตถการ/คุณหมอ) กรองซ้อนกันได้
-  const procLabelForSale = (p) => CATEGORIES[p]?.label ?? "อื่นๆ (Ultera/Filler/เสริมขมับ/ฯลฯ)";
+  const procLabelForSale = (p) => CATEGORIES[p]?.label ?? "อื่นๆ (Ultera/Filler/Skin/ฯลฯ)";
   // ตัวเลขในวงเล็บของ Dropdown = จำนวนเคสปิดมัดจำ "ตามช่วงวันที่ที่เลือกอยู่ตอนนี้" (ไม่ใช่ยอดรวมทุกช่วงเวลาเหมือนตอน
   // แรก — ผู้ใช้แจ้ง 2569-09-10 ว่าอยากให้ตัวเลขผูกกับวันที่ด้วย) รายการจึงยุบ/ขยายตามจริงเมื่อเปลี่ยนวันที่ — ไม่ผูก
   // กับอีก 2 Dropdown ที่เหลือ (กรองแค่ตามวันที่อย่างเดียว) ไม่งั้นเลือกหลาย Dropdown พร้อมกันแล้วรายการจะยุบจนงง
