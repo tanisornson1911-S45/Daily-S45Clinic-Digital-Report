@@ -2381,7 +2381,8 @@ export default function AdsDashboard() {
   const maxCases = Math.max(...sortedDoctors.map((d) => d.cases), 1);
   const maxDeposit = Math.max(...sortedDoctors.map((d) => d.deposit), 1);
 
-  const funnelOptions = Object.entries(FUNNEL_DATA).map(([k, v]) => [k, v.label]);
+  // ใช้ label จาก funnelSource (สดตามเดือนที่เลือกจริง) ก่อนเสมอ — เหมือน inboxDailyOptions ด้านล่าง (ดูคอมเมนต์ที่นั่น)
+  const funnelOptions = Object.entries(funnelSource || FUNNEL_DATA).map(([k, v]) => [k, v.label]);
   const otherChannelOptions = Object.entries(OTHER_CHANNEL_META).map(([k, v]) => [k, v.label]);
   const otherChannelRows = OTHER_CHANNEL_DATA[otherChannelFilter];
 
@@ -2426,7 +2427,10 @@ export default function AdsDashboard() {
     inter: 10,
   };
   const INBOX_DAILY_TARGET_ALL = Object.values(INBOX_DAILY_TARGET).reduce((s, v) => s + v, 0); // รวมทุกหัตถการ รวม Inter แล้ว
-  const inboxDailyOptions = Object.entries(FUNNEL_DATA).map(([k, v]) => [k, v.label]);
+  // ใช้ label จาก funnelSource (สดตามเดือนที่เลือกจริง) ก่อนเสมอ — FUNNEL_DATA เป็นแค่ snapshot ส.ค. 2569 ที่ตรึง
+  // label ไว้ตายตัว (พบว่า label ยกคิ้วไม่อัปเดตตามนิยามใหม่ 2026-11-13 เพราะอ่านจากตรงนี้) ใช้ FUNNEL_DATA
+  // fallback เฉพาะตอน funnelSource เป็น null (เลือกช่วงวันที่นอกเดือนที่มีข้อมูล funnel เลย)
+  const inboxDailyOptions = Object.entries(funnelSource || FUNNEL_DATA).map(([k, v]) => [k, v.label]);
   const heroCaseOptions = Object.entries(DOCTOR_HERO_POSTS).map(([k, v]) => [k, v.label]);
   // Inter แยกตามหมอ — คำนวณสดจาก INTER_SALE_DATA ตามช่วงวันที่ที่เลือกจริง (เหมือน RAW_TX แล้ว ไม่ล็อกแค่ มิ.ย./
   // ก.ค. อีกต่อไป) รวม มิ.ย. แบบยอดพิมพ์มือเข้าไปเมื่อช่วงที่เลือกครอบคลุมทั้งเดือนนั้นเต็มเดือน (ดู
