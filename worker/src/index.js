@@ -80,6 +80,50 @@ function checkAuth(request, env) {
   return timingSafeEqual(user, env.DASH_USER || "") && timingSafeEqual(pass, env.DASH_PASS || "");
 }
 
+// ยิง workflow_dispatch ของ "Send daily Digital Report to LINE OA" ผ่าน GitHub REST API ตรงๆ — เพิ่ม
+// 2026-11-14 แทนที่การพึ่ง GitHub Actions `schedule:` ของ workflow นั้นเอง (ดีเลย์ 5-7+ ชม. ซ้ำๆ 3 วันติด) หรือ
+// Routine ของ Claude Code (ล้มเหลวเงียบๆ เพราะ MCP หลุดตอนปลุก 3 วันติดเช่นกัน) — เรียกจาก scheduled() ด้านล่าง
+// ซึ่งผูกกับ Cloudflare Cron Trigger (แม่นยำกว่า GitHub Actions schedule มาก และไม่ต้องพึ่ง Claude session เลย)
+const GITHUB_REPO = "tanisornson1911-S45/Daily-S45Clinic-Digital-Report";
+const REPORT_WORKFLOW_FILE = "send-line-report.yml";
+
+async function dispatchLineReportWorkflow(env) {
+  const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/actions/workflows/${REPORT_WORKFLOW_FILE}/dispatches`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${env.GITHUB_PAT}`,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json",
+      // GitHub REST API ปฏิเสธ request ที่ไม่มี User-Agent (403) — Workers runtime ไม่ใส่ให้อัตโนมัติแบบเบราว์เซอร์
+      "User-Agent": "s45-dashboard-api-cron-worker",
+    },
+    body: JSON.stringify({ ref: "main" }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`GitHub dispatch failed (HTTP ${res.status}): ${text.slice(0, 300)}`);
+  }
+}
+
+// แจ้งเตือน LINE OA แยกต่างหาก (ตัวเดียวกับที่ scripts/notify-line-failure.mjs ใช้) ถ้า Cron Trigger นี้เองยิง
+// GitHub ไม่สำเร็จ — จุดนี้อยู่ "ก่อน" workflow จะเริ่มรันด้วยซ้ำ ถ้าพังตรงนี้แบบเงียบๆ จะไม่มี GitHub Actions job
+// เกิดขึ้นเลย แปลว่า step "Notify LINE on failure" ในตัว workflow เองจะไม่มีโอกาสได้ทำงานเลยเช่นกัน — ต้องแจ้งเตือน
+// จากตรงนี้โดยตรง กันจุดบอดนี้ไว้
+async function notifyDispatchFailure(env, err) {
+  if (!env.LINE_ALERT_CHANNEL_ACCESS_TOKEN) return;
+  const text = `⚠️ Cloudflare Cron ยิง "Send daily Digital Report to LINE OA" ไม่สำเร็จ\n${String(err?.message || err).slice(0, 500)}`;
+  try {
+    await fetch("https://api.line.me/v2/bot/message/broadcast", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.LINE_ALERT_CHANNEL_ACCESS_TOKEN}` },
+      body: JSON.stringify({ messages: [{ type: "text", text }] }),
+    });
+  } catch {
+    // ยิง LINE แจ้งเตือนเองก็พังอีกไม่มีอะไรทำต่อได้แล้ว — อย่างน้อย error หลักก็ยัง throw ออกไปให้ Cloudflare
+    // บันทึกไว้ใน execution log ของ Worker (Workers & Pages -> Logs) ให้เช็คย้อนหลังได้
+  }
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -121,5 +165,14 @@ export default {
         "Cache-Control": "no-store",
       },
     });
+  },
+
+  // Cloudflare Cron Trigger (ตั้งไว้ 26 11 * * * UTC = 18:26 น. ไทย — ดูคอมเมนต์หัว wrangler.toml) — เรียกทุกวัน
+  // ไม่ต้องเช็ค "ส่งไปแล้วหรือยัง" ที่นี่ เพราะ workflow เองมี dedup guard อยู่แล้ว (scripts/check-report-sent-
+  // today.mjs) ยิงซ้ำวันเดียวกันแค่ no-op ไม่ส่งซ้ำ
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      dispatchLineReportWorkflow(env).catch((err) => notifyDispatchFailure(env, err))
+    );
   },
 };

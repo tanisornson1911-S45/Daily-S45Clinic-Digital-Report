@@ -19,6 +19,14 @@ and ROAS tracking across procedure categories.
   and `update-dashboard-data.yml`, which also push the results into the
   Worker's KV namespace via `scripts/push-to-kv.mjs` (see `REALTIME_SYNC_SETUP.md`
   for the Microsoft/Facebook side of the sync setup).
+- The same Worker also has a Cloudflare Cron Trigger (`scheduled()` in
+  `worker/src/index.js`) that fires the daily LINE report workflow directly
+  via the GitHub API at 18:26 ICT — this is the reliable path (Cloudflare
+  Cron Triggers run on time, unlike GitHub Actions' own `schedule:`, which
+  showed repeated multi-hour delays). `send-line-report.yml`'s own
+  `schedule:` and the Claude Code routine that also call it are kept as
+  redundant backups; a dedup guard (`scripts/check-report-sent-today.mjs`)
+  stops any of them from sending twice.
 
 ## One-time Cloudflare Worker setup (required for production)
 
@@ -42,6 +50,21 @@ Claude cannot do this part — it has no Cloudflare account access. From
    data into KV automatically from the next run onward; until these are set,
    `scripts/push-to-kv.mjs` just skips itself with a warning (the rest of the
    pipeline keeps working as before)
+7. (added 2026-11-14) This same Worker also fires the daily LINE report —
+   see `scheduled()` in `worker/src/index.js`, a Cloudflare Cron Trigger
+   that calls the GitHub API directly, replacing the unreliable GitHub
+   Actions `schedule:`/Claude-routine approach (repeated multi-hour delays —
+   see that function's comments). Needs two more Worker secrets:
+   `npx wrangler secret put GITHUB_PAT` (a fine-grained GitHub PAT scoped to
+   just this repo, "Actions: Read and write" permission only — used to call
+   `workflow_dispatch` on `send-line-report.yml`) and
+   `npx wrangler secret put LINE_ALERT_CHANNEL_ACCESS_TOKEN` (same value as
+   the GitHub secret of the same name — used to alert if the dispatch call
+   itself fails). If deploying by pasting code into the Cloudflare Dashboard
+   rather than `wrangler deploy`, also add the Cron Trigger manually:
+   Workers & Pages → this Worker → **Triggers** tab → **Cron Triggers** →
+   Add → `26 11 * * *` (UTC; `[triggers]` in `wrangler.toml` only takes
+   effect on an actual `wrangler deploy`).
 
 ## Local development
 
