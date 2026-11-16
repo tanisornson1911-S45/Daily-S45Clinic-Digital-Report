@@ -21,7 +21,7 @@ and ROAS tracking across procedure categories.
   for the Microsoft/Facebook side of the sync setup).
 - The same Worker also has a Cloudflare Cron Trigger (`scheduled()` in
   `worker/src/index.js`) that fires the daily LINE report workflow directly
-  via the GitHub API at 18:26 ICT — this is the reliable path (Cloudflare
+  via the GitHub API at 18:20 ICT — this is the reliable path (Cloudflare
   Cron Triggers run on time, unlike GitHub Actions' own `schedule:`, which
   showed repeated multi-hour delays). `send-line-report.yml`'s own
   `schedule:` and the Claude Code routine that also call it are kept as
@@ -63,7 +63,7 @@ Claude cannot do this part — it has no Cloudflare account access. From
    itself fails). If deploying by pasting code into the Cloudflare Dashboard
    rather than `wrangler deploy`, also add the Cron Trigger manually:
    Workers & Pages → this Worker → **Triggers** tab → **Cron Triggers** →
-   Add → `26 11 * * *` (UTC; `[triggers]` in `wrangler.toml` only takes
+   Add → `20 11 * * *` (UTC; `[triggers]` in `wrangler.toml` only takes
    effect on an actual `wrangler deploy`).
 
 ## Local development
