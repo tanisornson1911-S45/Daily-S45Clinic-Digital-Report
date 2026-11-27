@@ -80,15 +80,32 @@ function checkAuth(request, env) {
   return timingSafeEqual(user, env.DASH_USER || "") && timingSafeEqual(pass, env.DASH_PASS || "");
 }
 
-// ยิง workflow_dispatch ของ "Send daily Digital Report to LINE OA" ผ่าน GitHub REST API ตรงๆ — เพิ่ม
-// 2026-11-14 แทนที่การพึ่ง GitHub Actions `schedule:` ของ workflow นั้นเอง (ดีเลย์ 5-7+ ชม. ซ้ำๆ 3 วันติด) หรือ
-// Routine ของ Claude Code (ล้มเหลวเงียบๆ เพราะ MCP หลุดตอนปลุก 3 วันติดเช่นกัน) — เรียกจาก scheduled() ด้านล่าง
-// ซึ่งผูกกับ Cloudflare Cron Trigger (แม่นยำกว่า GitHub Actions schedule มาก และไม่ต้องพึ่ง Claude session เลย)
+// ยิง workflow_dispatch ผ่าน GitHub REST API ตรงๆ — เพิ่ม 2026-11-14 (เริ่มจาก "Send daily Digital Report
+// to LINE OA" เท่านั้น) แทนที่การพึ่ง GitHub Actions `schedule:` ของ workflow นั้นเอง (ดีเลย์ 5-7+ ชม. ซ้ำๆ
+// 3 วันติด) หรือ Routine ของ Claude Code (ล้มเหลวเงียบๆ เพราะ MCP หลุดตอนปลุก 3 วันติดเช่นกัน) — เรียกจาก
+// scheduled() ด้านล่าง ซึ่งผูกกับ Cloudflare Cron Trigger (แม่นยำกว่า GitHub Actions schedule มาก และไม่
+// ต้องพึ่ง Claude session เลย)
+//
+// อัปเดต 2026-11-27 — เจอว่า update-m365-data.yml/update-dashboard-data.yml (ดึงข้อมูลหลักขึ้น Dashboard
+// ทุกวัน รวมถึงชีต "ยอด OR จริง+Forecast") ก็ดีเลย์แบบเดียวกัน: ตั้งใจรันตี 1:00/1:30 น. ไทย (ก่อนทีมเริ่มงาน)
+// แต่รันจริงดีเลย์ไป 06:41-10:59 น. ทุกวันต่อเนื่อง 10 วัน (เช็คจาก GitHub Actions run history) — ทำให้ยอดที่
+// Dashboard ดึงมาอาจไม่ทันการแก้ไขชีตของทีมในวันนั้น ขยายกลไกเดิมให้ยิงอีก 2 workflow นี้ด้วย — ไม่ต้องมี dedup
+// guard แบบ Report LINE OA เพราะ workflow ทั้งสองนี้ idempotent อยู่แล้ว (แต่ละ step มี "ถ้าข้อมูลเปลี่ยน" เช็ค
+// ก่อน commit — รันซ้ำแค่ no-op ไม่สร้างความเสียหาย) จึงปล่อยให้ GitHub `schedule:` เดิมของทั้งสอง workflow ยังทำงาน
+// คู่ขนานเป็นตัวสำรองได้เลย ไม่ต้องถอดออกเหมือน Report LINE OA
 const GITHUB_REPO = "tanisornson1911-S45/Daily-S45Clinic-Digital-Report";
-const REPORT_WORKFLOW_FILE = "send-line-report.yml";
 
-async function dispatchLineReportWorkflow(env) {
-  const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/actions/workflows/${REPORT_WORKFLOW_FILE}/dispatches`, {
+// คีย์ด้วย cron expression (UTC) ที่ผูกไว้กับแต่ละ Cloudflare Cron Trigger — ใช้ event.cron ใน scheduled()
+// ด้านล่างแยกว่าเวลานี้ควรยิง workflow ไหน ใช้ cron expression เดียวกับที่ workflow นั้นตั้งไว้ใน `schedule:`
+// ของตัวเอง (ดู .github/workflows/*.yml) เพื่อยิงพร้อมเวลาที่ตั้งใจไว้จริง (ไม่ใช่เวลาที่ดีเลย์)
+const CRON_WORKFLOW_MAP = {
+  "0 18 * * *": "update-dashboard-data.yml", // 01:00 น. ไทย
+  "30 18 * * *": "update-m365-data.yml", // 01:30 น. ไทย
+  "20 11 * * *": "send-line-report.yml", // 18:20 น. ไทย
+};
+
+async function dispatchWorkflow(env, workflowFile) {
+  const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/actions/workflows/${workflowFile}/dispatches`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${env.GITHUB_PAT}`,
@@ -101,7 +118,7 @@ async function dispatchLineReportWorkflow(env) {
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`GitHub dispatch failed (HTTP ${res.status}): ${text.slice(0, 300)}`);
+    throw new Error(`GitHub dispatch of ${workflowFile} failed (HTTP ${res.status}): ${text.slice(0, 300)}`);
   }
 }
 
@@ -109,9 +126,9 @@ async function dispatchLineReportWorkflow(env) {
 // GitHub ไม่สำเร็จ — จุดนี้อยู่ "ก่อน" workflow จะเริ่มรันด้วยซ้ำ ถ้าพังตรงนี้แบบเงียบๆ จะไม่มี GitHub Actions job
 // เกิดขึ้นเลย แปลว่า step "Notify LINE on failure" ในตัว workflow เองจะไม่มีโอกาสได้ทำงานเลยเช่นกัน — ต้องแจ้งเตือน
 // จากตรงนี้โดยตรง กันจุดบอดนี้ไว้
-async function notifyDispatchFailure(env, err) {
+async function notifyDispatchFailure(env, workflowFile, err) {
   if (!env.LINE_ALERT_CHANNEL_ACCESS_TOKEN) return;
-  const text = `⚠️ Cloudflare Cron ยิง "Send daily Digital Report to LINE OA" ไม่สำเร็จ\n${String(err?.message || err).slice(0, 500)}`;
+  const text = `⚠️ Cloudflare Cron ยิง "${workflowFile}" ไม่สำเร็จ\n${String(err?.message || err).slice(0, 500)}`;
   try {
     await fetch("https://api.line.me/v2/bot/message/broadcast", {
       method: "POST",
@@ -167,12 +184,16 @@ export default {
     });
   },
 
-  // Cloudflare Cron Trigger (ตั้งไว้ 26 11 * * * UTC = 18:26 น. ไทย — ดูคอมเมนต์หัว wrangler.toml) — เรียกทุกวัน
-  // ไม่ต้องเช็ค "ส่งไปแล้วหรือยัง" ที่นี่ เพราะ workflow เองมี dedup guard อยู่แล้ว (scripts/check-report-sent-
-  // today.mjs) ยิงซ้ำวันเดียวกันแค่ no-op ไม่ส่งซ้ำ
+  // Cloudflare Cron Trigger — ตอนนี้มี 3 รอบ ผูกกับ CRON_WORKFLOW_MAP ด้านบน (ดูคอมเมนต์หัว wrangler.toml
+  // สำหรับวิธีตั้งแต่ละรอบใน Cloudflare Dashboard) — event.cron บอกว่า Trigger รอบไหนที่ยิงมา จึงรู้ว่าต้อง
+  // dispatch workflow ไหน ไม่ต้องเช็ค "ส่งไปแล้วหรือยัง" ที่นี่สำหรับ Report LINE OA เพราะ workflow เองมี dedup
+  // guard อยู่แล้ว (scripts/check-report-sent-today.mjs) ส่วนอีก 2 workflow ก็ idempotent อยู่แล้ว (ดูคอมเมนต์ที่
+  // CRON_WORKFLOW_MAP ด้านบน) ยิงซ้ำ/ยิงพร้อม GitHub schedule เดิมได้อย่างปลอดภัย
   async scheduled(event, env, ctx) {
+    const workflowFile = CRON_WORKFLOW_MAP[event.cron];
+    if (!workflowFile) return; // cron ที่ไม่รู้จัก (เช่นตั้งผิด) — ไม่ยิงอะไรเลยดีกว่าเดา
     ctx.waitUntil(
-      dispatchLineReportWorkflow(env).catch((err) => notifyDispatchFailure(env, err))
+      dispatchWorkflow(env, workflowFile).catch((err) => notifyDispatchFailure(env, workflowFile, err))
     );
   },
 };

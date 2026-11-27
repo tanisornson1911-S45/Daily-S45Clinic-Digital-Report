@@ -19,14 +19,17 @@ and ROAS tracking across procedure categories.
   and `update-dashboard-data.yml`, which also push the results into the
   Worker's KV namespace via `scripts/push-to-kv.mjs` (see `REALTIME_SYNC_SETUP.md`
   for the Microsoft/Facebook side of the sync setup).
-- The same Worker also has a Cloudflare Cron Trigger (`scheduled()` in
-  `worker/src/index.js`) that fires the daily LINE report workflow directly
-  via the GitHub API at 18:20 ICT — this is the reliable path (Cloudflare
+- The same Worker also has 3 Cloudflare Cron Triggers (`scheduled()` in
+  `worker/src/index.js`, see `CRON_WORKFLOW_MAP`) that fire the data-pipeline
+  and LINE-report workflows directly via the GitHub API at their intended
+  times (01:00, 01:30, and 18:20 ICT) — this is the reliable path (Cloudflare
   Cron Triggers run on time, unlike GitHub Actions' own `schedule:`, which
-  showed repeated multi-hour delays). `send-line-report.yml`'s own
-  `schedule:` and the Claude Code routine that also call it are kept as
-  redundant backups; a dedup guard (`scripts/check-report-sent-today.mjs`)
-  stops any of them from sending twice.
+  showed repeated multi-hour delays on *all three* of these workflows, not
+  just the LINE report). Each workflow's own `schedule:` (and, for the LINE
+  report, the Claude Code routine) is kept as a redundant backup; a dedup
+  guard (`scripts/check-report-sent-today.mjs`) stops the LINE report from
+  sending twice, and the other two workflows are naturally idempotent
+  (each only commits if the fetched data actually changed).
 
 ## One-time Cloudflare Worker setup (required for production)
 
@@ -50,21 +53,25 @@ Claude cannot do this part — it has no Cloudflare account access. From
    data into KV automatically from the next run onward; until these are set,
    `scripts/push-to-kv.mjs` just skips itself with a warning (the rest of the
    pipeline keeps working as before)
-7. (added 2026-11-14) This same Worker also fires the daily LINE report —
-   see `scheduled()` in `worker/src/index.js`, a Cloudflare Cron Trigger
-   that calls the GitHub API directly, replacing the unreliable GitHub
-   Actions `schedule:`/Claude-routine approach (repeated multi-hour delays —
-   see that function's comments). Needs two more Worker secrets:
-   `npx wrangler secret put GITHUB_PAT` (a fine-grained GitHub PAT scoped to
-   just this repo, "Actions: Read and write" permission only — used to call
-   `workflow_dispatch` on `send-line-report.yml`) and
+7. (added 2026-11-14, expanded 2026-11-27) This same Worker also fires the
+   daily data-pipeline workflows and the LINE report — see `scheduled()` and
+   `CRON_WORKFLOW_MAP` in `worker/src/index.js`, 3 Cloudflare Cron Triggers
+   that call the GitHub API directly, replacing the unreliable GitHub
+   Actions `schedule:`/Claude-routine approach (repeated multi-hour delays on
+   all three workflows — see that file's comments). Needs two more Worker
+   secrets: `npx wrangler secret put GITHUB_PAT` (a fine-grained GitHub PAT
+   scoped to just this repo, "Actions: Read and write" permission only —
+   used to call `workflow_dispatch`) and
    `npx wrangler secret put LINE_ALERT_CHANNEL_ACCESS_TOKEN` (same value as
-   the GitHub secret of the same name — used to alert if the dispatch call
+   the GitHub secret of the same name — used to alert if a dispatch call
    itself fails). If deploying by pasting code into the Cloudflare Dashboard
-   rather than `wrangler deploy`, also add the Cron Trigger manually:
+   rather than `wrangler deploy`, also add the Cron Triggers manually:
    Workers & Pages → this Worker → **Triggers** tab → **Cron Triggers** →
-   Add → `20 11 * * *` (UTC; `[triggers]` in `wrangler.toml` only takes
-   effect on an actual `wrangler deploy`).
+   Add, one at a time (all UTC; `[triggers]` in `wrangler.toml` only takes
+   effect on an actual `wrangler deploy`):
+   - `0 18 * * *` (01:00 ICT) → dispatches `update-dashboard-data.yml`
+   - `30 18 * * *` (01:30 ICT) → dispatches `update-m365-data.yml`
+   - `20 11 * * *` (18:20 ICT) → dispatches `send-line-report.yml`
 
 ## Local development
 
