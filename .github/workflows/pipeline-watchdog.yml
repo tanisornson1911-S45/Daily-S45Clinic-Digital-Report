@@ -1,0 +1,48 @@
+name: Pipeline freshness watchdog
+
+# เพิ่ม 2026-11-27 — เป็น "เซฟตี้เน็ตชั้นสอง" อิสระจากกลไกเดิมทั้งหมด (ไม่ใช่ GitHub schedule:, ไม่ใช่
+# Cloudflare Cron Trigger ที่ยิง workflow_dispatch ของ pipeline หลัก, ไม่ใช่ Claude Code routine) — เช็คจาก
+# "ผลลัพธ์จริง" ของแต่ละ pipeline (ไฟล์ข้อมูลที่ควรถูกคอมมิตวันนี้) ว่าทันเวลาหรือยัง ถ้าไม่ทัน ส่ง LINE
+# แจ้งเตือนทันที — ดูคอมเมนต์หัวไฟล์ scripts/check-pipeline-freshness.mjs สำหรับเหตุผลเต็มๆ และตารางเวลาเช็ค
+#
+# เหตุผลที่แยกเป็น workflow ของตัวเอง ไม่ฝากไว้ใน if: failure() ของแต่ละ pipeline เดิม: ปัญหาที่เจอ
+# (update-m365-data.yml/update-dashboard-data.yml ดีเลย์ 5-10 ชม. ต่อเนื่อง 10 วัน) ไม่ใช่ job ที่ fail — job
+# รันสำเร็จทุกครั้ง แค่รันช้ากว่าที่ตั้งใจมาก เงื่อนไข `if: failure()` เดิมจึงไม่มีทางจับเคสนี้ได้เลย
+#
+# ยิงโดย Cloudflare Cron Trigger 2 รอบ (ดู CRON_WORKFLOW_MAP ใน worker/src/index.js) พร้อม input mode:
+#   mode=morning ~08:30 น. ไทย — เช็ค update-m365-data.yml + update-dashboard-data.yml (ตั้งใจรันตี 1:00/1:30 น.)
+#   mode=evening ~19:00 น. ไทย — เช็ค send-line-report.yml (ตั้งใจรันตอน 18:20 น.)
+# มี workflow_dispatch เฉยๆ ไว้เผื่อทดสอบ/เรียกมือด้วย (ไม่ได้ require mode ให้ default เป็น morning)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "morning (เช็ค M365/ad-spend pipeline) หรือ evening (เช็ค Report LINE OA)"
+        required: false
+        default: "morning"
+        type: choice
+        options:
+          - morning
+          - evening
+
+permissions:
+  contents: read
+
+jobs:
+  check-freshness:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Check pipeline freshness + alert LINE if stale
+        env:
+          MODE: ${{ inputs.mode || 'morning' }}
+          LINE_ALERT_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_ALERT_CHANNEL_ACCESS_TOKEN }}
+        run: node scripts/check-pipeline-freshness.mjs

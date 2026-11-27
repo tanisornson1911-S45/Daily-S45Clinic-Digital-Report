@@ -19,7 +19,7 @@ and ROAS tracking across procedure categories.
   and `update-dashboard-data.yml`, which also push the results into the
   Worker's KV namespace via `scripts/push-to-kv.mjs` (see `REALTIME_SYNC_SETUP.md`
   for the Microsoft/Facebook side of the sync setup).
-- The same Worker also has 3 Cloudflare Cron Triggers (`scheduled()` in
+- The same Worker also has 5 Cloudflare Cron Triggers (`scheduled()` in
   `worker/src/index.js`, see `CRON_WORKFLOW_MAP`) that fire the data-pipeline
   and LINE-report workflows directly via the GitHub API at their intended
   times (01:00, 01:30, and 18:20 ICT) — this is the reliable path (Cloudflare
@@ -30,6 +30,15 @@ and ROAS tracking across procedure categories.
   guard (`scripts/check-report-sent-today.mjs`) stops the LINE report from
   sending twice, and the other two workflows are naturally idempotent
   (each only commits if the fetched data actually changed).
+- **Pipeline freshness watchdog** (`.github/workflows/pipeline-watchdog.yml`,
+  `scripts/check-pipeline-freshness.mjs`) — a second, independent safety net
+  fired by 2 more of those same Cron Triggers (08:30 and 19:00 ICT). It
+  doesn't trust that any of the mechanisms above actually ran; it checks the
+  *real output* of each pipeline (today's `generatedAt`/marker date in the
+  committed data files) and pushes a LINE alert immediately if something is
+  stale, even if nothing "failed" in the GitHub Actions sense (this is what
+  happened before — the 2 data pipelines ran late but never errored, so
+  nothing caught it for 10 days).
 
 ## One-time Cloudflare Worker setup (required for production)
 
@@ -53,15 +62,16 @@ Claude cannot do this part — it has no Cloudflare account access. From
    data into KV automatically from the next run onward; until these are set,
    `scripts/push-to-kv.mjs` just skips itself with a warning (the rest of the
    pipeline keeps working as before)
-7. (added 2026-11-14, expanded 2026-11-27) This same Worker also fires the
-   daily data-pipeline workflows and the LINE report — see `scheduled()` and
-   `CRON_WORKFLOW_MAP` in `worker/src/index.js`, 3 Cloudflare Cron Triggers
-   that call the GitHub API directly, replacing the unreliable GitHub
-   Actions `schedule:`/Claude-routine approach (repeated multi-hour delays on
-   all three workflows — see that file's comments). Needs two more Worker
-   secrets: `npx wrangler secret put GITHUB_PAT` (a fine-grained GitHub PAT
-   scoped to just this repo, "Actions: Read and write" permission only —
-   used to call `workflow_dispatch`) and
+7. (added 2026-11-14, expanded 2026-11-27 twice) This same Worker also fires
+   the daily data-pipeline workflows, the LINE report, and the freshness
+   watchdog — see `scheduled()` and `CRON_WORKFLOW_MAP` in
+   `worker/src/index.js`, 5 Cloudflare Cron Triggers that call the GitHub
+   API directly, replacing the unreliable GitHub Actions
+   `schedule:`/Claude-routine approach (repeated multi-hour delays on all
+   three data/report workflows — see that file's comments). Needs two more
+   Worker secrets: `npx wrangler secret put GITHUB_PAT` (a fine-grained
+   GitHub PAT scoped to just this repo, "Actions: Read and write" permission
+   only — used to call `workflow_dispatch`) and
    `npx wrangler secret put LINE_ALERT_CHANNEL_ACCESS_TOKEN` (same value as
    the GitHub secret of the same name — used to alert if a dispatch call
    itself fails). If deploying by pasting code into the Cloudflare Dashboard
@@ -72,6 +82,8 @@ Claude cannot do this part — it has no Cloudflare account access. From
    - `0 18 * * *` (01:00 ICT) → dispatches `update-dashboard-data.yml`
    - `30 18 * * *` (01:30 ICT) → dispatches `update-m365-data.yml`
    - `20 11 * * *` (18:20 ICT) → dispatches `send-line-report.yml`
+   - `30 1 * * *` (08:30 ICT) → dispatches `pipeline-watchdog.yml` (morning check)
+   - `0 12 * * *` (19:00 ICT) → dispatches `pipeline-watchdog.yml` (evening check)
 
 ## Local development
 

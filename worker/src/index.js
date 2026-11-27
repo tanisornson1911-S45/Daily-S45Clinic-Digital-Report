@@ -93,18 +93,28 @@ function checkAuth(request, env) {
 // guard แบบ Report LINE OA เพราะ workflow ทั้งสองนี้ idempotent อยู่แล้ว (แต่ละ step มี "ถ้าข้อมูลเปลี่ยน" เช็ค
 // ก่อน commit — รันซ้ำแค่ no-op ไม่สร้างความเสียหาย) จึงปล่อยให้ GitHub `schedule:` เดิมของทั้งสอง workflow ยังทำงาน
 // คู่ขนานเป็นตัวสำรองได้เลย ไม่ต้องถอดออกเหมือน Report LINE OA
+//
+// อัปเดต 2026-11-27 (เพิ่มอีกรอบ) — ผู้ใช้ขอ "อย่าให้เกิดแบบนี้อีก...ไม่มีการตรวจสอบเลย และไม่แจ้งอะไรกลับมา"
+// เพิ่ม pipeline-watchdog.yml เป็นเซฟตี้เน็ตชั้นสอง อิสระจากกลไกข้างบนทั้งหมด (เผื่อ Cloudflare Cron
+// Trigger/GITHUB_PAT/Worker นี้เองพังแบบเงียบๆ อีกในอนาคต) เช็คจาก "ผลลัพธ์จริง" ของแต่ละ pipeline ว่าทันเวลา
+// หรือยัง ไม่ทันจะส่ง LINE แจ้งเตือนทันที — ดูคอมเมนต์หัวไฟล์ scripts/check-pipeline-freshness.mjs
 const GITHUB_REPO = "tanisornson1911-S45/Daily-S45Clinic-Digital-Report";
 
 // คีย์ด้วย cron expression (UTC) ที่ผูกไว้กับแต่ละ Cloudflare Cron Trigger — ใช้ event.cron ใน scheduled()
-// ด้านล่างแยกว่าเวลานี้ควรยิง workflow ไหน ใช้ cron expression เดียวกับที่ workflow นั้นตั้งไว้ใน `schedule:`
-// ของตัวเอง (ดู .github/workflows/*.yml) เพื่อยิงพร้อมเวลาที่ตั้งใจไว้จริง (ไม่ใช่เวลาที่ดีเลย์)
+// ด้านล่างแยกว่าเวลานี้ควรยิง workflow ไหน (พร้อม inputs ถ้ามี) ใช้ cron expression เดียวกับที่ workflow
+// นั้นตั้งไว้ใน `schedule:` ของตัวเอง (ดู .github/workflows/*.yml) เพื่อยิงพร้อมเวลาที่ตั้งใจไว้จริง (ไม่ใช่
+// เวลาที่ดีเลย์)
 const CRON_WORKFLOW_MAP = {
-  "0 18 * * *": "update-dashboard-data.yml", // 01:00 น. ไทย
-  "30 18 * * *": "update-m365-data.yml", // 01:30 น. ไทย
-  "20 11 * * *": "send-line-report.yml", // 18:20 น. ไทย
+  "0 18 * * *": { file: "update-dashboard-data.yml" }, // 01:00 น. ไทย
+  "30 18 * * *": { file: "update-m365-data.yml" }, // 01:30 น. ไทย
+  "20 11 * * *": { file: "send-line-report.yml" }, // 18:20 น. ไทย
+  "30 1 * * *": { file: "pipeline-watchdog.yml", inputs: { mode: "morning" } }, // 08:30 น. ไทย
+  "0 12 * * *": { file: "pipeline-watchdog.yml", inputs: { mode: "evening" } }, // 19:00 น. ไทย
 };
 
-async function dispatchWorkflow(env, workflowFile) {
+async function dispatchWorkflow(env, workflowFile, inputs) {
+  const body = { ref: "main" };
+  if (inputs) body.inputs = inputs;
   const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/actions/workflows/${workflowFile}/dispatches`, {
     method: "POST",
     headers: {
@@ -114,7 +124,7 @@ async function dispatchWorkflow(env, workflowFile) {
       // GitHub REST API ปฏิเสธ request ที่ไม่มี User-Agent (403) — Workers runtime ไม่ใส่ให้อัตโนมัติแบบเบราว์เซอร์
       "User-Agent": "s45-dashboard-api-cron-worker",
     },
-    body: JSON.stringify({ ref: "main" }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -184,16 +194,17 @@ export default {
     });
   },
 
-  // Cloudflare Cron Trigger — ตอนนี้มี 3 รอบ ผูกกับ CRON_WORKFLOW_MAP ด้านบน (ดูคอมเมนต์หัว wrangler.toml
+  // Cloudflare Cron Trigger — ตอนนี้มี 5 รอบ ผูกกับ CRON_WORKFLOW_MAP ด้านบน (ดูคอมเมนต์หัว wrangler.toml
   // สำหรับวิธีตั้งแต่ละรอบใน Cloudflare Dashboard) — event.cron บอกว่า Trigger รอบไหนที่ยิงมา จึงรู้ว่าต้อง
-  // dispatch workflow ไหน ไม่ต้องเช็ค "ส่งไปแล้วหรือยัง" ที่นี่สำหรับ Report LINE OA เพราะ workflow เองมี dedup
-  // guard อยู่แล้ว (scripts/check-report-sent-today.mjs) ส่วนอีก 2 workflow ก็ idempotent อยู่แล้ว (ดูคอมเมนต์ที่
-  // CRON_WORKFLOW_MAP ด้านบน) ยิงซ้ำ/ยิงพร้อม GitHub schedule เดิมได้อย่างปลอดภัย
+  // dispatch workflow ไหน (พร้อม inputs ถ้ามี) ไม่ต้องเช็ค "ส่งไปแล้วหรือยัง" ที่นี่สำหรับ Report LINE OA
+  // เพราะ workflow เองมี dedup guard อยู่แล้ว (scripts/check-report-sent-today.mjs) ส่วนอีก 2 workflow ข้อมูล
+  // ก็ idempotent อยู่แล้ว และ 2 workflow watchdog เองก็แค่อ่าน+แจ้งเตือน ไม่มีผลข้างเคียงถ้ายิงซ้ำ — ยิงซ้ำ/
+  // ยิงพร้อม GitHub schedule เดิมได้อย่างปลอดภัยทั้งหมด
   async scheduled(event, env, ctx) {
-    const workflowFile = CRON_WORKFLOW_MAP[event.cron];
-    if (!workflowFile) return; // cron ที่ไม่รู้จัก (เช่นตั้งผิด) — ไม่ยิงอะไรเลยดีกว่าเดา
+    const target = CRON_WORKFLOW_MAP[event.cron];
+    if (!target) return; // cron ที่ไม่รู้จัก (เช่นตั้งผิด) — ไม่ยิงอะไรเลยดีกว่าเดา
     ctx.waitUntil(
-      dispatchWorkflow(env, workflowFile).catch((err) => notifyDispatchFailure(env, workflowFile, err))
+      dispatchWorkflow(env, target.file, target.inputs).catch((err) => notifyDispatchFailure(env, target.file, err))
     );
   },
 };
